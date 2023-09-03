@@ -1,0 +1,41 @@
+- name: "Create user {{ item.name }}"
+  ansible.builtin.user:
+    append: true
+    name: "{{ item.name }}"
+    password: "{{ (item.password | default(dietpi_configure_users_default_password)) | password_hash }}"
+    create_home: true
+    groups: "{{ item.groups }}"
+    update_password: on_create
+
+- name: Create ~/.ssh/ directory
+  become: true
+  become_user: "{{ item.name }}"
+  ansible.builtin.file:
+    path: ~/.ssh/
+    state: directory
+    owner: "{{ item.name }}"
+    group: "{{ item.name }}"
+    mode: "0700"
+
+- name: Create ~/.ssh/authorized_keys file
+  become: true
+  become_user: "{{ item.name }}"
+  ansible.builtin.file:
+    path: ~/.ssh/authorized_keys
+    state: touch
+    owner: "{{ item.name }}"
+    group: "{{ item.name }}"
+    mode: "0600"
+    modification_time: preserve
+    access_time: preserve
+
+- name: "Add authorized keys"
+  become: true
+  become_user: "{{ item.name }}"
+  ansible.builtin.lineinfile:
+    line: "{{ authorized_key }}"
+    dest: ~/.ssh/authorized_keys
+    state: "present"
+  with_items: "{{ item.authorized_keys }}"
+  loop_control:
+    loop_var: authorized_key

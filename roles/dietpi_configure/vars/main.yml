@@ -1,0 +1,3 @@
+---
+# vars file for dietpi_configure
+sshd_config: /etc/ssh/sshd_config

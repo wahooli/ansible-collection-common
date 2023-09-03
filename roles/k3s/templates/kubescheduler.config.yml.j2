@@ -1,0 +1,3 @@
+apiVersion: {{ kubescheduler_config_apiversion }}
+kind: KubeSchedulerConfiguration
+{{ k3s_kubescheduler_config | to_nice_yaml }}

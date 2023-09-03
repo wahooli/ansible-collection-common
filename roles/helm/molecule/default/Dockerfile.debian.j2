@@ -1,6 +1,5 @@
 FROM {{ item.image }}
-# Using systemd in docker: https://systemd.io/CONTAINER_INTERFACE/
-# Make sure cgroupv2 is enabled. To check this: cat /sys/fs/cgroup/cgroup.controllers
+
 ENV container=docker \
     ANSIBLE_USER=molecule \
     DEPLOY_GROUP=deployer \

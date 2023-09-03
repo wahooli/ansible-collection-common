@@ -61,6 +61,7 @@ provisioner:
               effect: "NoSchedule"
             calicoNetwork:
               linuxDataplane: "Iptables"
+              containerIPForwarding: "Enabled"
               ipPools:
               - blockSize: 26
                 allowedUses:

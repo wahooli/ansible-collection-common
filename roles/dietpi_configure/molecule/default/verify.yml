@@ -1,0 +1,46 @@
+---
+# This is an example playbook to execute Ansible tests.
+
+- name: Verify
+  hosts: all
+  gather_facts: false
+  tasks:
+  - name: "Stat file /home/wahooli/.ssh/authorized_keys"
+    ansible.builtin.stat:
+      path: "/home/wahooli/.ssh/authorized_keys"
+    register: authorized_keys
+
+  - name: Verify authorized_keys has contents
+    become: true
+    ansible.builtin.lineinfile:
+      path: "/home/wahooli/.ssh/authorized_keys"
+      line: "ssh_rsa abcdefg wahooli@dietpi"
+      state: present
+    register: authorized_keys_contains
+
+  - name: Verify dietpi user is removed
+    ansible.builtin.user:
+      name: dietpi
+      state: absent
+    register: dietpi_user
+
+  - name: Verify dietpi group is removed
+    ansible.builtin.group:
+      name: dietpi
+      state: absent
+    register: dietpi_group
+
+  - name: Verify wahooli user is created
+    ansible.builtin.user:
+      name: wahooli
+      create_home: true
+      update_password: on_create
+    register: wahooli_user
+
+  - name: Assert
+    ansible.builtin.assert:
+      that:
+      - authorized_keys_contains is not changed
+      - dietpi_user is not changed
+      - dietpi_group is not changed
+      - wahooli_user is not changed

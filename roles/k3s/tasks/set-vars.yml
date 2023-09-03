@@ -222,7 +222,7 @@
       regexp: '^config=.*'
     ansible.builtin.set_fact:
       kubelet_args: |
-        {{ (kubelet_args | difference (kubelet_args | map('regex_search', regexp) | list)) + ["config=" ~ config_path ~ "/kubelet.config"] }}
+        {{ (kubelet_args | difference (kubelet_args | map('regex_search', regexp) | list)) + ["config=" ~ config_path ~ "/kubelet.config.yml"] }}
 
   - name: Replace root-dir from k3s_config.kubelet-arg when k3s_kubelet_root_dir is set
     when:
@@ -264,3 +264,33 @@
   - k3s_kubelet_root_dir is undefined
   ansible.builtin.set_fact:
     k3s_kubelet_root_dir: "/var/lib/kubelet"
+
+- name: Configure kube-scheduler-args
+  when:
+  - k3s_kubescheduler_config is defined
+  - k3s_kubescheduler_config | length > 0
+  - k3s_role == "server"
+  block:
+  - name: Set kube-scheduler-arg defaults
+    ansible.builtin.set_fact:
+      kubescheduler_args: "{{ k3s_config['kube-scheduler-arg'] | default([]) }}"
+      k3s_kubescheduler_config: "{{ k3s_kubescheduler_config | default({}) | combine({'clientConnection': { 'kubeconfig' :  k3s_data_dir ~ '/server/cred/scheduler.kubeconfig' }}, recursive=true) }}"
+
+  - name: Replace config from k3s_config.kube-scheduler-arg when k3s_kubescheduler_config is set
+    vars:
+      regexp: '^config=.*'
+    ansible.builtin.set_fact:
+      kubescheduler_args: |
+        {{ (kubescheduler_args | difference (kubescheduler_args | map('regex_search', regexp) | list)) + ["config=" ~ config_path ~ "/kubescheduler.config.yml"] }}
+
+# end block Configure kube-scheduler-args
+
+- name: Modify k3s_config.kube-scheduler-arg
+  when:
+  - k3s_role == "server"
+  - kubescheduler_args is defined
+  ansible.builtin.set_fact:
+    k3s_config: "{{ k3s_config | default({}) | combine({'kube-scheduler-arg': kubescheduler_args}) }}"
+  tags:
+  - install
+  - configure

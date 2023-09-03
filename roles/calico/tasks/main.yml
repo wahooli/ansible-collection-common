@@ -76,4 +76,7 @@
     release_namespace: tigera-operator
     chart_version: "{{ calico_version }}"
     values: "{{ calico_helm_values | default({}) }}"
-  when: calico_version != (calico_installed_version | default ("default_value"))
+  when:
+    calico_version != (calico_installed_version | default ("default_value"))
+    or
+    calico_helm_upgrade | default(false)

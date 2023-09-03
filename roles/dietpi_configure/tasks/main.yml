@@ -1,0 +1,67 @@
+---
+# tasks file for dietpi_configure
+# - name: Install python pre-requisites
+#   ansible.builtin.pip:
+#     name:
+#     - passlib
+
+- name: Read /etc/hostname
+  when: ansible_hostname is undefined
+  ansible.builtin.slurp:
+    src: /etc/hostname
+  register: hostname_file
+
+- name: Set current hostname fact
+  ansible.builtin.set_fact:
+    current_hostname: "{{ ansible_hostname | default(hostname_file.content | b64decode | trim) }}"
+
+- name: "Disable root password ssh login"
+  become: true
+  ansible.builtin.lineinfile:
+    line: "PermitRootLogin prohibit-password"
+    dest: "{{ sshd_config }}"
+    regexp: '^([#]+)?(\s+)?PermitRootLogin \S+'
+    state: "present"
+  notify:
+  - Restart sshd
+
+- name: "Set hostname to {{ inventory_hostname }}"
+  become: true
+  when:
+  - ansible_connection not in [ "container", "docker", "community.docker.docker" ]
+  ansible.builtin.hostname:
+    name: "{{ inventory_hostname }}"
+    use: systemd
+
+- name: Replace old hostname with new hostname
+  become: true
+  when:
+  - ansible_connection not in [ "container", "docker", "community.docker.docker" ]
+  ansible.builtin.replace:
+    path: /etc/hosts
+    regexp: '(\s+){{ current_hostname }}(\s+.*)?$'
+    replace: '\1{{ inventory_hostname }}\2'
+
+- name: Remove dietpi user
+  ansible.builtin.user:
+    name: dietpi
+    state: absent
+
+- name: Remove dietpi group
+  ansible.builtin.group:
+    name: dietpi
+    state: absent
+
+- name: Create users
+  ansible.builtin.include_tasks: create-user.yml
+  when:
+  - dietpi_configure_users is defined
+  loop: "{{ dietpi_configure_users }}"
+
+- name: Run dietpi-update
+  become: true
+  when:
+  - ansible_connection not in [ "container", "docker", "community.docker.docker" ]
+  ansible.builtin.command: dietpi-update
+  register: dietpi_update_command
+  changed_when: dietpi_update_command.rc != 0

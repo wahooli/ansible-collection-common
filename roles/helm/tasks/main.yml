@@ -9,12 +9,18 @@
 - name: Get installed helm version
   ansible.builtin.command: "{{ helm_install_path }}/helm version --template='{{ '{{' }} .Version {{ '}}' }}'"
   failed_when: false
-  changed_when: false
+  changed_when: helm_version.rc != 0
   register: helm_version
 
-- name: Set helm cpu arch
-  ansible.builtin.import_tasks: detect-cpu-arch.yml
+- name: Detect CPU arch
   when: not helm_arch | default(false)
+  ansible.builtin.set_fact:
+    helm_arch: '{%- if (ansible_facts.architecture is search("arm") and ansible_facts.userspace_bits == "64") or ansible_facts.architecture is search("aarch64") -%}
+    arm64{%- elif ansible_facts.architecture is search("arm") and ansible_facts.userspace_bits == "32" -%}
+    arm{%- elif ansible_facts.architecture == "x86_64" -%}
+    amd64{%- elif ansible_facts.architecture == "i386" -%}
+    i386{%- else -%}
+    {%- endif -%}'
 
 - name: Get latest helm tag
   when: not helm_tag | default(false) or helm_tag | lower == "latest"
@@ -75,3 +81,7 @@
       path: "{{ helm_temp.path }}"
 
 # end block Install helm
+
+- name: Install helm-diff plugin
+  ansible.builtin.import_tasks: install-helm-diff-plugin.yml
+  when: helm_diff_install | default(true)

@@ -7,6 +7,11 @@
 # k3s_data_dir: /var/lib/rancher/k3s
 # k3s_kubelet_config:
 #   maxPods: 250
+# k3s_kubescheduler_config:
+#   leaderElection:
+#     leaderElect: true
+#   clientConnection:
+#     kubeconfig: /var/lib/rancher/k3s/server/cred/scheduler.kubeconfig
 k3s_systemd_enable: true
 k3s_systemd_start: true
 k3s_bin_dir: "/usr/local/bin"

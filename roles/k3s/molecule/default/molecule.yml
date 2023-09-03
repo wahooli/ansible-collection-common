@@ -21,8 +21,22 @@ provisioner:
       k3s-server:
         ansible_user: molecule
         k3s_role: server
+        k3s_kubescheduler_config:
+          leaderElection:
+            leaderElect: true
+          extenders:
+          - urlPrefix: "http://127.0.0.1:9251"
+            filterVerb: "predicate"
+            prioritizeVerb: "prioritize"
+            nodeCacheCapable: false
+            weight: 100
+            managedResources:
+            - name: "topolvm.io/capacity"
+              ignoredByScheduler: true
         k3s_config:
           snapshotter: native
           write-kubeconfig-mode: 644
+          kube-scheduler-arg:
+          - bind-address=0.0.0.0
 verifier:
   name: ansible

@@ -1,0 +1,48 @@
+---
+- name: "Update apt repository cache"
+  become: true
+  ansible.builtin.apt:
+    update_cache: true
+    cache_valid_time: 3600
+  when: ansible_facts['os_family'] == "Debian"
+
+- name: Ensure required packages are installed
+  become: true
+  ansible.builtin.package:
+    name: "{{ item }}"
+    state: present
+  with_items:
+  - git
+  - curl
+
+- name: Install python pre-requisites
+  ansible.builtin.pip:
+    name:
+    - kubernetes
+
+- name: Get latest helm-diff tag
+  when: not helm_diff_version | default(false) or helm_diff_version | lower == "latest"
+  block:
+  - name: Get list of helm-diff github releases
+    ansible.builtin.uri:
+      url: https://api.github.com/repos/databus23/helm-diff/releases/latest
+      return_content: true
+      status_code: 200
+    register: helm_diff_releases
+  - name: Set helm_tag fact
+    ansible.builtin.set_fact:
+      helm_diff_version: "{{ helm_diff_releases.json.tag_name | trim | lower }}"
+    when: not helm_diff_releases.failed
+
+- name: Install Helm plugin from local filesystem
+  kubernetes.core.helm_plugin:
+    plugin_path: https://github.com/databus23/helm-diff
+    # plugin_path: https://github.com/databus23/helm-diff/releases/download/{{ helm_diff_version }}/helm-diff-{{ helm_os | lower }}-{{ helm_arch }}.tgz
+    state: present
+    plugin_version: "{{ helm_diff_version }}"
+  when:
+    ((helm_os | lower == "linux" or helm_os | lower == "macos")
+    and
+    (helm_arch == "arm64" or helm_arch == "amd64"))
+    or
+    (helm_os | lower == "windows" and helm_arch == "amd64")

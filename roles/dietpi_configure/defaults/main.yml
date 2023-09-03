@@ -1,0 +1,5 @@
+---
+# defaults file for dietpi_configure
+dietpi_configure_update_hostname: true
+dietpi_configure_disable_root_ssh: true
+dietpi_configure_users_default_password: dietpi
