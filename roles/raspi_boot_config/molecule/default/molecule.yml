@@ -1,0 +1,47 @@
+---
+dependency:
+  name: galaxy
+driver:
+  name: docker
+platforms:
+- name: raspi-boot-config
+  image: "debian:11"
+  dockerfile: Dockerfile.raspifake
+  pre_build_image: false
+provisioner:
+  name: ansible
+  inventory:
+    group_vars:
+      all:
+        raspi_boot_config_vars:
+        - key: boot_delay
+          value: 0
+        - key: disable_splash
+          value: 1
+        - key: start_x
+          remove: true
+        - key: dtparam
+          value: sd_poll_once
+          replace: false
+        - key: dtoverlay
+          value: disable-bt,disable-wifi
+          replace: false
+        - key: dtparam
+          value: spi=off
+          replace: false
+        raspi_boot_config_cmdline_vars:
+        - key: quiet
+        - key: cgroup_enable
+          value: cpuset
+          replace: false
+        - key: cgroup_enable
+          value: memory
+          replace: false
+        - key: cgroup_memory
+          value: 1
+        - key: logo.nologo
+          remove: true
+        - key: console
+          value: tty2
+verifier:
+  name: ansible

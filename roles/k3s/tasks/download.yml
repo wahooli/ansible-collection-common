@@ -1,0 +1,127 @@
+- name: Set K3s version fact
+  when:
+  - k3s_version is undefined
+  - k3s_release_channel == "latest" or k3s_release_channel == "stable" or k3s_release_channel == "testing"
+  block:
+  - name: Get latest K3s version information
+    ansible.builtin.uri:
+      url: "https://update.k3s.io/v1-release/channels"
+      return_content: true
+    register: channels_json
+    run_once: true
+  - name: "Set K3s version from channel {{ k3s_release_channel }}"
+    ansible.builtin.set_fact:
+      k3s_version: "{{ channels_json.json | community.general.json_query('data[?id==`' ~ k3s_release_channel ~ '`].latest') | first }}"
+# end block Set K3s version fact
+
+- name: Fail if k3s_version is undefined
+  when: k3s_version is undefined
+  ansible.builtin.fail:
+    msg: "k3s_version version could not be determined"
+
+- name: Get current K3s version if installed
+  when:
+  - "'k3s.service' in services"
+  block:
+  - name: Read current K3s version
+    ansible.builtin.command: "{{ k3s_bin_dir }}/kubectl version --client=true -o json"
+    ignore_errors: true
+    register: kubectl_output # <- Registers the command output.
+    changed_when: kubectl_output.rc != 0
+  - name: Set current K3s version
+    ansible.builtin.set_fact:
+      k3s_current_version: "{{ (kubectl_output.stdout | from_json).clientVersion.gitVersion }}"
+    when: kubectl_output is success
+# end block Get current K3s version if installed
+
+- name: Detect CPU arch
+  when: k3s_current_version is undefined or k3s_current_version != k3s_version
+  block:
+  - name: Set x64 specific facts
+    when: ansible_facts.architecture == "x86_64"
+    ansible.builtin.set_fact:
+      images_tar: k3s-airgap-images-amd64.tar
+      bin_name: k3s
+      shasum_file: sha256sum-amd64.txt
+  - name: Set arm64 specific facts
+    when: ( ansible_facts.architecture is search("arm") and ansible_facts.userspace_bits == "64" )
+          or ansible_facts.architecture is search("aarch64")
+    ansible.builtin.set_fact:
+      images_tar: k3s-airgap-images-arm64.tar
+      bin_name: k3s-arm64
+      shasum_file: sha256sum-arm64.txt
+  - name: Set arm specific facts
+    when:
+      - ansible_facts.architecture is search("arm")
+      - ansible_facts.userspace_bits == "32"
+    ansible.builtin.set_fact:
+      images_tar: k3s-airgap-images-arm.tar
+      bin_name: k3s-armhf
+      shasum_file: sha256sum-arm.txt
+# end block Detect CPU arch
+
+- name: Download K3s
+  when: k3s_current_version is undefined or k3s_current_version != k3s_version
+  block:
+  - name: "Download K3s {{ k3s_version }}"
+    ansible.builtin.get_url:
+      url: https://github.com/k3s-io/k3s/releases/download/{{ k3s_version }}/{{ bin_name }}
+      checksum: sha256:https://github.com/k3s-io/k3s/releases/download/{{ k3s_version }}/{{ shasum_file }}
+      dest: "{{ k3s_bin_dir }}/k3s"
+      owner: root
+      group: root
+      mode: "0755"
+    register: k3s_dl
+    retries: 10
+    until: k3s_dl is success
+    notify:
+    - Restart K3s
+
+  - name: "Download K3s images"
+    when: k3s_dl is changed # noqa: no-handler
+    ansible.builtin.get_url:
+      url: https://github.com/k3s-io/k3s/releases/download/{{ k3s_version }}/{{ images_tar }}.zst
+      checksum: sha256:https://github.com/k3s-io/k3s/releases/download/{{ k3s_version }}/{{ shasum_file }}
+      dest: "{{ k3s_data_dir }}/agent/images/{{ images_tar }}.zst"
+      owner: root
+      group: root
+      mode: "0644"
+    register: k3s_image_dl
+    retries: 10
+    until: k3s_image_dl is success
+
+  - name: Delete old images archive
+    when: k3s_image_dl is success
+    ansible.builtin.file:
+      path: "{{ k3s_data_dir }}/agent/images/{{ images_tar }}"
+      state: absent
+
+  - name: Extract zst images
+    when: k3s_image_dl is success
+    register: unzstd_output # <- Registers the command output.
+    changed_when: unzstd_output.rc != 0
+    ansible.builtin.command:
+      cmd: unzstd --no-progress -q --rm {{ images_tar }}.zst
+      chdir: "{{ k3s_data_dir }}/agent/images/"
+# end block Download K3s
+
+- name: Create kubectl symlink
+  ansible.builtin.file:
+    src: "{{ k3s_bin_dir }}/k3s"
+    dest: "{{ k3s_bin_dir }}/kubectl"
+    state: link
+  when: k3s_dl is success
+
+- name: Create crictl symlink
+  ansible.builtin.file:
+    src: "{{ k3s_bin_dir }}/k3s"
+    dest: "{{ k3s_bin_dir }}/crictl"
+    state: link
+  when: k3s_dl is success
+
+- name: Create ctr symlink
+  ansible.builtin.file:
+    src: "{{ k3s_bin_dir }}/k3s"
+    dest: "{{ k3s_bin_dir }}/ctr"
+    state: link
+  when: k3s_dl is success

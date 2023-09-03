@@ -1,0 +1,27 @@
+---
+# This is an example playbook to execute Ansible tests.
+
+- name: Verify
+  hosts: all
+  gather_facts: false
+  tasks:
+  - name: Wait for nodes to be ready
+    ansible.builtin.command: "kubectl get nodes"
+    register: nodes_ready
+    until:
+    - '" NotReady " not in nodes_ready.stdout'
+    changed_when: nodes_ready.rc != 0
+    retries: 60
+    delay: 1
+
+  - name: Check calicoctl is installed
+    ansible.builtin.command: "calicoctl version"
+    register: calicoctl_version_output
+    failed_when: calicoctl_version_output.rc == 127
+    changed_when: calicoctl_version_output.rc > 1
+
+  - name: Run assertions
+    ansible.builtin.assert:
+      that:
+      - calicoctl_version_output is success
+      - nodes_ready is success

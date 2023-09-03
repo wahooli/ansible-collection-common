@@ -1,0 +1,266 @@
+- name: Read token file contents if exists
+  tags:
+  - configure
+  - install
+  block:
+  - name: Check if TOKEN file exists
+    ansible.builtin.stat:
+      path: "{{ config_path }}/TOKEN"
+    register: token_file_stat
+  - name: Read token from file
+    when: token_file_stat.stat.exists
+    ansible.builtin.slurp:
+      src: "{{ token_file_stat.stat.path }}"
+    register: token_file_contents
+  - name: Set k3s_token
+    when:
+    - token_file_stat.stat.exists
+    - token_file_contents.content | length > 0
+    ansible.builtin.set_fact:
+      k3s_token: "{{ token_file_contents.content | b64decode | trim }}"
+# end block Read token file contents if exists
+
+- name: Read server file contents if exists
+  tags:
+  - configure
+  - install
+  block:
+  - name: Check if SERVER file exists
+    ansible.builtin.stat:
+      path: "{{ config_path }}/SERVER"
+    register: server_file_stat
+  - name: Read server from file
+    when: server_file_stat.stat.exists
+    ansible.builtin.slurp:
+      src: "{{ server_file_stat.stat.path }}"
+    register: server_file_contents
+  - name: Set k3s_server
+    when:
+    - server_file_stat.stat.exists
+    - server_file_contents.content | length > 0
+    ansible.builtin.set_fact:
+      k3s_server: "{{ server_file_contents.content | b64decode | trim }}"
+# end block Read server file contents if exists
+
+- name: Read token and server from k3s config.yaml
+  tags:
+  - configure
+  - install
+  block:
+  - name: Check config.yaml exists
+    ansible.builtin.stat:
+      path: "{{ config_path }}/config.yaml"
+    register: config_file_stat
+  - name: "Read config file"
+    when: config_file_stat.stat.exists
+    ansible.builtin.slurp:
+      src: "{{ config_file_stat.stat.path }}"
+    register: config_file_contents
+  - name: "Parse yaml into variable"
+    when: config_file_stat.stat.exists
+    ansible.builtin.set_fact:
+      config_yaml_content: "{{ config_file_contents.content | b64decode | from_yaml }}"
+  - name: "Set k3s_token fact"
+    when:
+    - not token_file_stat.stat.exists
+    - config_yaml_content.token is defined
+    - config_yaml_content.token | trim | length > 0
+    ansible.builtin.set_fact:
+      k3s_token: "{{ config_yaml_content.token }}"
+  - name: "Set k3s_server fact"
+    when:
+    - not server_file_stat.stat.exists
+    - config_yaml_content.server is defined
+    - config_yaml_content.server | trim | length > 0
+    ansible.builtin.set_fact:
+      k3s_server: "{{ config_yaml_content.server }}"
+# end block Read token and server from k3s config.yaml
+
+- name: Use ansible variables as token
+  when:
+  - "'k3s.service' not in services"
+  - k3s_token is undefined
+  tags:
+  - install
+  block:
+  - name: Use k3s_config.token value
+    when: k3s_config.token is defined
+    ansible.builtin.set_fact:
+      k3s_token: "{{ k3s_config.token }}"
+  - name: Generate random shared token
+    when: k3s_config.token is undefined
+    ansible.builtin.set_fact:
+      k3s_token: "{{ lookup('community.general.random_string', override_special='+?,.-_', length=32) }}"
+    run_once: true # generates single token and shares it across plays
+# end block Use ansible variables as token
+
+- name: Fail if token is undefined
+  ansible.builtin.fail:
+    msg: k3s_token could not be parsed or wasn't defined
+  when: k3s_token is undefined
+  tags:
+  - install
+  - configure
+
+- name: Combine k3s_token into k3s_config
+  ansible.builtin.set_fact:
+    k3s_config: "{{ k3s_config | default({}) | combine({'token': k3s_token}) }}"
+
+- name: Determine server hosts
+  block:
+  - name: List server nodes
+    run_once: true
+    ansible.builtin.set_fact:
+      k3s_server_hosts: "{{ (dict((hostvars | dict2items | map(attribute='key')) | zip(ansible_play_hosts_all | map('extract', hostvars, 'k3s_role'))) | dict2items | rejectattr('value', '==', 'agent') | items2dict).keys() }}"
+  - name: Determine if using embedded_etcd
+    run_once: true
+    ansible.builtin.set_fact:
+      using_embedded_etcd: "{{ hostvars[(k3s_server_hosts | first)]['k3s_datastore_endpoint'] is undefined and k3s_server_hosts | length > 2 }}"
+  - name: Fail if there is less than 3 server nodes using embedded etcd
+    when:
+    - using_embedded_etcd
+    - k3s_server_hosts | length < 3
+    ansible.builtin.fail:
+      msg: There has to be at least 3 server nodes, when using embedded etcd!
+# end block Determine server hosts
+
+- name: Check if host has cluster-init configuration value
+  when:
+  - "'k3s.service' not in services or k3s_force_cluster_init is defined"
+  - using_embedded_etcd
+  tags:
+  - install
+  block:
+  - name: Set k3s_cluster_init_host
+    when:
+    - k3s_role == "server"
+    - k3s_config["cluster-init"] is defined
+    ansible.builtin.set_fact:
+      k3s_cluster_init_host: "{{ inventory_hostname }}"
+  - name: Set k3s_cluster_init_host
+    when:
+    - k3s_cluster_init_host is undefined
+    ansible.builtin.set_fact:
+      k3s_cluster_init_host: "_remove_"
+  - name: Set k3s_cluster_init_host for all hosts
+    run_once: true
+    ansible.builtin.set_fact:
+      k3s_cluster_init_host: "{{ (dict((hostvars | dict2items | map(attribute='key')) | zip(ansible_play_hosts_all | map('extract', hostvars, 'k3s_cluster_init_host'))) | dict2items | rejectattr('value', '==', '_remove_') | items2dict).keys() | first | default(k3s_server_hosts | first) }}"
+# end block Check if host has cluster-init configuration value
+
+- name: Remove cluster-init from config
+  when:
+  - k3s_config["cluster-init"] is defined
+  ansible.builtin.set_fact:
+    k3s_config: |
+      {% set a = k3s_config.pop('cluster-init') %}
+      {{ k3s_config }}
+
+- name: Add cluster-init to cluster_init_host
+  when:
+  - using_embedded_etcd
+  - k3s_cluster_init_host is defined
+  - inventory_hostname == k3s_cluster_init_host
+  - "'k3s.service' not in services or k3s_force_cluster_init is defined"
+  ansible.builtin.set_fact:
+    k3s_config: "{{ k3s_config | default({}) | combine({'cluster-init': true}) }}"
+  tags:
+  - install
+
+- name: Set k3s_server fact
+  when:
+  - k3s_server is undefined or k3s_server | length < 1
+  - "'k3s.service' not in services"
+  - (using_embedded_etcd and inventory_hostname != k3s_cluster_init_host)
+    or
+    (not using_embedded_etcd and k3s_role == "agent")
+  #  (not using_embedded_etcd and inventory_hostname != (k3s_server_hosts | first))
+  # - k3s_server is undefined or k3s_server | length < 1
+  # - k3s_cluster_init_host is undefined or (k3s_cluster_init_host is defined and k3s_cluster_init_host != inventory_hostname)
+  # - not (k3s_server_hosts | length == 1 and k3s_role == )
+  ansible.builtin.set_fact:
+    k3s_server: "https://{{ hostvars[(k3s_server_hosts | first)]['ansible_default_ipv4']['address'] if k3s_cluster_init_host is undefined else hostvars[k3s_cluster_init_host]['ansible_default_ipv4']['address'] }}:6443"
+    # k3s_server: "https://{{ hostvars[k3s_cluster_init_host]['ansible_default_ipv4']['address'] | default(hostvars[(k3s_server_hosts | first)]['ansible_default_ipv4']['address']) }}:6443"
+
+- name: Add server to k3s_config
+  when:
+  - k3s_server is defined
+  ansible.builtin.set_fact:
+    k3s_config: "{{ k3s_config | default({}) | combine({'server': k3s_server}) }}"
+  tags:
+  - install
+  - configure
+
+- name: Add datastore-endpoint to k3s_config
+  when:
+  - k3s_datastore_endpoint is defined
+  ansible.builtin.set_fact:
+    k3s_config: "{{ k3s_config | default({}) | combine({'datastore-endpoint': k3s_datastore_endpoint}) }}"
+  tags:
+  - install
+  - configure
+
+- name: Configure kubelet-args
+  when: |
+    (k3s_kubelet_config is defined
+    and
+    k3s_kubelet_config | length > 0)
+    or
+    (k3s_kubelet_root_dir is defined
+    or
+    k3s_kubelet_root_dir | length > 0)
+  block:
+  - name: Set kubelet-arg defaults
+    ansible.builtin.set_fact:
+      kubelet_args: "{{ k3s_config['kubelet-arg'] | default([]) }}"
+
+  - name: Replace config from k3s_config.kubelet-arg when k3s_kubelet_config is set
+    when:
+    - k3s_kubelet_config is defined
+    - k3s_kubelet_config | length > 0
+    vars:
+      regexp: '^config=.*'
+    ansible.builtin.set_fact:
+      kubelet_args: |
+        {{ (kubelet_args | difference (kubelet_args | map('regex_search', regexp) | list)) + ["config=" ~ config_path ~ "/kubelet.config"] }}
+
+  - name: Replace root-dir from k3s_config.kubelet-arg when k3s_kubelet_root_dir is set
+    when:
+    - k3s_kubelet_root_dir is defined
+    - k3s_kubelet_root_dir | length > 0
+    vars:
+      regexp: '^root-dir=.*'
+    ansible.builtin.set_fact:
+      kubelet_args: |
+        {{ (kubelet_args | difference (kubelet_args | map('regex_search', regexp) | list)) + [ "root-dir=" ~ k3s_kubelet_root_dir ] }}
+# end block Configure kubelet-args
+
+- name: Modify k3s_config.kubelet-arg
+  when:
+  - kubelet_args is defined
+  ansible.builtin.set_fact:
+    k3s_config: "{{ k3s_config | default({}) | combine({'kubelet-arg': kubelet_args}) }}"
+  tags:
+  - install
+  - configure
+
+- name: Modify k3s_config.data-dir
+  when:
+  - k3s_data_dir is defined
+  ansible.builtin.set_fact:
+    k3s_config: "{{ k3s_config | default({}) | combine({'data-dir': k3s_data_dir}) }}"
+  tags:
+  - install
+  - configure
+
+- name: Set k3s_data_dir default
+  when:
+  - k3s_data_dir is undefined
+  ansible.builtin.set_fact:
+    k3s_data_dir: "/var/lib/rancher/k3s"
+
+- name: Set k3s_kubelet_root_dir default
+  when:
+  - k3s_kubelet_root_dir is undefined
+  ansible.builtin.set_fact:
+    k3s_kubelet_root_dir: "/var/lib/kubelet"

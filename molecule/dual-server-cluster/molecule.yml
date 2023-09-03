@@ -1,0 +1,114 @@
+---
+dependency:
+  name: galaxy
+driver:
+  name: docker
+platforms:
+- name: dual-server-cluster-server-01
+  image: "debian:11"
+  groups:
+  - k3s_servers
+  - k3s_nodes
+  tmpfs:
+  - /run
+  - /tmp
+  volumes:
+  - /lib/modules:/lib/modules:ro
+  privileged: true
+  pre_build_image: false
+  tty: true
+  networks:
+  - name: molecule-dual-server-cluster
+  docker_networks:
+  - name: molecule-dual-server-cluster
+
+- name: dual-server-cluster-server-02
+  image: "debian:11"
+  groups:
+  - k3s_servers
+  - k3s_nodes
+  tmpfs:
+  - /run
+  - /tmp
+  volumes:
+  - /lib/modules:/lib/modules:ro
+  privileged: true
+  pre_build_image: false
+  tty: true
+  networks:
+  - name: molecule-dual-server-cluster
+  docker_networks:
+  - name: molecule-dual-server-cluster
+
+- name: dual-server-cluster-agent-01
+  image: "debian:11"
+  groups:
+  - k3s_agents
+  - k3s_nodes
+  tmpfs:
+  - /run
+  - /tmp
+  volumes:
+  - /lib/modules:/lib/modules:ro
+  privileged: true
+  pre_build_image: false
+  tty: true
+  networks:
+  - name: molecule-dual-server-cluster
+  docker_networks:
+  - name: molecule-dual-server-cluster
+
+- name: postgres
+  image: "postgres:14.2"
+  dockerfile: Dockerfile.psql.j2
+  pre_build_image: false
+  command: postgres
+  tty: true
+  networks:
+  - name: molecule-dual-server-cluster
+  docker_networks:
+  - name: molecule-dual-server-cluster
+
+provisioner:
+  name: ansible
+  env:
+    ANSIBLE_ROLES_PATH: "${MOLECULE_PROJECT_DIRECTORY}/roles"
+  #   ANSIBLE_VERBOSITY: 3
+  # config_options:
+  #   tags:
+  #     run: install,prepare,k3s_server,k3s_agent
+  inventory:
+    group_vars:
+      k3s_nodes:
+        ansible_user: molecule
+        k3s_kubelet_config:
+          maxPods: 250
+          shutdownGracePeriod: 30s
+          shutdownGracePeriodCriticalPods: 10s
+      k3s_servers:
+        k3s_role: server
+        k3s_datastore_endpoint: postgres://postgres:postgres@postgres.molecule-dual-server-cluster:5432/postgres
+        k3s_config:
+          snapshotter: native
+          write-kubeconfig-mode: 644
+          disable:
+          - servicelb
+          - traefik
+          node-taint:
+          - node-role.kubernetes.io/master=true:NoSchedule
+          kube-controller-manager-arg:
+          - bind-address=0.0.0.0
+          - terminated-pod-gc-threshold=10
+          kube-proxy-arg:
+          - metrics-bind-address=0.0.0.0
+          kube-scheduler-arg:
+          - bind-address=0.0.0.0
+      k3s_agents:
+        k3s_role: agent
+        k3s_config:
+          snapshotter: native
+          kube-proxy-arg:
+          - metrics-bind-address=0.0.0.0
+
+verifier:
+  name: ansible

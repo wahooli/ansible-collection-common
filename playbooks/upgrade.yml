@@ -1,0 +1,6 @@
+- name: Upgrade k3s cluster
+  hosts: all
+  roles:
+  - role: "k3s"
+  vars:
+    k3s_skip_prepare: true

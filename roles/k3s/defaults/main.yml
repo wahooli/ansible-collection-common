@@ -1,0 +1,17 @@
+---
+# defaults file for k3s
+# k3s_config
+# k3s_role
+# k3s_datastore_endpoint
+# k3s_kubelet_root_dir: /var/lib/kubelet
+# k3s_data_dir: /var/lib/rancher/k3s
+# k3s_kubelet_config:
+#   maxPods: 250
+k3s_systemd_enable: true
+k3s_systemd_start: true
+k3s_bin_dir: "/usr/local/bin"
+k3s_install_type: notify
+k3s_release_channel: stable
+k3s_use_config_file: true
+k3s_config:
+  write_kubeconfig_mode: 644

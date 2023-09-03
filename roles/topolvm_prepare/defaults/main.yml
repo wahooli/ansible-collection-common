@@ -1,0 +1,15 @@
+---
+# defaults file for topolvm_prepare
+topolvm_prepare_regex_search: "sd"
+topolvm_prepare_enable_fstrim: true
+# topolvm_prepare_vg_name: data
+# topolvm_prepare_lvols:
+# - name: k3s_data
+#   size: 60g
+#   fstype: ext4
+#   mountpath: /opt/k3s_data
+#   allow_resize: true
+#   opts: --type raid1 --mirrors 1 --nosync
+# topolvm_prepare_disks:
+# - /dev/sda
+# - /dev/sdb

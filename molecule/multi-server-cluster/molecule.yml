@@ -1,0 +1,126 @@
+---
+dependency:
+  name: galaxy
+driver:
+  name: docker
+platforms:
+- name: multi-server-cluster-server-01
+  image: "debian:11"
+  groups:
+  - k3s_servers
+  - k3s_nodes
+  tmpfs:
+  - /run
+  - /tmp
+  volumes:
+    - /lib/modules:/lib/modules:ro
+  privileged: true
+  pre_build_image: false
+  tty: true
+  networks:
+  - name: molecule-multi-server-cluster
+  docker_networks:
+  - name: molecule-multi-server-cluster
+
+- name: multi-server-cluster-server-02
+  image: "debian:11"
+  groups:
+  - k3s_servers
+  - k3s_nodes
+  tmpfs:
+  - /run
+  - /tmp
+  volumes:
+    - /lib/modules:/lib/modules:ro
+  privileged: true
+  pre_build_image: false
+  tty: true
+  networks:
+  - name: molecule-multi-server-cluster
+  docker_networks:
+  - name: molecule-multi-server-cluster
+
+- name: multi-server-cluster-server-03
+  image: "debian:11"
+  groups:
+  - k3s_servers
+  - k3s_nodes
+  tmpfs:
+  - /run
+  - /tmp
+  volumes:
+  - /lib/modules:/lib/modules:ro
+  privileged: true
+  pre_build_image: false
+  tty: true
+  networks:
+  - name: molecule-multi-server-cluster
+  docker_networks:
+  - name: molecule-multi-server-cluster
+
+- name: multi-server-cluster-agent-01
+  image: "debian:11"
+  groups:
+  - k3s_agents
+  - k3s_nodes
+  tmpfs:
+  - /run
+  - /tmp
+  volumes:
+    - /lib/modules:/lib/modules:ro
+  privileged: true
+  pre_build_image: false
+  tty: true
+  networks:
+  - name: molecule-multi-server-cluster
+  docker_networks:
+  - name: molecule-multi-server-cluster
+
+provisioner:
+  name: ansible
+  env:
+    ANSIBLE_ROLES_PATH: "${MOLECULE_PROJECT_DIRECTORY}/roles"
+  #   ANSIBLE_VERBOSITY: 3
+  # config_options:
+  #   tags:
+  #     run: install,prepare,k3s_server,k3s_agent
+  inventory:
+    host_vars:
+      multi-server-cluster-server-01:
+        k3s_role: server
+      multi-server-cluster-server-02:
+        k3s_role: server
+      multi-server-cluster-server-03:
+        k3s_role: server
+    group_vars:
+      k3s_nodes:
+        ansible_user: molecule
+        k3s_kubelet_config:
+          maxPods: 250
+          shutdownGracePeriod: 30s
+          shutdownGracePeriodCriticalPods: 10s
+      k3s_servers:
+        k3s_config:
+          snapshotter: native
+          write-kubeconfig-mode: 644
+          disable:
+          - servicelb
+          - traefik
+          node-taint:
+          - node-role.kubernetes.io/master=true:NoSchedule
+          kube-controller-manager-arg:
+          - bind-address=0.0.0.0
+          - terminated-pod-gc-threshold=10
+          kube-proxy-arg:
+          - metrics-bind-address=0.0.0.0
+          kube-scheduler-arg:
+          - bind-address=0.0.0.0
+      k3s_agents:
+        k3s_role: agent
+        k3s_config:
+          snapshotter: native
+          kube-proxy-arg:
+          - metrics-bind-address=0.0.0.0
+
+verifier:
+  name: ansible

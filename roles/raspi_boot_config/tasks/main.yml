@@ -1,0 +1,43 @@
+---
+# tasks file for raspi_boot_config
+
+# boot config modification
+- name: "Stat file {{ raspi_boot_config_path }}"
+  ansible.builtin.stat:
+    path: "{{ raspi_boot_config_path }}"
+  register: boot_config_file_stat
+
+- name: "Modify {{ raspi_boot_config_path }}"
+  ansible.builtin.lineinfile:
+    line: '{{ item.key | string + "=" + ("" if item.value is undefined else item.value | string) }}'
+    dest: "{{ raspi_boot_config_path }}"
+    regexp: '{{ "^" ~ item.key | string ~ "=" ~ ("\S+" if ((item.replace | default(true)) or (item.remove | default(false))) else item.value | string) }}'
+    state: '{{ "absent" if (item.remove is defined and item.remove | bool) else "present" }}'
+  with_items: '{{ raspi_boot_config_vars }}'
+  register: boot_config_file
+  become: true
+  when:
+  - raspi_boot_config_vars is defined
+  - raspi_boot_config_vars is iterable
+  - boot_config_file_stat.stat.exists
+  notify:
+  - Reboot
+  - Emit reboot required
+
+# cmdline modification
+
+- name: "Stat file {{ raspi_boot_config_cmdline_path }}"
+  ansible.builtin.stat:
+    path: "{{ raspi_boot_config_cmdline_path }}"
+  register: boot_cmdline_file_stat
+
+- name: Repeat block of tasks for each item in the array
+  ansible.builtin.include_tasks: cmdline.yaml
+  loop: "{{ raspi_boot_config_cmdline_vars }}"
+  vars:
+    boot_cmdline_filepath: "{{ raspi_boot_config_cmdline_path }}"
+    boot_cmdline_filemode: "{{ boot_cmdline_file_stat.stat.mode }}"
+  when:
+  - raspi_boot_config_cmdline_vars is defined
+  - raspi_boot_config_cmdline_vars is iterable
+  - boot_cmdline_file_stat.stat.exists

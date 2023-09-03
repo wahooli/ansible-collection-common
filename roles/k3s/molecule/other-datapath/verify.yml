@@ -1,0 +1,37 @@
+---
+# This is an example playbook to execute Ansible tests.
+- name: Verify
+  hosts: all
+  gather_facts: false
+  tasks:
+  - name: Check k3s is installed
+    ansible.builtin.command: "k3s --version"
+    register: k3s_version_output
+    changed_when: k3s_version_output.rc != 0
+
+  - name: Wait for nodes to be ready
+    ansible.builtin.command: "kubectl get nodes"
+    register: nodes_ready
+    until:
+    - '" NotReady " not in nodes_ready.stdout'
+    changed_when: nodes_ready.rc != 0
+    retries: 60
+    delay: 1
+
+  - name: Check deployments
+    ansible.builtin.command: "kubectl get deploy --all-namespaces"
+    register: kubectl_deploy
+    changed_when: kubectl_deploy.rc != 0
+
+  - name: Stat default k3s data dir
+    ansible.builtin.stat:
+      path: /var/lib/rancher/k3s/server
+    register: k3s_default_data_dir_stat
+
+  - name: Run assertions
+    ansible.builtin.assert:
+      that:
+      - '"traefik" not in kubectl_deploy.stdout'
+      - not k3s_default_data_dir_stat.stat.exists
+      - k3s_version_output is success
+      - nodes_ready is success

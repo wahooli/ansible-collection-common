@@ -1,0 +1,3 @@
+apiVersion: {{ kubelet_config_apiversion }}
+kind: KubeletConfiguration
+{{ k3s_kubelet_config | to_nice_yaml }}

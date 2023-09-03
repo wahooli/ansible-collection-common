@@ -1,0 +1,18 @@
+---
+# This is an example playbook to execute Ansible tests.
+
+- name: Verify
+  hosts: all
+  gather_facts: false
+  vars_files:
+  - ../../defaults/main.yml
+  tasks:
+  - name: Get helm version
+    ansible.builtin.command: "{{ helm_install_path }}/helm version --template='{{ '{{' }} .Version {{ '}}' }}'"
+    changed_when: false
+    register: helm_upgrade_version
+
+  - name: Verify helm version is identical with converge playbook value
+    ansible.builtin.assert:
+      that:
+      - "helm_upgrade_version.stdout == 'v3.12.1'"

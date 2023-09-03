@@ -1,0 +1,75 @@
+---
+# This is an example playbook to execute Ansible tests.
+
+- name: Verify
+  hosts: all
+  gather_facts: false
+  tasks:
+    - name: Include default vars
+      ansible.builtin.include_vars:
+        dir: "{{ lookup('env', 'MOLECULE_PROJECT_DIRECTORY') }}/defaults/"
+        extensions:
+          - 'yml'
+
+    # boot config.txt tests
+
+    - name: "Stat file {{ raspi_boot_config_path }}"
+      ansible.builtin.stat:
+        path: "{{ raspi_boot_config_path }}"
+      register: boot_config
+
+    - name: Verify boot config.txt has contents
+      become: true
+      ansible.builtin.lineinfile:
+        path: "{{ raspi_boot_config_path }}"
+        line: "{{ item }}"
+        state: present
+      register: boot_config_contains
+      failed_when: boot_config_contains is changed
+      with_items:
+      - "disable_splash=1"
+      - "boot_delay=0"
+      - "dtparam=sd_poll_once"
+      - "dtoverlay=disable-bt,disable-wifi"
+      - "dtparam=spi=off"
+      - "do_not_touch=this"
+      - "temp_limit=75"
+      when: boot_config.stat.exists
+
+    - name: Verify boot config.txt does not have contents
+      become: true
+      ansible.builtin.lineinfile:
+        path: "{{ raspi_boot_config_path }}"
+        line: "{{ item }}"
+        state: absent
+      register: boot_config_does_not_contains
+      failed_when: boot_config_does_not_contains is changed
+      with_items:
+      - "dtparam=audio=off"
+      - "start_x=1"
+      - "disable_splash=0"
+      - "boot_delay=5"
+      - "start_x=1"
+      when: boot_config.stat.exists
+
+    # cmdline tests
+
+    - name: "Stat file {{ raspi_boot_config_cmdline_path }}"
+      ansible.builtin.stat:
+        path: "{{ raspi_boot_config_cmdline_path }}"
+      register: boot_cmdline
+
+    - name: "Read contents from {{ raspi_boot_config_cmdline_path }}"
+      become: true
+      ansible.builtin.slurp:
+        src: "{{ raspi_boot_config_cmdline_path }}"
+      register: boot_cmdline_contents
+      when: boot_cmdline.stat.exists
+
+    - name: "Run assertions on file {{ raspi_boot_config_cmdline_path }}"
+      ansible.builtin.assert:
+        that:
+        - '"quiet" in "{{ boot_cmdline_contents.content | b64decode }}"'
+        - '"cgroup_enable=memory" in "{{ boot_cmdline_contents.content | b64decode }}"'
+        - '"cgroup_enable=cpu" in "{{ boot_cmdline_contents.content | b64decode }}"'
+        - '"logo.nologo" not in "{{ boot_cmdline_contents.content | b64decode }}"'

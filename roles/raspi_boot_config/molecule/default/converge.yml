@@ -1,0 +1,7 @@
+---
+- name: Converge
+  hosts: all
+  tasks:
+    - name: "Include raspi_boot_config"
+      ansible.builtin.include_role:
+        name: "raspi_boot_config"

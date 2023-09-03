@@ -1,0 +1,16 @@
+---
+# defaults file for raspi_boot_config
+raspi_boot_config_allow_reboot: false
+raspi_boot_config_path: /boot/config.txt
+raspi_boot_config_cmdline_path: /boot/cmdline.txt
+# raspi_boot_config_vars:
+#   - key: boot_delay
+#     value: 0
+#   - key: disable_splash
+#     value: 1
+#   - key: start_x
+#     remove: true
+#   - key: dtparam
+#     value: test
+#     replace: false
+# raspi_boot_config_cmdline_vars:

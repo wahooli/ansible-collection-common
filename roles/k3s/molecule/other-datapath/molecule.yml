@@ -1,0 +1,32 @@
+---
+dependency:
+  name: galaxy
+driver:
+  name: docker
+platforms:
+- name: k3s-server-other-datapath
+  image: "debian:11"
+  tmpfs:
+  - /run
+  - /tmp
+  volumes:
+    - /lib/modules:/lib/modules:ro
+  privileged: true
+  pre_build_image: false
+  tty: true
+provisioner:
+  name: ansible
+  inventory:
+    host_vars:
+      k3s-server-other-datapath:
+        ansible_user: molecule
+        k3s_kubelet_root_dir: /opt/k3s_data/kubelet
+        k3s_data_dir: /opt/k3s_data/k3s
+        k3s_role: server
+        k3s_config:
+          disable:
+          - traefik
+          snapshotter: native
+          write-kubeconfig-mode: 644
+verifier:
+  name: ansible

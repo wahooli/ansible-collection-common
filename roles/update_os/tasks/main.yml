@@ -1,0 +1,39 @@
+---
+# tasks file for update_os
+- name: Ensure sudo is installed
+  become: true
+  become_method: su
+  ansible.builtin.package:
+    name: sudo
+    state: present
+  when: ansible_facts['distribution'] == "Debian"
+
+- name: Update and upgrade apt packages
+  become: true
+  register: apt_status
+  until: apt_status is success
+  delay: 6
+  retries: 15
+  ansible.builtin.apt:
+    update_cache: true
+    upgrade: dist
+    cache_valid_time: 3600
+    autoclean: true
+    autoremove: true
+  when: ansible_facts['os_family'] == "Debian"
+  notify:
+  - Reboot
+
+- name: Update and upgrade yum packages
+  ansible.builtin.yum:
+    name: "*"
+    state: latest
+    update_only: true
+  when: ansible_facts['os_family'] == "RedHat"
+  notify:
+  - Reboot
+
+- name: Check if reboot-required exists
+  ansible.builtin.stat:
+    path: /var/run/reboot-required
+  register: reboot_required

@@ -1,0 +1,19 @@
+---
+dependency:
+  name: galaxy
+driver:
+  name: docker
+platforms:
+- name: helm-upgrade
+  image: debian:11
+  dockerfile: Dockerfile.debian.j2
+  pre_build_image: false
+provisioner:
+  name: ansible
+  inventory:
+    group_vars:
+      all:
+        ansible_user: molecule
+        helm_tag: v3.12.1
+verifier:
+  name: ansible

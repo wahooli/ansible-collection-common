@@ -1,0 +1,77 @@
+---
+# tasks file for helm
+
+- name: Check helm is found in install path
+  ansible.builtin.stat:
+    path: "{{ helm_install_path }}/helm"
+  register: helm_binary
+
+- name: Get installed helm version
+  ansible.builtin.command: "{{ helm_install_path }}/helm version --template='{{ '{{' }} .Version {{ '}}' }}'"
+  failed_when: false
+  changed_when: false
+  register: helm_version
+
+- name: Set helm cpu arch
+  ansible.builtin.import_tasks: detect-cpu-arch.yml
+  when: not helm_arch | default(false)
+
+- name: Get latest helm tag
+  when: not helm_tag | default(false) or helm_tag | lower == "latest"
+  block:
+  - name: Get list of helm github releases
+    ansible.builtin.uri:
+      url: https://api.github.com/repos/helm/helm/releases/latest
+      return_content: true
+      status_code: 200
+    register: helm_releases
+  - name: Set helm_tag fact
+    ansible.builtin.set_fact:
+      helm_tag: "{{ helm_releases.json.tag_name | trim | lower }}"
+    when: not helm_releases.failed
+# end block Get latest helm tag
+
+- name: "Install helm {{ helm_tag }}"
+  when: |
+    not helm_binary.stat.exists
+    or (helm_tag | lower) != (helm_version.stdout | lower)
+  block:
+  - name: Set helm dist
+    ansible.builtin.set_fact:
+      helm_dist: "helm-{{ helm_tag | lower }}-{{ helm_os | lower }}-{{ helm_arch | lower }}.tar.gz"
+
+  - name: Create temporary download directory
+    ansible.builtin.tempfile:
+      state: directory
+    register: helm_temp
+
+  - name: Download helm
+    ansible.builtin.get_url:
+      url: https://get.helm.sh/{{ helm_dist }}
+      checksum: sha256:https://get.helm.sh/{{ helm_dist }}.sha256
+      dest: "{{ helm_temp.path }}"
+      mode: "0644"
+    register: helm_dl
+
+  - name: Extract helm archive
+    ansible.builtin.unarchive:
+      src: "{{ helm_temp.path }}/{{ helm_dist }}"
+      dest: "{{ helm_temp.path }}"
+      remote_src: true
+    when: helm_dl is success
+
+  - name: Copy helm binary to install path
+    become: true
+    ansible.builtin.copy:
+      src: "{{ helm_temp.path }}/{{ helm_os | lower }}-{{ helm_arch | lower }}/helm"
+      dest: "{{ helm_install_path }}"
+      mode: "0755"
+      remote_src: true
+    when: helm_dl is success
+
+  - name: Delete helm temp path
+    ansible.builtin.file:
+      state: absent
+      path: "{{ helm_temp.path }}"
+
+# end block Install helm

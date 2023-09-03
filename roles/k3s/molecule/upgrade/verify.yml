@@ -1,0 +1,32 @@
+---
+# This is an example playbook to execute Ansible tests.
+- name: Verify
+  hosts: all
+  gather_facts: false
+  tasks:
+  - name: Check k3s is installed
+    ansible.builtin.command: "k3s --version"
+    register: k3s_version_output
+    changed_when: k3s_version_output.rc != 0
+
+  - name: Wait for nodes to be ready
+    ansible.builtin.command: "kubectl get nodes"
+    register: nodes_ready
+    until:
+    - '" NotReady " not in nodes_ready.stdout'
+    changed_when: nodes_ready.rc != 0
+    retries: 60
+    delay: 1
+
+  - name: Read current K3s version
+    ansible.builtin.command: "kubectl version --client=true -o json"
+    ignore_errors: true
+    register: kubectl_output
+    changed_when: kubectl_output.rc != 0
+
+  - name: Run assertions
+    ansible.builtin.assert:
+      that:
+      - k3s_version_output is success
+      - nodes_ready is success
+      - (kubectl_output.stdout | from_json).clientVersion.gitVersion != "v1.26.3+k3s1"

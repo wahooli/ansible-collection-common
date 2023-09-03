@@ -1,0 +1,44 @@
+[Unit]
+Description=Lightweight Kubernetes
+Documentation=https://k3s.io
+Wants=network-online.target
+After=network-online.target
+
+[Install]
+WantedBy=multi-user.target
+
+[Service]
+Type={{ k3s_install_type }}
+EnvironmentFile=-/etc/default/%N
+EnvironmentFile=-/etc/sysconfig/%N
+EnvironmentFile=-{{ systemd_dir }}/k3s.service.env
+KillMode=process
+Delegate=yes
+# Having non-zero Limit*s causes performance problems due to accounting overhead
+# in the kernel. We recommend using cgroups to do container-local accounting.
+LimitNOFILE=1048576
+LimitNPROC=infinity
+LimitCORE=infinity
+TasksMax=infinity
+TimeoutStartSec=0
+Restart=always
+RestartSec=5s
+ExecStartPre=-/sbin/modprobe br_netfilter
+ExecStartPre=-/sbin/modprobe overlay
+ExecStart={{ k3s_bin_dir }}/k3s \
+    {{ k3s_role }}
+{%- if k3s_use_config_file == false %} \
+{% for key, value in k3s_config.items() -%}
+{% if value is iterable and value is not string -%}
+{%- for v in value -%}
+ '--{{ key }}={{ v }}'
+{%- if not loop.last %} \
+{% endif -%}
+{%- endfor -%}
+{%- else -%}
+ '--{{ key }}={{ value }}'
+{%- endif -%}
+{%- if not loop.last %} \
+{% endif -%}
+{%- endfor -%}
+{%- endif %}

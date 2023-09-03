@@ -1,0 +1,90 @@
+- name: Ensure K3s config dir exists
+  ansible.builtin.file:
+    path: "{{ config_path }}"
+    state: directory
+    mode: "0755"
+
+- name: Ensure K3s images dir exists
+  ansible.builtin.file:
+    path: "{{ k3s_data_dir }}/agent/images/"
+    state: directory
+    mode: "0755"
+
+- name: Apply K3s configuration
+  notify:
+  - Restart K3s
+  block:
+  - name: Apply K3s configuration file if enabled
+    ansible.builtin.copy:
+      dest: "{{ config_path }}/config.yaml"
+      owner: root
+      group: root
+      mode: "0644"
+      content: "{{ k3s_config | to_nice_yaml }}"
+    when: k3s_use_config_file is defined and k3s_use_config_file
+  - name: Remove K3s configuration file if not enabled
+    ansible.builtin.file:
+      path: "{{ config_path }}/config.yaml"
+      state: absent
+    when: k3s_use_config_file is undefined or not k3s_use_config_file
+# end block Apply K3s configuration
+
+- name: Apply kubelet configuration
+  notify:
+  - Restart K3s
+  block:
+  - name: Copy kubelet configuration
+    ansible.builtin.template:
+      src: "kubelet.config.j2"
+      dest: "{{ config_path }}/kubelet.config"
+      owner: root
+      group: root
+      mode: "0644"
+    when:
+    - k3s_kubelet_config is defined
+    - k3s_kubelet_config | length > 0
+  - name: Remove kubelet configuration file if not enabled
+    ansible.builtin.file:
+      path: "{{ config_path }}/kubelet.config"
+      state: absent
+    when: k3s_kubelet_config is undefined or k3s_kubelet_config | length < 1
+# end block Apply kubelet configuration
+
+- name: Apply registries configuration
+  notify:
+  - Restart K3s
+  block:
+  - name: Add registry mirrors if defined
+    ansible.builtin.copy:
+      dest: "{{ config_path }}/registries.yaml"
+      mode: "0644"
+      content: |
+        {{ k3s_registries_config | to_nice_yaml }}
+    when: k3s_registries_config is defined
+  - name: Remove registry mirrors if not defined
+    ansible.builtin.file:
+      path: "{{ config_path }}/registries.yaml"
+      state: absent
+    when: k3s_registries_config is undefined
+# end block Apply registries configuration
+
+- name: Create TOKEN file
+  ansible.builtin.copy:
+    dest: "{{ config_path }}/TOKEN"
+    owner: root
+    group: root
+    mode: "0644"
+    content: "{{ k3s_token }}"
+  tags:
+  - install
+
+- name: Create SERVER file
+  when: k3s_server is defined
+  ansible.builtin.copy:
+    dest: "{{ config_path }}/SERVER"
+    owner: root
+    group: root
+    mode: "0644"
+    content: "{{ k3s_server }}"
+  tags:
+  - install

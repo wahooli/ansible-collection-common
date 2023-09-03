@@ -1,0 +1,40 @@
+- name: "Read contents of {{ boot_cmdline_filepath }}"
+  become: true
+  ansible.builtin.slurp:
+    src: "{{ boot_cmdline_filepath }}"
+  register: result_cmdline
+
+- name: Generate regular expression for existing cmdline arguments
+  ansible.builtin.set_fact:
+    regex_existing: '{{ "\b" + item.key | string +
+    ("" if item.value is undefined
+    else
+    "=" + ("\S+" if (item.replace | default(true)) or (item.remove | default(false)) else item.value | string) + "\b") }}'
+    key_value_pair: '{{ item.key | string +
+    ("" if item.value is undefined
+    else
+    "=" + item.value | string) }}'
+
+- name: Generate regular expression for new cmdline arguments
+  ansible.builtin.set_fact:
+    regex_add_missing: '{{ "^((?!(?:.|\n)*" + regex_existing + ")((?:.|\n)*))$" }}'
+    regex_remove_keypair: '{{ regex_existing if item.remove is defined and item.remove }}'
+    task_text: '{{ "Remove" if item.remove is defined and item.remove else "Modify" }} {{ item.key }} {{
+       "from" if item.remove is defined and item.remove else "in" }} {{ boot_cmdline_filepath }}'
+
+- name: "{{ task_text }}"
+  become: true
+  ansible.builtin.copy:
+    content: '{{ result_cmdline.content
+        | b64decode
+        | regex_replace(regex_existing, key_value_pair)
+        | regex_replace(regex_add_missing, key_value_pair + " \1")
+        | regex_replace(regex_remove_keypair, "")
+        | trim
+      }}'
+    dest: "{{ boot_cmdline_filepath }}"
+    mode: "{{ boot_cmdline_filemode }}"
+  register: cmdline_file_modification
+  notify:
+  - Reboot
+  - Emit reboot required

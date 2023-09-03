@@ -1,0 +1,6 @@
+---
+# defaults file for helm
+helm_tag: "latest"
+helm_install_path: "/usr/local/bin/"
+helm_os: "Linux"
+helm_arch:

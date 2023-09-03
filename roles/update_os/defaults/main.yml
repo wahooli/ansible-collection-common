@@ -1,0 +1,3 @@
+---
+# defaults file for update_os
+update_os_allow_reboot: false

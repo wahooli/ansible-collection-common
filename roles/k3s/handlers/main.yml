@@ -1,0 +1,17 @@
+---
+# handlers file for k3s
+- name: Systemd daemon reload
+  become: true
+  ansible.builtin.systemd_service:
+    daemon_reload: true
+
+- name: Restart K3s
+  become: true
+  throttle: 1
+  when:
+  - "'k3s.service' in services"
+  - k3s_systemd_start
+  ansible.builtin.systemd_service:
+    name: k3s
+    state: restarted
+    enabled: "{{ k3s_systemd_enable }}"
