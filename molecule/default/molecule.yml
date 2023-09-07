@@ -53,6 +53,10 @@ provisioner:
           shutdownGracePeriodCriticalPods: 10s
       k3s_servers:
         k3s_role: server
+        k3s_node_taints: 
+        - node-role.kubernetes.io/master=true:NoSchedule
+        k3s_node_labels:
+        - node_type=master
         k3s_config:
           snapshotter: native
           write-kubeconfig-mode: 644
@@ -68,6 +72,8 @@ provisioner:
           - bind-address=0.0.0.0
       k3s_agents:
         k3s_role: agent
+        k3s_node_labels:
+        - node_type=agent
         k3s_config:
           snapshotter: native
           kube-proxy-arg:

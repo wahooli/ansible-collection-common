@@ -19,8 +19,21 @@
     failed_when: calicoctl_version_output.rc == 127
     changed_when: calicoctl_version_output.rc > 1
 
+  - name: Check server taint
+    ansible.builtin.command: "kubectl get nodes -o custom-columns=TAINTS:.spec.taints[].key --no-headers turing-pi-server-01"
+    register: server_taints
+    changed_when: server_taints.rc != 0
+
+  - name: Check agent labels
+    ansible.builtin.command: |
+      kubectl get nodes -o jsonpath="{.metadata.labels.node_type}" --no-headers turing-pi-agent-01
+    register: node_type_label
+    changed_when: node_type_label.rc != 0
+
   - name: Run assertions
     ansible.builtin.assert:
       that:
       - calicoctl_version_output is success
       - nodes_ready is success
+      - server_taints.stdout == "node-role.kubernetes.io/master"
+      - node_type_label.stdout == "storage"

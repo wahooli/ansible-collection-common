@@ -5,6 +5,8 @@
 # k3s_datastore_endpoint
 # k3s_kubelet_root_dir: /var/lib/kubelet
 # k3s_data_dir: /var/lib/rancher/k3s
+# k3s_node_labels
+# k3s_node_taints
 # k3s_kubelet_config:
 #   maxPods: 250
 # k3s_kubescheduler_config:

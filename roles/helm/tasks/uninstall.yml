@@ -1,6 +1,14 @@
+- name: Check if helm exists
+  become: true
+  ansible.builtin.command: "which helm"
+  register: which_helm_command
+  changed_when: false
+  failed_when: false
+
 - name: Uninstall helm-diff plugin
+  when: which_helm_command.rc == 0
   kubernetes.core.helm_plugin:
-    plugin_path: https://github.com/databus23/helm-diff
+    plugin_name: helm-diff
     state: absent
 
 - name: Remove helm

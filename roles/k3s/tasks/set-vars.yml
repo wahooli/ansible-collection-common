@@ -292,3 +292,21 @@
   tags:
   - install
   - configure
+
+- name: Modify k3s_config.node-label
+  when:
+  - k3s_node_labels is defined
+  ansible.builtin.set_fact:
+    k3s_config: "{{ k3s_config | default({}) | combine({'node-label': k3s_node_labels}) }}"
+  tags:
+  - install
+  - configure
+
+- name: Modify k3s_config.node-taint
+  when:
+  - k3s_node_taints is defined
+  ansible.builtin.set_fact:
+    k3s_config: "{{ k3s_config | default({}) | combine({'node-taint': k3s_node_taints}) }}"
+  tags:
+  - install
+  - configure

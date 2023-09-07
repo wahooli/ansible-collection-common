@@ -24,7 +24,6 @@
     when: calico_helmrelease.status.app_version is defined
 
 - name: Add helm repo for calico
-  run_once: true
   kubernetes.core.helm_repository:
     name: projectcalico
     repo_url: https://docs.tigera.io/calico/charts
@@ -32,7 +31,6 @@
   register: calico_repo_add
 
 - name: Separately update the repository cache
-  run_once: true
   kubernetes.core.helm:
     name: dummy
     namespace: kube-system
