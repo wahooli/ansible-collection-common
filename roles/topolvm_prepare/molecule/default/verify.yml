@@ -1,0 +1,24 @@
+---
+# This is an example playbook to execute Ansible tests.
+
+- name: Verify
+  hosts: all
+  gather_facts: false
+  tasks:
+  - name: Get pvs
+    become: true
+    ansible.builtin.command: "pvdisplay -C -o pv_name --no-headings"
+    register: pvdisplay_output
+    changed_when: pvdisplay_output.rc != 0
+
+  - name: Get vgs
+    become: true
+    ansible.builtin.command: "vgdisplay -C -o name --no-headings"
+    register: vgdisplay_output
+    changed_when: vgdisplay_output.rc != 0
+
+  - name: Run assertions
+    ansible.builtin.assert:
+      that:
+      - vgdisplay_output.stdout_lines | length == 1
+      - pvdisplay_output.stdout_lines | length == 2

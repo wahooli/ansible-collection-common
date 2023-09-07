@@ -15,7 +15,7 @@
     delay: 1
 
   - name: Check calicoctl is installed
-    ansible.builtin.command: "calicoctl version"
+    ansible.builtin.command: "calicoctl node status"
     register: calicoctl_version_output
     failed_when: calicoctl_version_output.rc == 127
     changed_when: calicoctl_version_output.rc > 1

@@ -206,9 +206,7 @@
     and
     k3s_kubelet_config | length > 0)
     or
-    (k3s_kubelet_root_dir is defined
-    or
-    k3s_kubelet_root_dir | length > 0)
+    ((k3s_kubelet_root_dir | default ("")) != "")
   block:
   - name: Set kubelet-arg defaults
     ansible.builtin.set_fact:

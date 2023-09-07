@@ -19,64 +19,37 @@
     name:
     - kubernetes
 
-- name: Ensure the tigera-operator Namespace exists.
-  run_once: true
-  kubernetes.core.k8s:
-    api_version: v1
-    kind: Namespace
-    name: tigera-operator
-    state: present
-  register: tigera_operator_ns
+- name: Check if can access cluster with kubectl
+  become: true
+  ansible.builtin.command: "kubectl get nodes"
+  register: kubectl_command
+  failed_when: false
+  changed_when: false
 
-- name: Get current calico helm version
-  run_once: true
-  when: not tigera_operator_ns.changed
-  block:
-  - name: Get calico helmrelease information
-    kubernetes.core.helm_info:
-      release_name: calico
-      release_namespace: tigera-operator
-      release_state:
-      - deployed
-    register: calico_helmrelease
-  - name: Set current calico version fact
-    ansible.builtin.set_fact:
-      calico_installed_version: "{{ calico_helmrelease.status.app_version }}"
-    when: calico_helmrelease.status.app_version is defined
-
+- name: Install calico with helm
+  ansible.builtin.include_tasks: helm-install.yml
+  when:
+  - kubectl_command.rc == 0
 
 - name: Install calicoctl
-  ansible.builtin.import_tasks: kubectl-calicoctl-plugin.yaml
+  ansible.builtin.import_tasks: kubectl-calicoctl-plugin.yml
   become: true
   when:
   - calico_ctl_install | default(false)
 
-- name: Add helm repo for calico
-  run_once: true
-  kubernetes.core.helm_repository:
-    name: projectcalico
-    repo_url: https://docs.tigera.io/calico/charts
-    state: present
-  register: calico_repo_add
+- name: Use k3s_bin_dir as calico_k3s_killalld_dir value if defined
+  when: k3s_bin_dir is defined
+  ansible.builtin.set_fact:
+    calico_k3s_killalld_dir: "{{ k3s_bin_dir }}/k3s-killall.sh.d/"
 
-- name: Separately update the repository cache
-  run_once: true
-  kubernetes.core.helm:
-    name: dummy
-    namespace: kube-system
-    state: absent
-    update_repo_cache: true
-  when: not calico_repo_add.changed
-
-- name: "Helm deploy calico {{ calico_version }}"
-  run_once: true
-  kubernetes.core.helm:
-    name: calico
-    chart_ref: projectcalico/tigera-operator
-    release_namespace: tigera-operator
-    chart_version: "{{ calico_version }}"
-    values: "{{ calico_helm_values | default({}) }}"
+- name: Copy remove calico cleanup script to k3s-killall.sh.d
+  become: true
   when:
-    calico_version != (calico_installed_version | default ("default_value"))
-    or
-    calico_helm_upgrade | default(false)
+  - calico_k3s_killall_script | default(false)
+  - calico_k3s_killalld_dir | default("") | length > 1
+  ansible.builtin.template:
+    src: "99-remove-calico-interfaces.sh.j2"
+    dest: "{{ calico_k3s_killalld_dir }}/99-remove-calico-interfaces.sh"
+    owner: root
+    group: root
+    mode: "0700"

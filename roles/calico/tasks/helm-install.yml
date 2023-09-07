@@ -1,0 +1,54 @@
+- name: Ensure the tigera-operator Namespace exists.
+  run_once: true
+  kubernetes.core.k8s:
+    api_version: v1
+    kind: Namespace
+    name: tigera-operator
+    state: present
+  register: tigera_operator_ns
+
+- name: Get current calico helm version
+  run_once: true
+  when: not tigera_operator_ns.changed
+  block:
+  - name: Get calico helmrelease information
+    kubernetes.core.helm_info:
+      release_name: calico
+      release_namespace: tigera-operator
+      release_state:
+      - deployed
+    register: calico_helmrelease
+  - name: Set current calico version fact
+    ansible.builtin.set_fact:
+      calico_installed_version: "{{ calico_helmrelease.status.app_version }}"
+    when: calico_helmrelease.status.app_version is defined
+
+- name: Add helm repo for calico
+  run_once: true
+  kubernetes.core.helm_repository:
+    name: projectcalico
+    repo_url: https://docs.tigera.io/calico/charts
+    state: present
+  register: calico_repo_add
+
+- name: Separately update the repository cache
+  run_once: true
+  kubernetes.core.helm:
+    name: dummy
+    namespace: kube-system
+    state: absent
+    update_repo_cache: true
+  when: not calico_repo_add.changed
+
+- name: "Helm deploy calico {{ calico_version }}"
+  run_once: true
+  kubernetes.core.helm:
+    name: calico
+    chart_ref: projectcalico/tigera-operator
+    release_namespace: tigera-operator
+    chart_version: "{{ calico_version }}"
+    values: "{{ calico_helm_values | default({}) }}"
+  when:
+    calico_version != (calico_installed_version | default ("default_value"))
+    or
+    calico_helm_upgrade | default(false)

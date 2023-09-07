@@ -9,8 +9,12 @@
 - name: Ensure lvm2 installed
   become: true
   ansible.builtin.package:
-    name: lvm2
+    name: "{{ item }}"
     state: present
+  with_items:
+  - lvm2
+  - bash
+  - udev
 
 - name: Copy lvm configuration
   become: true
@@ -39,7 +43,11 @@
   become: true
   block:
   - name: Get existing pvs
-    ansible.builtin.shell: set -o pipefail && pvdisplay -C -o pv_name | tail -n +2 | awk '{$1=$1};1'
+    ansible.builtin.shell:
+      executable: /bin/bash
+      cmd: |
+        set -o pipefail
+        pvdisplay -C -o pv_name --no-headings | awk '{$1=$1};1'
     register: pvdisplay_output
     changed_when: pvdisplay_output.rc != 0
   - name: Filter with stdout
@@ -58,7 +66,11 @@
   when: topolvm_prepare_vg_name is defined
   block:
   - name: List existing vgs
-    ansible.builtin.shell: set -o pipefail && vgdisplay -C -o topolvm_prepare_vg_name | tail -n +2 | awk '{$1=$1};1'
+    ansible.builtin.shell:
+      executable: /bin/bash
+      cmd: |
+        set -o pipefail
+        vgdisplay -C -o name --no-headings | awk '{$1=$1};1'
     register: vgdisplay_output
     changed_when: vgdisplay_output.rc != 0
   - name: "For topolvm_prepare_disks create vg {{ topolvm_prepare_vg_name }}"
@@ -68,16 +80,26 @@
     when: topolvm_prepare_vg_name not in vgdisplay_output.stdout_lines
 
 - name: List existing lvs
-  ansible.builtin.shell: set -o pipefail && lvdisplay -C -o lv_name | tail -n +2 | awk '{$1=$1};1'
+  become: true
+  ansible.builtin.shell:
+    executable: /bin/bash
+    cmd: |
+      set -o pipefail
+      lvdisplay -C -o lv_name --no-headings | awk '{$1=$1};1'
   register: lvdisplay_output
   changed_when: lvdisplay_output.rc != 0
   when: topolvm_prepare_lvols is defined
 
+# i didn't figure out how to create lvols in docker. it always fails
 - name: Create lvols and mount them
   ansible.builtin.include_tasks: create-lvol-and-mount.yaml
   loop: "{{ topolvm_prepare_lvols }}"
+  when:
+  - topolvm_prepare_lvols is defined
+  - ansible_connection not in [ "container", "docker", "community.docker.docker" ]
 
 - name: Enable systemd timer for fstrim
+  become: true
   ansible.builtin.systemd:
     name: fstrim.timer
     state: started

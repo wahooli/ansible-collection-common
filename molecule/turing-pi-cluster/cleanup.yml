@@ -1,0 +1,17 @@
+---
+- name: Cleanup
+  hosts: ssd_nodes
+  gather_facts: false
+  tasks:
+  - name: Wait for docker instances to be created
+    ansible.builtin.wait_for_connection:
+      timeout: 2
+    register: wait_for_instances
+    failed_when: false
+    changed_when: wait_for_instances.elapsed >= 1
+
+  - name: Cleanup dummy devices
+    become: true
+    run_once: true
+    when: wait_for_instances is not changed
+    ansible.builtin.command: losetup -D

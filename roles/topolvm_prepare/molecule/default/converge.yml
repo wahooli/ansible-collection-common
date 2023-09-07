@@ -1,0 +1,7 @@
+---
+- name: Converge
+  hosts: all
+  tasks:
+    - name: "Include topolvm_prepare role"
+      ansible.builtin.include_role:
+        name: "topolvm_prepare"

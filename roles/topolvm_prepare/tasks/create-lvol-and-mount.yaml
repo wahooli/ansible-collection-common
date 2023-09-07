@@ -69,7 +69,6 @@
       shrink: true
       opts: "{{ item.opts | default('') }}"
 
-
 - name: Mount lvol
   ansible.posix.mount:
     path: "{{ item.mountpath }}"

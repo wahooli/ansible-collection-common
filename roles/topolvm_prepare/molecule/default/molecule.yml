@@ -1,0 +1,51 @@
+---
+dependency:
+  name: galaxy
+  options:
+    requirements-file: requirements.yml
+driver:
+  name: docker
+platforms:
+- name: topolvm-prepare
+  image: debian:11
+  tmpfs:
+  - /run
+  - /tmp
+  volumes:
+  - /lib/modules:/lib/modules:ro
+  - /dev:/dev:rw
+  # cap_add:
+  # - SYS_ADMIN
+  # - MKNOD
+  # - SETFCAP
+  privileged: true
+  pre_build_image: false
+  tty: true
+provisioner:
+  name: ansible
+  inventory:
+    group_vars:
+      all:
+        ansible_user: molecule
+        topolvm_prepare_vg_name: topolvm
+        topolvm_prepare_enable_fstrim: false
+        topolvm_prepare_disks:
+        - /dev/loop0
+        - /dev/loop1
+        topolvm_prepare_lvols:
+        - name: other
+          size: 50m
+          allow_resize: true
+        - name: logs
+          size: 50m
+          allow_resize: false
+          fstype: ext4
+          mountpath: /opt/logs
+        - name: k3s_data
+          size: 250m
+          fstype: ext4
+          mountpath: /opt/k3s_data
+          allow_resize: true
+          opts: --type raid1 --mirrors 1 --nosync
+verifier:
+  name: ansible

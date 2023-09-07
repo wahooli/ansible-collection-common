@@ -1,0 +1,10 @@
+- name: Uninstall helm-diff plugin
+  kubernetes.core.helm_plugin:
+    plugin_path: https://github.com/databus23/helm-diff
+    state: absent
+
+- name: Remove helm
+  become: true
+  ansible.builtin.file:
+    path: "{{ helm_install_path }}/helm"
+    state: absent

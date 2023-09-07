@@ -34,7 +34,7 @@
       helm_diff_version: "{{ helm_diff_releases.json.tag_name | trim | lower }}"
     when: not helm_diff_releases.failed
 
-- name: Install Helm plugin from local filesystem
+- name: Install helm-diff plugin from github
   kubernetes.core.helm_plugin:
     plugin_path: https://github.com/databus23/helm-diff
     # plugin_path: https://github.com/databus23/helm-diff/releases/download/{{ helm_diff_version }}/helm-diff-{{ helm_os | lower }}-{{ helm_arch }}.tgz

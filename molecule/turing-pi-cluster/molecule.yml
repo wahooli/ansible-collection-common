@@ -1,0 +1,199 @@
+---
+dependency:
+  name: galaxy
+  options:
+    requirements-file: requirements.yml
+driver:
+  name: docker
+platforms:
+- name: turing-pi-server-01
+  image: "debian:11"
+  groups:
+  - k3s_servers
+  - k3s_nodes
+  tmpfs:
+  - /run
+  - /tmp
+  volumes:
+  - /lib/modules:/lib/modules:ro
+  privileged: true
+  pre_build_image: false
+  tty: true
+  networks:
+  - name: turingpi-cluster
+  docker_networks:
+  - name: turingpi-cluster
+
+- name: turing-pi-agent-01
+  image: "debian:11"
+  groups:
+  - k3s_agents
+  - k3s_nodes
+  - ssd_nodes
+  tmpfs:
+  - /run
+  - /tmp
+  volumes:
+  - /lib/modules:/lib/modules:ro
+  privileged: true
+  pre_build_image: false
+  tty: true
+  networks:
+  - name: turingpi-cluster
+  docker_networks:
+  - name: turingpi-cluster
+
+- name: turing-pi-agent-02
+  image: "debian:11"
+  groups:
+  - k3s_agents
+  - k3s_nodes
+  - ssd_nodes
+  tmpfs:
+  - /run
+  - /tmp
+  volumes:
+  - /lib/modules:/lib/modules:ro
+  privileged: true
+  pre_build_image: false
+  tty: true
+  networks:
+  - name: turingpi-cluster
+  docker_networks:
+  - name: turingpi-cluster
+
+- name: turing-pi-agent-03
+  image: "debian:11"
+  groups:
+  - k3s_agents
+  - k3s_nodes
+  - ssd_nodes
+  tmpfs:
+  - /run
+  - /tmp
+  volumes:
+  - /lib/modules:/lib/modules:ro
+  privileged: true
+  pre_build_image: false
+  tty: true
+  networks:
+  - name: turingpi-cluster
+  docker_networks:
+  - name: turingpi-cluster
+
+provisioner:
+  name: ansible
+  env:
+    ANSIBLE_ROLES_PATH: "${MOLECULE_PROJECT_DIRECTORY}/roles"
+  #   ANSIBLE_VERBOSITY: 3
+  # config_options:
+  #   tags:
+  #     run: install,prepare,k3s_server,k3s_agent
+  inventory:
+    host_vars:
+      turing-pi-agent-01:
+        topolvm_prepare_disks:
+        - /dev/loop0
+        - /dev/loop3
+      turing-pi-agent-02:
+        topolvm_prepare_disks:
+        - /dev/loop1
+        - /dev/loop4
+      turing-pi-agent-03:
+        topolvm_prepare_disks:
+        - /dev/loop2
+        - /dev/loop5
+    group_vars:
+      ssd_nodes:
+        topolvm_prepare_enable_fstrim: false
+        topolvm_prepare_disks:
+        - /dev/loop0
+        - /dev/loop1
+        topolvm_prepare_lvols:
+        - name: other
+          size: 50m
+          allow_resize: true
+        - name: logs
+          size: 50m
+          allow_resize: false
+          fstype: ext4
+          mountpath: /opt/logs
+        - name: k3s_data
+          size: 250m
+          fstype: ext4
+          mountpath: /opt/k3s_data
+          allow_resize: true
+          opts: --type raid1 --mirrors 1 --nosync
+      k3s_nodes:
+        ansible_user: molecule
+        k3s_kubelet_config:
+          maxPods: 250
+          shutdownGracePeriod: 30s
+          shutdownGracePeriodCriticalPods: 10s
+      k3s_servers:
+        k3s_role: server
+        k3s_kubescheduler_config:
+          leaderElection:
+            leaderElect: true
+          extenders:
+          - urlPrefix: "http://127.0.0.1:9251"
+            filterVerb: "predicate"
+            prioritizeVerb: "prioritize"
+            nodeCacheCapable: false
+            weight: 100
+            managedResources:
+            - name: "topolvm.io/capacity"
+              ignoredByScheduler: true
+        k3s_config:
+          snapshotter: native
+          write-kubeconfig-mode: 644
+          disable:
+          - servicelb
+          - traefik
+          - local-storage
+          cluster-cidr: 10.42.0.0/16
+          service-cidr: 10.43.0.0/16
+          cluster-dns: 10.43.0.10
+          flannel-backend: none
+          disable-cloud-controller: true
+          disable-network-policy: true
+          node-taint:
+          - node-role.kubernetes.io/master=true:NoSchedule
+          kube-controller-manager-arg:
+          - bind-address=0.0.0.0
+          - terminated-pod-gc-threshold=10
+          kube-proxy-arg:
+          - metrics-bind-address=0.0.0.0
+          kube-scheduler-arg:
+          - bind-address=0.0.0.0
+        calico_helm_values:
+          installation:
+            registry: quay.io
+            enabled: true
+            controlPlaneTolerations:
+            - key: "CriticalAddonsOnly"
+              operator: "Equal"
+              value: "true"
+              effect: "NoSchedule"
+            calicoNetwork:
+              linuxDataplane: "Iptables"
+              containerIPForwarding: "Enabled"
+              ipPools:
+              - blockSize: 26
+                allowedUses:
+                - Workload
+                - Tunnel
+                cidr: 10.42.0.0/16
+                ipipMode: CrossSubnet
+                natOutgoing: Enabled
+                nodeSelector: all()
+                vxlanMode: Never
+      k3s_agents:
+        k3s_role: agent
+        k3s_config:
+          snapshotter: native
+          kube-proxy-arg:
+          - metrics-bind-address=0.0.0.0
+
+verifier:
+  name: ansible

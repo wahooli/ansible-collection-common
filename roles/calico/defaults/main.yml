@@ -4,3 +4,5 @@
 calico_ctl_install_path: "/usr/local/bin"
 calico_ctl_install: true
 calico_helm_upgrade: true
+calico_k3s_killall_script: true
+calico_k3s_killalld_dir: "/usr/local/bin/k3s-killall.sh.d"

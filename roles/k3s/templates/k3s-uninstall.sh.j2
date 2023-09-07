@@ -37,8 +37,10 @@ rm -rf /run/k3s
 rm -rf /run/flannel
 rm -rf {{ k3s_data_dir }}
 rm -rf {{ k3s_kubelet_root_dir }}
+rm -rf /var/lib/kubelet
 rm -f {{ k3s_bin_dir }}/k3s
 rm -f {{ k3s_bin_dir }}/k3s-killall.sh
+rm -rf {{ k3s_bin_dir }}/k3s-killall.sh.d/
 rm -f {{ sysctl_file }}
 
 if type yum >/dev/null 2>&1; then

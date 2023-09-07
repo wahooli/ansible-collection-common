@@ -1,0 +1,17 @@
+- name: Run uninstall procedure on all nodes
+  hosts: all
+  tasks:
+  - name: Run calico uninstall
+    ansible.builtin.include_role:
+      name: calico
+      tasks_from: uninstall
+
+  - name: Run k3s uninstall
+    ansible.builtin.include_role:
+      name: k3s
+      tasks_from: uninstall
+
+  - name: Run helm uninstall
+    ansible.builtin.include_role:
+      name: helm
+      tasks_from: uninstall

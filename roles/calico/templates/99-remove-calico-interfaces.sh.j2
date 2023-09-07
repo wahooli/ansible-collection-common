@@ -1,0 +1,11 @@
+#!/bin/sh
+[ $(id -u) -eq 0 ] || exec sudo $0 $@
+
+set -x
+
+ip link show 2>/dev/null | grep 'cali' | while read ignore iface ignore; do
+    iface=${iface%%@*}
+    [ -z "$iface" ] || ip link delete $iface
+done
+
+iptables-save | grep -v cali- | grep -v cali: | iptables-restore

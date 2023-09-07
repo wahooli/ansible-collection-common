@@ -1,0 +1,13 @@
+- name: "Helm uninstall calico"
+  run_once: true
+  kubernetes.core.helm:
+    name: calico
+    chart_ref: projectcalico/tigera-operator
+    release_namespace: tigera-operator
+    release_state: absent
+
+- name: Remove k3s-killall.sh.d script
+  become: true
+  ansible.builtin.file:
+    path: "{{ calico_k3s_killalld_dir }}/99-remove-calico-interfaces.sh"
+    state: absent

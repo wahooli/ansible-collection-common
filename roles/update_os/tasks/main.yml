@@ -1,12 +1,18 @@
 ---
 # tasks file for update_os
+- name: Gather the package facts
+  ansible.builtin.package_facts:
+    manager: auto
+
 - name: Ensure sudo is installed
   become: true
-  become_method: su
+  become_method: ansible.builtin.su
   ansible.builtin.package:
     name: sudo
     state: present
-  when: ansible_facts['distribution'] == "Debian"
+  when:
+  - "'sudo' not in ansible_facts.packages"
+  - ansible_facts['distribution'] == "Debian"
 
 - name: Update and upgrade apt packages
   become: true

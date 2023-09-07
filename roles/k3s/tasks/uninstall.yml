@@ -1,0 +1,20 @@
+- name: Run k3s-uninstall.sh
+  become: true
+  ansible.builtin.command: "k3s-uninstall.sh"
+  register: k3s_uninstall_command
+  changed_when: k3s_uninstall_command.rc != 0
+  failed_when: k3s_uninstall_command.rc != 0
+
+- name: Remove /etc/rancher directory
+  become: true
+  ansible.builtin.file:
+    path: "/etc/rancher"
+    state: absent
+
+- name: Remove sysctls
+  become: true
+  ansible.builtin.file:
+    path: "{{ sysctl_file }}"
+    state: absent
+  notify:
+  - Reload sysctl
