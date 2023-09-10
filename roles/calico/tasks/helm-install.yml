@@ -7,6 +7,22 @@
     state: present
   register: tigera_operator_ns
 
+- name: Create configmap using server side apply
+  when: calico_helm_values.installation.calicoNetwork.linuxDataplane | default("IpTables") == "BPF"
+  kubernetes.core.k8s:
+    namespace: tigera-operator
+    definition:
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: kubernetes-services-endpoint
+      data:
+        KUBERNETES_SERVICE_HOST: "{{ calico_k3s_service_host | default( ansible_ssh_host ) }}"
+        KUBERNETES_SERVICE_PORT: "{{ calico_k3s_service_port | default(6443) }}"
+    apply: yes
+    server_side_apply:
+      field_manager: ansible
+
 - name: Get current calico helm version
   run_once: true
   when: not tigera_operator_ns.changed

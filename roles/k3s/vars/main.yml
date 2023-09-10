@@ -1,5 +1,6 @@
 ---
 # vars file for k3s
+kubeconfig_default_context_name: default
 systemd_dir: /etc/systemd/system
 kubelet_config_apiversion: kubelet.config.k8s.io/v1beta1
 kubescheduler_config_apiversion: kubescheduler.config.k8s.io/v1
@@ -28,7 +29,7 @@ prepare_sysctls:
 # - name: kernel.pid_max 64 bit
 #   value: 4194304
 # - name: kernel.pid_max 32 bit
-#   value: 32768 
+#   value: 32768
 - name: kernel.threads-max
   value: 10485760
 - name: vm.swappiness

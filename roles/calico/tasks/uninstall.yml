@@ -37,7 +37,7 @@
 
 - name: Remove k3s-killall.sh.d script
   become: true
-  when: calico_uninstall_remove_killall_script
+  when: calico_uninstall_remove_killall_script | default(false)
   ansible.builtin.file:
     path: "{{ calico_k3s_killalld_dir }}/99-remove-calico-interfaces.sh"
     state: absent

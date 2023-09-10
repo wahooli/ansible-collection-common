@@ -3,3 +3,5 @@
 dietpi_configure_update_hostname: true
 dietpi_configure_disable_root_ssh: true
 dietpi_configure_users_default_password: dietpi
+dietpi_configure_use_dbus: false
+dietpi_configure_allow_reboot: false

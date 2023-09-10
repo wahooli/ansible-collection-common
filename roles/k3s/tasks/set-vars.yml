@@ -79,7 +79,7 @@
 - name: Use ansible variables as token
   when:
   - "'k3s.service' not in services"
-  - k3s_token is undefined
+  - k3s_token is undefined or k3s_server is undefined
   tags:
   - install
   block:
@@ -87,11 +87,16 @@
     when: k3s_config.token is defined
     ansible.builtin.set_fact:
       k3s_token: "{{ k3s_config.token }}"
+  - name: Use k3s_config.server value
+    when: k3s_config.server is defined
+    ansible.builtin.set_fact:
+      k3s_server: "{{ k3s_config.server }}"
   - name: Generate random shared token
     when: k3s_config.token is undefined
     ansible.builtin.set_fact:
       k3s_token: "{{ lookup('community.general.random_string', override_special='+?,.-_', length=32) }}"
     run_once: true # generates single token and shares it across plays
+
 # end block Use ansible variables as token
 
 - name: Fail if token is undefined
@@ -112,10 +117,12 @@
     run_once: true
     ansible.builtin.set_fact:
       k3s_server_hosts: "{{ (dict((hostvars | dict2items | map(attribute='key')) | zip(ansible_play_hosts_all | map('extract', hostvars, 'k3s_role'))) | dict2items | rejectattr('value', '==', 'agent') | items2dict).keys() }}"
+  - debug:
+      var: k3s_server_hosts
   - name: Determine if using embedded_etcd
     run_once: true
     ansible.builtin.set_fact:
-      using_embedded_etcd: "{{ hostvars[(k3s_server_hosts | first)]['k3s_datastore_endpoint'] is undefined and k3s_server_hosts | length > 2 }}"
+      using_embedded_etcd: "{{ hostvars[(k3s_server_hosts | first)]['k3s_datastore_endpoint'] is undefined and k3s_server_hosts | length > 2 if k3s_server_hosts | length > 1 else false }}"
   - name: Fail if there is less than 3 server nodes using embedded etcd
     when:
     - using_embedded_etcd
@@ -166,6 +173,9 @@
     k3s_config: "{{ k3s_config | default({}) | combine({'cluster-init': true}) }}"
   tags:
   - install
+
+- debug:
+    var: k3s_server
 
 - name: Set k3s_server fact
   when:
