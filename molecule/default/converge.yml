@@ -4,5 +4,5 @@
   collections:
   - wahooli.k3s
 
-- name: Import create-cluster playbook
-  ansible.builtin.import_playbook: "{{ lookup('env','MOLECULE_PROJECT_DIRECTORY') }}/playbooks/create-cluster.yml"
+- name: Import create_cluster playbook
+  ansible.builtin.import_playbook: "{{ lookup('env','MOLECULE_PROJECT_DIRECTORY') }}/playbooks/create_cluster.yml"

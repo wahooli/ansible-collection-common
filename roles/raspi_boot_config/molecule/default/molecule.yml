@@ -5,7 +5,7 @@ driver:
   name: docker
 platforms:
 - name: raspi-boot-config
-  image: "debian:11"
+  image: "debian:12"
   dockerfile: Dockerfile.raspifake
   pre_build_image: false
 provisioner:

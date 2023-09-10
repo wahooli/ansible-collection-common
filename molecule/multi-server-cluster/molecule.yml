@@ -5,7 +5,7 @@ driver:
   name: docker
 platforms:
 - name: multi-server-cluster-server-01
-  image: "debian:11"
+  image: "debian:12"
   groups:
   - k3s_servers
   - k3s_nodes
@@ -23,7 +23,7 @@ platforms:
   - name: molecule-multi-server-cluster
 
 - name: multi-server-cluster-server-02
-  image: "debian:11"
+  image: "debian:12"
   groups:
   - k3s_servers
   - k3s_nodes
@@ -41,7 +41,7 @@ platforms:
   - name: molecule-multi-server-cluster
 
 - name: multi-server-cluster-server-03
-  image: "debian:11"
+  image: "debian:12"
   groups:
   - k3s_servers
   - k3s_nodes
@@ -59,7 +59,7 @@ platforms:
   - name: molecule-multi-server-cluster
 
 - name: multi-server-cluster-agent-01
-  image: "debian:11"
+  image: "debian:12"
   groups:
   - k3s_agents
   - k3s_nodes

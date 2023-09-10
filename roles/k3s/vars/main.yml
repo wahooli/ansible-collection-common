@@ -25,8 +25,10 @@ prepare_sysctls:
   value: 2560
 - name: fs.file-max
   value: 10485760
-- name: kernel.pid_max
-  value: 4194304
+# - name: kernel.pid_max 64 bit
+#   value: 4194304
+# - name: kernel.pid_max 32 bit
+#   value: 32768 
 - name: kernel.threads-max
   value: 10485760
 - name: vm.swappiness

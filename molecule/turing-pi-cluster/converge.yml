@@ -4,5 +4,5 @@
   collections:
   - wahooli.k3s
 
-- name: Import create-cluster playbook
-  ansible.builtin.import_playbook: "{{ lookup('env','MOLECULE_PROJECT_DIRECTORY') }}/playbooks/turingpi-create-cluster.yml"
+- name: Import turingpi_create_cluster playbook
+  ansible.builtin.import_playbook: "{{ lookup('env','MOLECULE_PROJECT_DIRECTORY') }}/playbooks/turingpi_create_cluster.yml"

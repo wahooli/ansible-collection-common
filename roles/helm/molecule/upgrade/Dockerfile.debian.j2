@@ -1,6 +1,5 @@
 FROM {{ item.image }}
-# Using systemd in docker: https://systemd.io/CONTAINER_INTERFACE/
-# Make sure cgroupv2 is enabled. To check this: cat /sys/fs/cgroup/cgroup.controllers
+
 ENV container=docker \
     ANSIBLE_USER=molecule \
     DEPLOY_GROUP=deployer \
@@ -11,7 +10,7 @@ RUN apt-get update \
     sudo \
     procps \
     iproute2 \
-    python3-pip python3-dev python3-setuptools python3-wheel python3-apt \
+    python3 ca-certificates \
     && rm -rf /var/lib/apt/lists/* \
     && rm -Rf /usr/share/doc && rm -Rf /usr/share/man \
     && apt-get clean \

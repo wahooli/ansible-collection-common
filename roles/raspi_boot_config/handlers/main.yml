@@ -1,11 +1,13 @@
 ---
 # handlers file for raspi_boot_config
 - name: Reboot
+  become: true
   when: raspi_boot_config_allow_reboot | default(false)
   ansible.builtin.reboot:
     reboot_timeout: 60
 
 - name: Emit reboot required
+  become: true
   ansible.builtin.file:
     path: /var/run/reboot-required
     state: touch

@@ -7,7 +7,7 @@ driver:
   name: docker
 platforms:
 - name: topolvm-prepare
-  image: debian:11
+  image: debian:12
   tmpfs:
   - /run
   - /tmp

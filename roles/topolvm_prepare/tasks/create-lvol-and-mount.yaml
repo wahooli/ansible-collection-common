@@ -26,6 +26,7 @@
   - item.name not in lvdisplay_output.stdout_lines
 
 - name: Create mount path
+  become: true
   ansible.builtin.file:
     path: "{{ item.mountpath }}"
     state: directory
@@ -36,6 +37,7 @@
   - item.mountpath is defined
 
 - name: Create filesystem
+  become: true
   community.general.filesystem:
     dev: "/dev/{{ topolvm_prepare_vg_name }}/{{ item.name }}"
     fstype: "{{ item.fstype }}"
@@ -55,11 +57,13 @@
   - item.name in lvdisplay_output.stdout_lines
   block:
   - name: Unmount lvol without modifying fstab
+    become: true
     ansible.posix.mount:
       path: "{{ item.mountpath }}"
       src: "/dev/{{ topolvm_prepare_vg_name }}/{{ item.name }}"
       state: unmounted
   - name: Resize lvol
+    become: true
     community.general.lvol:
       vg: "{{ topolvm_prepare_vg_name }}"
       lv: "{{ item.name }}"
@@ -70,6 +74,7 @@
       opts: "{{ item.opts | default('') }}"
 
 - name: Mount lvol
+  become: true
   ansible.posix.mount:
     path: "{{ item.mountpath }}"
     src: "/dev/{{ topolvm_prepare_vg_name }}/{{ item.name }}"

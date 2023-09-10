@@ -3,35 +3,28 @@
   ansible.builtin.apt:
     name: "{{ item }}"
     update_cache: "{{ ansible_loop.first }}"
+    cache_valid_time: 3600
     state: present
   with_items: "{{ prepare_debian_install_pkg }}"
   loop_control:
     extended: true
   when: ansible_facts['os_family'] == "Debian"
 
-- name: Check if overlay module is active
-  ansible.builtin.command: modinfo overlay
-  register: modinfo_overlay
-  changed_when: modinfo_overlay.rc != 0
-
 - name: Add overlay module
   community.general.modprobe:
     name: overlay
     state: present
     persistent: present
-  when: modinfo_overlay.rc > 0
-
-- name: Check if br_netfilter module is active
-  ansible.builtin.command: modinfo br_netfilter
-  register: modinfo_br_netfilter
-  changed_when: modinfo_br_netfilter.rc != 0
+  when:
+  - ansible_connection not in [ "container", "docker", "community.docker.docker" ]
 
 - name: Add br_netfilter module
   community.general.modprobe:
     name: br_netfilter
     state: present
     persistent: present
-  when: modinfo_br_netfilter.rc > 0
+  when:
+  - ansible_connection not in [ "container", "docker", "community.docker.docker" ]
 
 - name: Disable swap for current session
   ansible.builtin.command: swapoff -a
@@ -44,6 +37,13 @@
     regexp: '^(\s*)([^#\n]+\s+)(\w+\s+)swap(\s+.*)$'
     replace: '#\1\2\3swap\4'
     backup: true
+
+- name: Set kernel.pid_max
+  ansible.posix.sysctl:
+    name: kernel.pid_max
+    value: "{{ 4194304 if ansible_facts.userspace_bits == '64' else 32768 }}"
+    sysctl_file: "{{ sysctl_file }}"
+    state: present
 
 - name: Set sysctls
   ansible.posix.sysctl:

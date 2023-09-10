@@ -5,7 +5,7 @@ driver:
   name: docker
 platforms:
 - name: dietpi-config
-  image: "debian:11"
+  image: "debian:12"
   tmpfs:
   - /run
   - /tmp

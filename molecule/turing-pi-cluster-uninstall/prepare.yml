@@ -26,4 +26,4 @@
     - /dummydev1
 
 - name: Create cluster
-  ansible.builtin.import_playbook: "{{ lookup('env','MOLECULE_PROJECT_DIRECTORY') }}/playbooks/turingpi-create-cluster.yml"
+  ansible.builtin.import_playbook: "{{ lookup('env','MOLECULE_PROJECT_DIRECTORY') }}/playbooks/turingpi_create_cluster.yml"

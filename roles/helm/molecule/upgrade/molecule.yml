@@ -5,7 +5,7 @@ driver:
   name: docker
 platforms:
 - name: helm-upgrade
-  image: debian:11
+  image: debian:12
   dockerfile: Dockerfile.debian.j2
   pre_build_image: false
 provisioner:

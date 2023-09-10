@@ -14,11 +14,15 @@
   with_items:
   - git
   - curl
+  - python3-pkg-resources
+  - python3-pip
+  - python3-setuptools
+  - virtualenv
 
 - name: Install python pre-requisites
   ansible.builtin.pip:
-    name:
-    - kubernetes
+    name: kubernetes
+    extra_args: "{{ '--break-system-packages' if ansible_facts['os_family'] == 'Debian' and ansible_distribution_major_version | string == '12' else '' }}"
 
 - name: Get latest helm-diff tag
   when: not helm_diff_version | default(false) or helm_diff_version | lower == "latest"

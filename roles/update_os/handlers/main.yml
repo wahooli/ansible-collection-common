@@ -1,6 +1,7 @@
 ---
 # handlers file for update_os
 - name: Reboot
+  become: true
   when:
   - update_os_allow_reboot | default(false)
   - reboot_required.stat.exists

@@ -1,5 +1,7 @@
 ---
 # tasks file for reboot
+- name: Flush handlers
+  ansible.builtin.meta: flush_handlers
 
 - name: Check if reboot-required exists
   ansible.builtin.stat:
@@ -7,6 +9,8 @@
   register: reboot_required
 
 - name: Reboot
+  become: true
+  failed_when: false
   when:
   - reboot_required.stat.exists
   ansible.builtin.reboot:

@@ -7,22 +7,47 @@
   tags:
   - lvm
 
-- name: Run preparation tasks for each nodes
+- name: Edit boot config
   hosts: all
   gather_facts: true
   any_errors_fatal: true
   roles:
   - role: raspi_boot_config
+  tags:
+  - boot_config
+
+- name: Run package updates
+  hosts: all
+  gather_facts: true
+  any_errors_fatal: true
+  roles:
   - role: update_os
+  tags:
+  - update_os
+
+- name: Install helm
+  hosts: all
+  gather_facts: true
+  any_errors_fatal: true
+  roles:
   - role: helm
   - role: reboot
   tags:
   - helm
-  - update_os
-  - boot_config
+
+- name: Reboot if needed
+  hosts: all
+  gather_facts: true
+  any_errors_fatal: true
+  roles:
+  - role: reboot
+  tags:
+  - reboot
 
 - name: Set up k3s cluster
   hosts: k3s_nodes
+  gather_facts: true
+  any_errors_fatal: true
   roles:
   - role: "k3s"
   tags:
@@ -30,6 +55,8 @@
 
 - name: Install calico
   hosts: k3s_nodes
+  gather_facts: true
+  any_errors_fatal: true
   roles:
   - role: "calico"
   tags:
