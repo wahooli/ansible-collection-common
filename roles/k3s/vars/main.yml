@@ -32,5 +32,5 @@ prepare_sysctls:
 #   value: 32768
 - name: kernel.threads-max
   value: 10485760
-- name: vm.swappiness
-  value: 0
+# - name: vm.swappiness
+#   value: 0

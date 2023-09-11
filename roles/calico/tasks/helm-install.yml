@@ -17,9 +17,9 @@
       metadata:
         name: kubernetes-services-endpoint
       data:
-        KUBERNETES_SERVICE_HOST: "{{ calico_k3s_service_host | default( ansible_ssh_host ) }}"
+        KUBERNETES_SERVICE_HOST: "{{ calico_k3s_service_host | default(ansible_ssh_host) }}"
         KUBERNETES_SERVICE_PORT: "{{ calico_k3s_service_port | default(6443) }}"
-    apply: yes
+    apply: true
     server_side_apply:
       field_manager: ansible
 
@@ -62,7 +62,37 @@
     release_namespace: tigera-operator
     chart_version: "{{ calico_version }}"
     values: "{{ calico_helm_values | default({}) }}"
+    wait: true
   when:
     calico_version != (calico_installed_version | default ("default_value"))
     or
     calico_helm_upgrade | default(false)
+
+
+- name: Wait until default FelixConfiguration has manifested
+  run_once: true
+  kubernetes.core.k8s_info:
+    api_version: "{{ felix_configuration_apiversion }}"
+    kind: FelixConfiguration
+    name: default
+  register: felixconfig
+  until: felixconfig.resources != []
+  retries: 60
+  delay: 1
+
+- name: Patch FelixConfiguration
+  run_once: true
+  kubernetes.core.k8s_json_patch:
+    api: "{{ felix_configuration_apiversion }}"
+    kind: FelixConfiguration
+    name: default
+    patch:
+    - op: add
+      path: /spec/iptablesBackend
+      value: "{{ calico_iptables_backend | default('Auto') }}"
+    - op: add
+      path: /spec/logFilePath
+      value: "{{ 'none' if calico_disable_file_logging | default(true) else '/var/log/calico/felix.log' }}"
+    - op: add
+      path: /spec/ipv6Support
+      value: "{{ calico_enable_ipv6 | default(false) }}"

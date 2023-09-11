@@ -41,3 +41,19 @@
   ansible.builtin.file:
     path: "{{ calico_k3s_killalld_dir }}/99-remove-calico-interfaces.sh"
     state: absent
+
+- name: Ensure the tigera-operator Namespace is removed
+  run_once: true
+  kubernetes.core.k8s:
+    api_version: v1
+    kind: Namespace
+    name: tigera-operator
+    state: absent
+
+- name: Ensure the calico-system Namespace is removed
+  run_once: true
+  kubernetes.core.k8s:
+    api_version: v1
+    kind: Namespace
+    name: calico-system
+    state: absent

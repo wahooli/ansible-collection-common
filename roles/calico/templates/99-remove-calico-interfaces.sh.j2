@@ -8,4 +8,8 @@ ip link show 2>/dev/null | grep 'cali' | while read ignore iface ignore; do
     [ -z "$iface" ] || ip link delete $iface
 done
 
+rm -rf /var/run/calico
+rm -rf /var/lib/calico
+rm -rf /var/log/calico
+
 iptables-save | grep -v cali- | grep -v cali: | iptables-restore

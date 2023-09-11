@@ -117,8 +117,6 @@
     run_once: true
     ansible.builtin.set_fact:
       k3s_server_hosts: "{{ (dict((hostvars | dict2items | map(attribute='key')) | zip(ansible_play_hosts_all | map('extract', hostvars, 'k3s_role'))) | dict2items | rejectattr('value', '==', 'agent') | items2dict).keys() }}"
-  - debug:
-      var: k3s_server_hosts
   - name: Determine if using embedded_etcd
     run_once: true
     ansible.builtin.set_fact:
@@ -173,9 +171,6 @@
     k3s_config: "{{ k3s_config | default({}) | combine({'cluster-init': true}) }}"
   tags:
   - install
-
-- debug:
-    var: k3s_server
 
 - name: Set k3s_server fact
   when:
@@ -320,3 +315,31 @@
   tags:
   - install
   - configure
+
+- name: Detect CPU arch
+  block:
+  - name: Set x64 specific facts
+    when: ansible_facts.architecture == "x86_64"
+    ansible.builtin.set_fact:
+      images_tar: k3s-airgap-images-amd64.tar
+      bin_name: k3s
+      shasum_file: sha256sum-amd64.txt
+      containerd_pause_image: "{{ None if k3s_containerd_pause_image is undefined else k3s_containerd_pause_image ~ '-amd64' }}"
+  - name: Set arm64 specific facts
+    when: ( ansible_facts.architecture is search("arm") and ansible_facts.userspace_bits == "64" )
+          or ansible_facts.architecture is search("aarch64")
+    ansible.builtin.set_fact:
+      images_tar: k3s-airgap-images-arm64.tar
+      bin_name: k3s-arm64
+      shasum_file: sha256sum-arm64.txt
+      containerd_pause_image: "{{ None if k3s_containerd_pause_image is undefined else k3s_containerd_pause_image ~ '-arm64' }}"
+  - name: Set arm specific facts
+    when:
+      - ansible_facts.architecture is search("arm")
+      - ansible_facts.userspace_bits == "32"
+    ansible.builtin.set_fact:
+      images_tar: k3s-airgap-images-arm.tar
+      bin_name: k3s-armhf
+      shasum_file: sha256sum-arm.txt
+      containerd_pause_image: "{{ None if k3s_containerd_pause_image is undefined else k3s_containerd_pause_image ~ '-arm' }}"
+# end block Detect CPU arch

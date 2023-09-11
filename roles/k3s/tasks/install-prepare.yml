@@ -27,16 +27,29 @@
   - ansible_connection not in [ "container", "docker", "community.docker.docker" ]
 
 - name: Disable swap for current session
+  when:
+  - not k3s_allow_swap | default(false)
   ansible.builtin.command: swapoff -a
   register: swapoff_output
   changed_when: swapoff_output.rc != 0
 
 - name: Disable swap permanently, persist reboots
+  when:
+  - not k3s_allow_swap | default(false)
   ansible.builtin.replace:
     path: /etc/fstab
     regexp: '^(\s*)([^#\n]+\s+)(\w+\s+)swap(\s+.*)$'
     replace: '#\1\2\3swap\4'
     backup: true
+
+- name: Set vm.swappiness to 0
+  when:
+  - not k3s_allow_swap | default(false)
+  ansible.posix.sysctl:
+    name: vm.swappiness
+    value: 0
+    sysctl_file: "{{ sysctl_file }}"
+    state: present
 
 - name: Set kernel.pid_max
   ansible.posix.sysctl:

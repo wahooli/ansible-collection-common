@@ -129,3 +129,22 @@
     content: "{{ k3s_server }}"
   tags:
   - install
+
+- name: Create containerd config directory
+  ansible.builtin.file:
+    path: "{{ k3s_data_dir }}/agent/etc/containerd/"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Copy containerd config template file
+  become: true
+  notify:
+  - Restart K3s
+  ansible.builtin.template:
+    src: "containerd.toml.tmpl.j2"
+    dest: "{{ k3s_data_dir }}/agent/etc/containerd/config.toml.tmpl"
+    owner: root
+    group: root
+    mode: "0644"
