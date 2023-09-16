@@ -1,4 +1,4 @@
-- name: Check if helmh exists
+- name: Check if helm exists
   ansible.builtin.command: "which helm"
   register: which_helm_command
   changed_when: false

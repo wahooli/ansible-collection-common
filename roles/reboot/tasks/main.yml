@@ -4,20 +4,15 @@
   ansible.builtin.meta: flush_handlers
 
 - name: Check if reboot-required exists
+  become: true
   ansible.builtin.stat:
     path: /var/run/reboot-required
   register: reboot_required
 
 - name: Reboot
   become: true
-  failed_when: false
   when:
   - reboot_required.stat.exists
   ansible.builtin.reboot:
+    reboot_command: "{{ reboot_command | default('systemctl reboot') }}"
     reboot_timeout: 600
-
-- name: Wait for system to become reachable again
-  ansible.builtin.wait_for_connection:
-    delay: 15
-    timeout: 600
-  when: reboot_required.stat.exists

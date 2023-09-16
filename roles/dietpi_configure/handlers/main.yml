@@ -19,4 +19,10 @@
   become: true
   when: dietpi_configure_allow_reboot | default(false)
   ansible.builtin.reboot:
+    reboot_command: "systemctl reboot"
     reboot_timeout: 60
+
+- name: Reload udev
+  ansible.builtin.command: "udevadm control --reload"
+  register: udev_reload
+  changed_when: udev_reload.rc != 0

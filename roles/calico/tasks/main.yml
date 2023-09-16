@@ -1,15 +1,16 @@
 ---
 # tasks file for calico
-- name: Ensure required packages are installed
+- name: "Install debian packages"
   become: true
-  ansible.builtin.package:
-    name: "{{ item }}"
-    state: present
-  with_items:
-  - python3-pkg-resources
-  - python3-pip
-  - python3-setuptools
-  - virtualenv
+  ansible.builtin.apt:
+    pkg:
+    - python3-pkg-resources
+    - python3-pip
+    - python3-setuptools
+    - virtualenv
+    update_cache: true
+    cache_valid_time: 3600
+  when: ansible_facts['os_family'] == "Debian"
 
 - name: Set calico version
   when: calico_version | default("latest") == "latest"

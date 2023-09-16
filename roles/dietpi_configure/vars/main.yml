@@ -1,3 +1,15 @@
 ---
 # vars file for dietpi_configure
 sshd_config: /etc/ssh/sshd_config
+zram_swap_udev_rules: /etc/udev/rules.d/98-dietpi-zram-swap.rules
+zram_sysctl_file: /etc/sysctl.d/98-dietpi-zram-swap.conf
+swap_sysctl_file: /etc/sysctl.d/97-dietpi.conf
+zram_sysctls:
+- name: vm.swappiness
+  value: 100
+- name: vm.dirty_background_ratio
+  value: 1
+- name: vm.vfs_cache_pressure
+  value: 500
+- name: vm.dirty_ratio
+  value: 50

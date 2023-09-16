@@ -8,4 +8,5 @@ calico_k3s_killall_script: true
 calico_uninstall_remove_killall_script: false
 calico_k3s_killalld_dir: "/usr/local/bin/k3s-killall.sh.d"
 calico_disable_file_logging: true
+calico_enable_bpf_dsr: true
 # calico_iptables_backend: Legacy

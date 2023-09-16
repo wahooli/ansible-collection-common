@@ -1,4 +1,30 @@
 ---
+- name: Ensure dbus and libpam-systemd is installed
+  ansible.builtin.apt:
+    pkg:
+    - dbus
+    - libpam-systemd
+    update_cache: true
+    cache_valid_time: 3600
+    state: present
+
+- name: Ensure systemd-logind is unmasked
+  become: true
+  ansible.builtin.systemd_service:
+    name: systemd-logind
+    state: started
+    daemon_reload: false
+    masked: false
+    enabled: true
+
+- name: Start dbus
+  become: true
+  ansible.builtin.systemd_service:
+    name: dbus
+    state: started
+    daemon_reload: true
+    enabled: true
+
 - name: Read /etc/hostname
   when: ansible_hostname is undefined
   ansible.builtin.slurp:
@@ -64,6 +90,47 @@
   - dietpi_configure_users is defined
   loop: "{{ dietpi_configure_users }}"
 
+- name: Check if ZRAM is configured
+  ansible.builtin.stat:
+    path: "{{ zram_swap_udev_rules }}"
+  register: zram_udev_file
+
+- name: Configure ZRAM swap
+  become: true
+  when:
+  - ansible_connection not in [ "container", "docker", "community.docker.docker" ]
+  - dietpi_configure_zram_swap | default(false)
+  - not zram_udev_file.stat.exists
+  - dietpi_configure_zram_swap_size_mb | int > 0
+  ansible.builtin.command: "/boot/dietpi/func/dietpi-set_swapfile {{ dietpi_configure_zram_swap_size_mb | default(1) | int }} zram"
+  register: dietpi_zram_swap_command
+  changed_when: dietpi_zram_swap_command.rc != 0
+
+- name: Modify ZRAM swap priority
+  when:
+  - dietpi_configure_zram_swap | default(false)
+  ansible.builtin.lineinfile:
+    path: "{{ zram_swap_udev_rules }}"
+    regexp: '^(.*)swapon\s+\/dev\/zram0(.*)$'
+    line: '\1swapon --priority 32767 /dev/zram0\2'
+    backrefs: true
+  notify:
+  - Reload udev
+  - Emit reboot required
+
+- name: Set ZRAM sysctls
+  when:
+  - dietpi_configure_zram_swap | default(false)
+  ansible.posix.sysctl:
+    name: "{{ item.name }}"
+    value: "{{ item.value }}"
+    sysctl_file: "{{ zram_sysctl_file }}"
+    state: present
+    reload: "{{ ansible_loop.last }}"
+  with_items: "{{ zram_sysctls }}"
+  loop_control:
+    extended: true
+
 - name: Run dietpi-update
   become: true
   when:
@@ -71,3 +138,10 @@
   ansible.builtin.command: "/boot/dietpi/dietpi-update 1"
   register: dietpi_update_command
   changed_when: dietpi_update_command.rc != 0
+
+- name: Configure swapfile
+  ansible.builtin.include_tasks: configure-swapfile.yml
+  when:
+  - dietpi_configure_swap | default(false)
+  - dietpi_configure_swapfile | default("") != ""
+  loop: "{{ dietpi_configure_users }}"

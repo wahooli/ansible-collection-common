@@ -1,23 +1,17 @@
 ---
-- name: "Update apt repository cache"
+- name: "Install debian packages"
   become: true
   ansible.builtin.apt:
+    pkg:
+    - git
+    - curl
+    - python3-pkg-resources
+    - python3-pip
+    - python3-setuptools
+    - virtualenv
     update_cache: true
     cache_valid_time: 3600
   when: ansible_facts['os_family'] == "Debian"
-
-- name: Ensure required packages are installed
-  become: true
-  ansible.builtin.package:
-    name: "{{ item }}"
-    state: present
-  with_items:
-  - git
-  - curl
-  - python3-pkg-resources
-  - python3-pip
-  - python3-setuptools
-  - virtualenv
 
 - name: Install python pre-requisites
   ansible.builtin.pip:

@@ -50,6 +50,46 @@
     name: tigera-operator
     state: absent
 
+- name: Remove finalizers from calico-node service account
+  run_once: true
+  kubernetes.core.k8s_json_patch:
+    api_version: v1
+    kind: ServiceAccount
+    name: calico-node
+    namespace: calico-system
+    patch:
+    - op: remove
+      path: /metadata/finalizers
+
+- name: Delete calico-node service account
+  run_once: true
+  kubernetes.core.k8s:
+    api_version: v1
+    kind: ServiceAccount
+    name: calico-node
+    namespace: calico-system
+    state: absent
+
+- name: Remove finalizers from calico-cni-plugin service account
+  run_once: true
+  kubernetes.core.k8s_json_patch:
+    api_version: v1
+    kind: ServiceAccount
+    name: calico-cni-plugin
+    namespace: calico-system
+    patch:
+    - op: remove
+      path: /metadata/finalizers
+
+- name: Delete calico-cni-plugin service account
+  run_once: true
+  kubernetes.core.k8s:
+    api_version: v1
+    kind: ServiceAccount
+    name: calico-cni-plugin
+    namespace: calico-system
+    state: absent
+
 - name: Ensure the calico-system Namespace is removed
   run_once: true
   kubernetes.core.k8s:

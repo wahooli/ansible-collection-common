@@ -46,6 +46,7 @@ provisioner:
   inventory:
     group_vars:
       k3s_nodes:
+        k3s_delete_images_tar_after_first_start: true
         ansible_user: molecule
         k3s_kubelet_config:
           maxPods: 250

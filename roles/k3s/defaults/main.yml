@@ -20,6 +20,10 @@
 # k3s_kubeconfig_user_name
 # k3s_kubeconfig_server
 # k3s_containerd_pause_image: rancher/mirrored-pause:3.9
+k3s_containerd_log_level: "warn" # Supported levels are: "trace", "debug", "info", "warn", "error", "fatal", "panic"
+k3s_containerd_use_crun: true
+k3s_delete_images_tar_after_first_start: false
+k3s_download_images: true
 k3s_allow_swap: false
 k3s_systemd_enable: true
 k3s_systemd_start: true

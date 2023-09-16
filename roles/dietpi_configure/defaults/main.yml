@@ -5,3 +5,9 @@ dietpi_configure_disable_root_ssh: true
 dietpi_configure_users_default_password: dietpi
 dietpi_configure_use_dbus: false
 dietpi_configure_allow_reboot: false
+dietpi_configure_zram_swap: false
+dietpi_configure_vm_swappiness: 30
+# dietpi_configure_zram_swap_size_mb:
+# dietpi_configure_swapfile: /swapfile
+dietpi_configure_swap: false
+# dietpi_configure_swapfile_size: 2g

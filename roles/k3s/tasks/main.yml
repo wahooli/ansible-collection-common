@@ -108,6 +108,12 @@
       state: started
       daemon_reload: true
       enabled: "{{ k3s_systemd_enable }}"
+  always:
+  - name: Delete images archive after first start on server
+    when: k3s_delete_images_tar_after_first_start | default(false)
+    ansible.builtin.file:
+      path: "{{ k3s_data_dir }}/agent/images/{{ images_tar }}"
+      state: absent
 # end block Start K3s on server nodes
 
 - name: Wait for node-token on servers
@@ -161,13 +167,21 @@
   - k3s_systemd_start
   - k3s_role == "agent"
   become: true
-  ansible.builtin.systemd_service:
-    name: k3s
-    state: started
-    daemon_reload: true
-    enabled: "{{ k3s_systemd_enable }}"
   tags:
   - install
+  block:
+  - name: Start K3s on agent node
+    ansible.builtin.systemd_service:
+      name: k3s
+      state: started
+      daemon_reload: true
+      enabled: "{{ k3s_systemd_enable }}"
+  always:
+  - name: Delete images archive after first start on agent
+    when: k3s_delete_images_tar_after_first_start | default(false)
+    ansible.builtin.file:
+      path: "{{ k3s_data_dir }}/agent/images/{{ images_tar }}"
+      state: absent
 
 - name: Get current user name
   ansible.builtin.command: whoami

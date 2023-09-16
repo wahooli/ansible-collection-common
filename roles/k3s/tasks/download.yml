@@ -52,7 +52,9 @@
     - Restart K3s
 
   - name: "Download K3s images"
-    when: k3s_dl is changed # noqa: no-handler
+    when:
+    - k3s_dl is changed # noqa: no-handler
+    - k3s_download_images | default(true)
     ansible.builtin.get_url:
       url: https://github.com/k3s-io/k3s/releases/download/{{ k3s_version }}/{{ images_tar }}.zst
       checksum: sha256:https://github.com/k3s-io/k3s/releases/download/{{ k3s_version }}/{{ shasum_file }}

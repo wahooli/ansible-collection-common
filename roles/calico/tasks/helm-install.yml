@@ -94,5 +94,8 @@
       path: /spec/logFilePath
       value: "{{ 'none' if calico_disable_file_logging | default(true) else '/var/log/calico/felix.log' }}"
     - op: add
+      path: /spec/bpfExternalServiceMode
+      value: "{{ 'DSR' if calico_enable_bpf_dsr | default(false) else 'Tunnel' }}"
+    - op: add
       path: /spec/ipv6Support
       value: "{{ calico_enable_ipv6 | default(false) }}"

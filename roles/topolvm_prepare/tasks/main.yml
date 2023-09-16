@@ -4,17 +4,11 @@
   ansible.builtin.apt:
     update_cache: true
     cache_valid_time: 3600
+    pkg:
+    - lvm2
+    - bash
+    - udev
   when: ansible_facts['os_family'] == "Debian"
-
-- name: Ensure lvm2 installed
-  become: true
-  ansible.builtin.package:
-    name: "{{ item }}"
-    state: present
-  with_items:
-  - lvm2
-  - bash
-  - udev
 
 - name: Copy lvm configuration
   become: true

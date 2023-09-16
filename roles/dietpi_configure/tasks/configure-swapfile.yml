@@ -1,0 +1,65 @@
+- name: Check if swap file exists
+  ansible.builtin.stat:
+    path: "{{ dietpi_configure_swapfile }}"
+  register: swapfile
+
+- name: Allocate swapfile
+  become: true
+  when:
+  - not swapfile.stat.exists
+  - dietpi_configure_swapfile
+  ansible.builtin.command: "fallocate -l {{ dietpi_configure_swapfile_size | default('1g') }} {{ dietpi_configure_swapfile }}"
+  register: fallocate_command
+  changed_when: fallocate_command.rc != 0
+
+- name: Set swapfile permissions to 0600
+  become: true
+  when:
+  - dietpi_configure_swapfile
+  - fallocate_command is success
+  ansible.builtin.file:
+    path: "{{ dietpi_configure_swapfile }}"
+    state: touch
+    mode: '0600'
+    modification_time: preserve
+    access_time: preserve
+
+- name: Format swap file
+  become: true
+  when:
+  - dietpi_configure_swapfile
+  - not swapfile.stat.exists
+  - fallocate_command is success
+  ansible.builtin.command: "mkswap {{ dietpi_configure_swapfile }}"
+  register: mkswap_command
+  changed_when: mkswap_command.rc != 0
+
+- name: Set swap permanent
+  become: true
+  when:
+  - dietpi_configure_swapfile
+  - mkswap_command is success
+  ansible.builtin.lineinfile:
+    dest: /etc/fstab
+    regexp: "{{ dietpi_configure_swapfile }}"
+    line: "{{ dietpi_configure_swapfile }} none swap sw 0 0"
+
+- name: "Swap on {{ dietpi_configure_swapfile }}"
+  become: true
+  when:
+  - dietpi_configure_swapfile
+  - not swapfile.stat.exists
+  - mkswap_command is success
+  ansible.builtin.command: "swapon {{ dietpi_configure_swapfile }}"
+  register: swapon_command
+  changed_when: swapon_command.rc != 0
+
+- name: Set swappiness
+  when:
+  - dietpi_configure_swapfile
+  ansible.posix.sysctl:
+    name: "vm.swappiness"
+    value: "{{ dietpi_configure_vm_swappiness | default(30) }}"
+    sysctl_file: "{{ swap_sysctl_file }}"
+    state: present
+    reload: true

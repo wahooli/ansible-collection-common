@@ -23,7 +23,7 @@ provisioner:
       k3s-server:
         ansible_user: molecule
         k3s_role: server
-        k3s_containerd_pause_image: rancher/mirrored-pause:3.9
+        # k3s_containerd_pause_image: rancher/mirrored-pause:3.9
         k3s_kubescheduler_config:
           leaderElection:
             leaderElect: true

@@ -343,3 +343,16 @@
       shasum_file: sha256sum-arm.txt
       containerd_pause_image: "{{ None if k3s_containerd_pause_image is undefined else k3s_containerd_pause_image ~ '-arm' }}"
 # end block Detect CPU arch
+
+- name: Get crun binary path
+  when: k3s_containerd_use_crun
+  ansible.builtin.command: "which crun"
+  register: which_crun_output
+  changed_when: which_crun_output.rc != 0
+
+- name: Get crun binary path
+  when:
+  - k3s_containerd_use_crun
+  - which_crun_output.rc == 0
+  ansible.builtin.set_fact:
+    crun_bin: "{{ which_crun_output.stdout | trim }}"
