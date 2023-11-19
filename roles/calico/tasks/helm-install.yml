@@ -1,9 +1,13 @@
 - name: Ensure the tigera-operator Namespace exists.
   run_once: true
   kubernetes.core.k8s:
-    api_version: v1
-    kind: Namespace
-    name: tigera-operator
+    definition:
+      apiVersion: v1
+      kind: Namespace
+      metadata:
+        name: tigera-operator
+        labels:
+          topolvm.io/webhook: ignore
     state: present
   register: tigera_operator_ns
 
@@ -99,3 +103,49 @@
     - op: add
       path: /spec/ipv6Support
       value: "{{ calico_enable_ipv6 | default(false) }}"
+
+- name: Wait until calico-system namespace has manifested
+  run_once: true
+  kubernetes.core.k8s_info:
+    api_version: v1
+    kind: Namespace
+    name: calico-system
+  register: calico_system_ns
+  until: calico_system_ns.resources != []
+  retries: 60
+  delay: 1
+
+- name: Patch calico-system namespace
+  run_once: true
+  kubernetes.core.k8s_json_patch:
+    api_version: v1
+    kind: Namespace
+    name: calico-system
+    patch:
+    - op: add
+      path: /metadata/labels/topolvm.io~1webhook
+      value: "ignore"
+
+- name: Wait until calico-apiserver namespace has manifested
+  run_once: true
+  kubernetes.core.k8s_info:
+    api_version: v1
+    kind: Namespace
+    name: calico-apiserver
+  register: calico_apiserver_ns
+  until: calico_apiserver_ns.resources != []
+  when: calico_helm_values.apiServer.enabled | default(true)
+  retries: 60
+  delay: 1
+
+- name: Patch calico-apiserver namespace
+  run_once: true
+  when: calico_apiserver_ns.resources != []
+  kubernetes.core.k8s_json_patch:
+    api_version: v1
+    kind: Namespace
+    name: calico-apiserver
+    patch:
+    - op: add
+      path: /metadata/labels/topolvm.io~1webhook
+      value: "ignore"

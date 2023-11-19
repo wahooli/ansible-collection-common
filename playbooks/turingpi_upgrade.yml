@@ -11,3 +11,11 @@
   - role: "k3s"
   vars:
     k3s_skip_prepare: true
+
+- name: Upgrade calico
+  hosts: k3s_nodes
+  roles:
+  - role: "calico"
+  vars:
+    calico_helm_upgrade: true
+
