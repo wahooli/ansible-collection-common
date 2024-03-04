@@ -1,0 +1,8 @@
+---
+- name: Converge
+  hosts: all
+  tasks:
+    - name: "Include calico"
+      ansible.builtin.include_role:
+        name: "calico"
+        tasks_from: uninstall

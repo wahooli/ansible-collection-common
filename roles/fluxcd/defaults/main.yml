@@ -1,0 +1,42 @@
+---
+# defaults file for fluxcd
+fluxcd_github_repo: fluxcd/flux2
+fluxcd_cli_os: linux
+fluxcd_cli_install_path: "/usr/local/bin/"
+fluxcd_default_kubeconfig: /etc/rancher/k3s/k3s.yaml
+# fluxcd_kubeconfig:
+# fluxcd_version: latest
+# fluxcd_cli_arch: amd64
+# fluxcd_bootstrap_hosts: # list of ansible hosts to bootstrap
+# fluxcd_bootstrap_allow: # bootstraps if fluxcd was updated or installed
+# fluxcd_bootstrap_force: # bootstraps anyway
+fluxcd_bootstrap_install_only: false # applies install.yml from github
+fluxcd_bootstrap_key_name: fluxcd
+fluxcd_bootstrap_key_rotate: false # deletes flux-system secret in flux-system namespace and bootstraps again
+# fluxcd_bootstrap_ssh_key_private_content:
+# fluxcd_bootstrap_ssh_key_public_content:
+# fluxcd_bootstrap_ssh_key_passphrase:
+fluxcd_bootstrap_ssh_key_type: ed25519 # rsa, dsa, rsa1, ecdsa
+fluxcd_bootstrap_ssh_key_size: 4096 # For ECDSA: 256, 384 or 521. Ed25519 keys have a fixed length and the size will be ignored.
+# fluxcd_bootstrap_git_url: #url of the repository
+fluxcd_bootstrap_git_branch: main
+# fluxcd_bootstrap_git_path:
+fluxcd_bootstrap_github_deploy_key_create: false
+fluxcd_bootstrap_github_deploy_key_otp_login: false
+# fluxcd_bootstrap_github_deploy_key_owner:
+# fluxcd_bootstrap_github_deploy_key_username:
+# fluxcd_bootstrap_github_deploy_key_password:
+# fluxcd_bootstrap_github_deploy_key_repo_name: # quite difficult to parse reliably from git url
+fluxcd_bootstrap_github_deploy_key_read_only: false
+# fluxcd_bootstrap_namespace: flux-system
+# fluxcd_bootstrap_version: # allows to bootstrap or install different version
+# fluxcd_bootstrap_components:
+# - source-controller
+# - kustomize-controller
+# - helm-controller
+# - notification-controller
+# fluxcd_bootstrap_network_policy: true
+# fluxcd_bootstrap_cluster_domain: cluster.local
+fluxcd_bootstrap_components_extra: []
+# - image-reflector-controller
+# - image-automation-controller

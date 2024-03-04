@@ -11,3 +11,4 @@ dietpi_configure_vm_swappiness: 30
 # dietpi_configure_swapfile: /swapfile
 dietpi_configure_swap: false
 # dietpi_configure_swapfile_size: 2g
+# dietpi_configure_packages:

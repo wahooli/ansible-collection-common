@@ -1,0 +1,17 @@
+---
+dependency:
+  name: galaxy
+driver:
+  name: docker
+platforms:
+- name: fluxcd
+  image: "debian:12"
+  pre_build_image: false
+provisioner:
+  name: ansible
+  inventory:
+    group_vars:
+      all:
+        ansible_user: molecule
+verifier:
+  name: ansible

@@ -1,0 +1,14 @@
+---
+- name: Prepare
+  hosts: all
+  tasks:
+  - name: "Install k3s"
+    ansible.builtin.include_role:
+      name: "k3s"
+  - name: "Bootstrap fluxcd"
+    ansible.builtin.include_role:
+      name: "fluxcd"
+    vars:
+      fluxcd_bootstrap_install_only: true
+      fluxcd_tag: "v0.29.5"
+

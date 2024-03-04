@@ -1,0 +1,7 @@
+---
+- name: Prepare
+  hosts: all
+  tasks:
+  - name: "Install k3s"
+    ansible.builtin.include_role:
+      name: "k3s"

@@ -18,4 +18,3 @@
   - role: "calico"
   vars:
     calico_helm_upgrade: true
-

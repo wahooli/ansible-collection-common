@@ -30,9 +30,3 @@ prepare_sysctls:
   value: 0
 - name: kernel.threads-max
   value: 10485760
-# - name: kernel.pid_max 64 bit
-#   value: 4194304
-# - name: kernel.pid_max 32 bit
-#   value: 32768
-# - name: vm.swappiness
-#   value: 0

@@ -1,6 +1,8 @@
 ---
 # defaults file for calico
 # calico_version:
+calico_default_kubeconfig: /etc/rancher/k3s/k3s.yaml
+# calico_kubeconfig:
 calico_ctl_install_path: "/usr/local/bin"
 calico_ctl_install: true
 calico_helm_upgrade: true

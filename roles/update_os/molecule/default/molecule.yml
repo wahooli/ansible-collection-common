@@ -5,12 +5,33 @@ driver:
   name: docker
 platforms:
 - name: centos-stream-update-os
+  dockerfile: Dockerfile.centos.j2
   image: quay.io/centos/centos:stream8
-  pre_build_image: true
+  pre_build_image: false
+  tmpfs:
+  - /run
+  - /tmp
 - name: debian-11-update-os
-  image: quay.io/centos/centos:stream8
-  pre_build_image: true
+  dockerfile: Dockerfile.debian.j2
+  pre_build_image: false
+  image: debian:11
+  tmpfs:
+  - /run
+  - /tmp
+- name: debian-12-update-os
+  dockerfile: Dockerfile.debian.j2
+  pre_build_image: false
+  image: debian:12
+  tmpfs:
+  - /run
+  - /tmp
 provisioner:
   name: ansible
+  inventory:
+    group_vars:
+      all:
+        ansible_user: molecule
+        pre_upgrade_kernel: 1
+        post_upgrade_kernel: 2
 verifier:
   name: ansible

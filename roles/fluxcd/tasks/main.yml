@@ -1,0 +1,155 @@
+---
+# tasks file for fluxcd
+- name: Determine fluxcd_kubeconfig fact if not set
+  when:
+  - fluxcd_kubeconfig | default("") == ""
+  ansible.builtin.import_tasks: resolve-kubeconfig.yml
+
+- name: Sanitize fluxcd version and set flux_kubeconfig fact
+  ansible.builtin.set_fact:
+    fluxcd_version: "{{ fluxcd_tag | default(fluxcd_version) | replace('v', '') | trim if fluxcd_tag is defined or fluxcd_version is defined else 'latest' }}"
+
+- name: Check FluxCD bootstrap hosts value
+  when:
+  - fluxcd_bootstrap_hosts is defined
+  run_once: true
+  block:
+  - name: Fail if k3s_role is not list
+    when:
+    - fluxcd_bootstrap_hosts is iterable
+    - fluxcd_bootstrap_hosts is mapping or fluxcd_bootstrap_hosts is string
+    ansible.builtin.fail:
+      msg: "fluxcd_bootstrap_hosts variable is not list"
+  - name: Fail if k3s_role is empty
+    when:
+    - fluxcd_bootstrap_hosts | length <= 0
+    ansible.builtin.fail:
+      msg: "fluxcd_bootstrap_hosts variable is empty"
+
+- name: Determine if host is master
+  when:
+  - fluxcd_bootstrap_hosts is undefined
+  block:
+  - name: Check if can access cluster with kubectl
+    become: true
+    ansible.builtin.command: "kubectl get nodes"
+    register: kubectl_command
+    failed_when: false
+    changed_when: false
+  - name: Add host to bootstrap hosts list
+    when:
+    - kubectl_command.rc == 0
+    ansible.builtin.set_fact:
+      fluxcd_bootstrap_hosts: "{{ [inventory_hostname] }}"
+
+- name: Check flux cli is found in install path
+  ansible.builtin.stat:
+    path: "{{ fluxcd_cli_install_path }}/flux"
+  register: flux_cli_binary
+
+- name: Get installed flux cli version
+  ansible.builtin.shell:
+    cmd: |
+      set -o pipefail
+      {{ fluxcd_cli_install_path }}/flux --version  | awk '{print $(NF)}'
+    executable: /bin/bash
+  failed_when: false
+  changed_when: flux_cli_version.rc != 0
+  register: flux_cli_version
+
+- name: Resolve latest FluxCD version
+  when:
+  - fluxcd_version | default("latest") == "latest"
+  run_once: true
+  block:
+  - name: Get list of FluxCD github releases
+    ansible.builtin.uri:
+      url: https://api.github.com/repos/{{ fluxcd_github_repo }}/releases/latest
+      return_content: true
+    register: fluxcd_releases_json
+  - name: Set FluxCD latest as fact
+    ansible.builtin.set_fact:
+      fluxcd_version: "{{ fluxcd_releases_json.json.tag_name | replace('v', '') | trim }}"
+    when: not fluxcd_releases_json.failed
+
+- name: "Install flux cli {{ fluxcd_version }}"
+  when: |
+    not flux_cli_binary.stat.exists
+    or (fluxcd_version | lower) != (flux_cli_version.stdout | lower)
+  block:
+  - name: Detect CPU arch
+    when: not fluxcd_cli_arch | default(false)
+    ansible.builtin.set_fact:
+      fluxcd_cli_arch: '{%- if (ansible_facts.architecture is search("arm") and ansible_facts.userspace_bits == "64") or ansible_facts.architecture is search("aarch64") -%}
+      arm64{%- elif ansible_facts.architecture is search("arm") and ansible_facts.userspace_bits == "32" -%}
+      arm{%- elif ansible_facts.architecture == "x86_64" -%}
+      amd64{%- elif ansible_facts.architecture == "i386" -%}
+      i386{%- else -%}
+      {%- endif -%}'
+  - name: Create temporary download directory
+    ansible.builtin.tempfile:
+      state: directory
+    register: flux_cli_tmp
+  - name: Download flux cli
+    ansible.builtin.get_url:
+      url: https://github.com/{{ fluxcd_github_repo }}/releases/download/v{{ fluxcd_version }}/flux_{{ fluxcd_version }}_{{ fluxcd_cli_os }}_{{ fluxcd_cli_arch }}.tar.gz
+      checksum: "sha256:https://github.com/{{ fluxcd_github_repo }}/releases/download/v{{ fluxcd_version }}/flux_{{ fluxcd_version }}_checksums.txt"
+      dest: "{{ flux_cli_tmp.path }}"
+      mode: "0644"
+    register: flux_cli_dl
+  - name: Extract flux binary from archive
+    become: true
+    ansible.builtin.unarchive:
+      src: "{{ flux_cli_tmp.path }}/flux_{{ fluxcd_version }}_{{ fluxcd_cli_os }}_{{ fluxcd_cli_arch }}.tar.gz"
+      dest: "{{ fluxcd_cli_install_path }}"
+      remote_src: true
+    when: flux_cli_dl is success
+  always:
+  - name: Delete flux cli temp path
+    ansible.builtin.file:
+      state: absent
+      path: "{{ flux_cli_tmp.path }}"
+
+- name: Check if FluxCD is bootstrapped
+  when:
+  - inventory_hostname in fluxcd_bootstrap_hosts | default([])
+  # - flux_cli_dl is undefined or not flux_cli_dl.changed
+  - fluxcd_bootstrap_allow | default(false) or fluxcd_bootstrap_install_only | default(false)
+  - flux_cli_binary.stat.exists
+  environment:
+    K8S_AUTH_KUBECONFIG: "{{ fluxcd_kubeconfig }}"
+    KUBECONFIG: "{{ fluxcd_kubeconfig }}"
+  block:
+  - name: Check cluster FluxCD installation
+    ansible.builtin.command: "flux check"
+    failed_when: false
+    changed_when: flux_cli_check.rc != 0
+    register: flux_cli_check
+
+- name: "Create empty fluxcd key names list"
+  ansible.builtin.set_fact:
+    fluxcd_key_names: "{{ [fluxcd_bootstrap_key_name | default('fluxcd')] }}"
+  # when: fluxcd_key_names is undefined
+
+- name: "Create list of fluxcd key names across hosts"
+  ansible.builtin.set_fact:
+    fluxcd_key_names: "{{ fluxcd_key_names + [hostvars[item].fluxcd_bootstrap_key_name] }}"
+  when: hostvars[item].fluxcd_bootstrap_key_name is defined
+  with_items: "{{ play_hosts }}"
+
+- name: Include FluxCD bootstrap tasks
+  environment:
+    K8S_AUTH_KUBECONFIG: "{{ fluxcd_kubeconfig }}"
+    KUBECONFIG: "{{ fluxcd_kubeconfig }}"
+  block:
+  - name: Include FluxCD bootstrap tasks
+    ansible.builtin.include_tasks: bootstrap.yml
+    when:
+    - item == fluxcd_bootstrap_key_name
+    - inventory_hostname in fluxcd_bootstrap_hosts | default([])
+    - |
+        ((fluxcd_bootstrap_allow | default(false) or fluxcd_bootstrap_install_only | default(false)) and flux_cli_dl is defined and flux_cli_dl.changed)
+        or flux_cli_check.changed
+        or fluxcd_bootstrap_force | default(false)
+        or fluxcd_bootstrap_key_rotate | default(false)
+    loop: "{{ fluxcd_key_names | unique }}"

@@ -1,18 +1,41 @@
 ---
 # tasks file for update_os
 - name: Gather the package facts
-  ansible.builtin.package_facts:
-    manager: auto
+  block:
+  - name: Gather the package facts
+    become: true
+    ansible.builtin.package_facts:
+      manager: auto
+  rescue:
+  # - name: Ensure sudo is installed
+  #   become: true
+  #   become_method: ansible.builtin.su
+  #   ansible.builtin.package:
+  #     name: sudo
+  #     state: present
+  #   # when:
+  #   # - "'sudo' not in ansible_facts.packages"
+  - name: Ensure python3-apt is installed
+    become: true
+    ansible.builtin.package:
+      name:
+      - python3-apt
+      state: present
+    when:
+    - ansible_facts['distribution'] == "Debian"
+  - name: Gather the package facts
+    become: true
+    ansible.builtin.package_facts:
+      manager: auto
+    when:
+    - ansible_facts['distribution'] == "Debian"
 
-- name: Ensure sudo is installed
-  become: true
-  become_method: ansible.builtin.su
-  ansible.builtin.package:
-    name: sudo
-    state: present
+- name: Set pre-upgrade kernel version fact on Debian
+  ansible.builtin.set_fact:
+    pre_upgrade_kernel: "{{ ansible_facts.packages | dict2items | selectattr('key', 'match', '^linux-image-[A-Za-z0-9]+$') | map(attribute='value') | first | map(attribute='version') }}"
   when:
-  - "'sudo' not in ansible_facts.packages"
   - ansible_facts['distribution'] == "Debian"
+  - ansible_connection not in [ "container", "docker", "community.docker.docker" ]
 
 - name: Update and upgrade apt packages
   become: true
@@ -31,6 +54,7 @@
   - Reboot
 
 - name: Update and upgrade yum packages
+  become: true
   ansible.builtin.yum:
     name: "*"
     state: latest
@@ -38,6 +62,31 @@
   when: ansible_facts['os_family'] == "RedHat"
   notify:
   - Reboot
+
+- name: Gather the package facts
+  become: true
+  ansible.builtin.package_facts:
+    manager: auto
+
+- name: Set post-upgrade kernel version fact on Debian
+  ansible.builtin.set_fact:
+    post_upgrade_kernel: "{{ ansible_facts.packages | dict2items | selectattr('key', 'match', '^linux-image-[A-Za-z0-9]+$') | map(attribute='value') | first | map(attribute='version') }}"
+  when:
+  - ansible_facts['distribution'] == "Debian"
+  - ansible_connection not in [ "container", "docker", "community.docker.docker" ]
+
+- name: Create /var/run/reboot-required file if kernel was updated
+  become: true
+  ansible.builtin.file:
+    path: /var/run/reboot-required
+    state: touch
+    mode: "0644"
+    modification_time: preserve
+    access_time: preserve
+  when:
+  - pre_upgrade_kernel is defined
+  - post_upgrade_kernel is defined
+  - post_upgrade_kernel != pre_upgrade_kernel
 
 - name: Check if reboot-required exists
   ansible.builtin.stat:

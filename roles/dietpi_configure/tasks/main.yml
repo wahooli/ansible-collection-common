@@ -1,5 +1,6 @@
 ---
 - name: Ensure dbus and libpam-systemd is installed
+  become: true
   ansible.builtin.apt:
     pkg:
     - dbus
@@ -7,6 +8,18 @@
     update_cache: true
     cache_valid_time: 3600
     state: present
+
+- name: Install additional packages
+  become: true
+  ansible.builtin.apt:
+    pkg: "{{ dietpi_configure_packages }}"
+    update_cache: true
+    cache_valid_time: 3600
+    state: present
+  when:
+  - dietpi_configure_packages is defined
+  - dietpi_configure_packages is iterable
+  - dietpi_configure_packages is not string
 
 - name: Ensure systemd-logind is unmasked
   become: true
@@ -144,4 +157,3 @@
   when:
   - dietpi_configure_swap | default(false)
   - dietpi_configure_swapfile | default("") != ""
-  loop: "{{ dietpi_configure_users }}"

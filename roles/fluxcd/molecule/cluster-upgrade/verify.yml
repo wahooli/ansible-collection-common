@@ -1,0 +1,54 @@
+---
+# This is an example playbook to execute Ansible tests.
+
+- name: Verify
+  hosts: all
+  gather_facts: false
+  tasks:
+  - name: Check flux bin is found in path
+    ansible.builtin.command: "which flux"
+    failed_when: false
+    changed_when: which_flux.rc != 0
+    register: which_flux
+
+  - name: Check flux command works
+    ansible.builtin.command: "flux --help"
+    failed_when: false
+    changed_when: flux_cli_help.rc != 0
+    register: flux_cli_help
+
+  - name: "Stat file /home/molecule/.fluxcd/fluxcd/id_ed25519"
+    ansible.builtin.stat:
+      path: "/home/molecule/.fluxcd/fluxcd/id_ed25519"
+    register: flux_private_key
+
+  - name: "Stat file /home/molecule/.fluxcd/fluxcd/id_ed25519.pub"
+    ansible.builtin.stat:
+      path: "/home/molecule/.fluxcd/fluxcd/id_ed25519.pub"
+    register: flux_public_key
+
+  - name: Check cluster FluxCD installation
+    ansible.builtin.command: "flux check"
+    failed_when: false
+    changed_when: flux_cli_check.rc != 0
+    register: flux_cli_check
+
+  - name: Get installed flux cli version
+    ansible.builtin.shell:
+      cmd: |
+        set -o pipefail
+        flux --version  | awk '{print $(NF)}'
+      executable: /bin/bash
+    failed_when: false
+    changed_when: flux_cli_version.stdout | lower != '0.29.5'
+    register: flux_cli_version
+
+  - name: Assert
+    ansible.builtin.assert:
+      that:
+      - flux_cli_help is not changed
+      - flux_cli_version is changed
+      - which_flux is not changed
+      - flux_private_key.stat.exists
+      - flux_public_key.stat.exists
+      - flux_cli_check is not changed

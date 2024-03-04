@@ -1,15 +1,11 @@
 ---
-- name: Install crun
+- name: Ensure debian packages are installed
   ansible.builtin.apt:
-    pkg:
-    - crun
-    - dbus
+    pkg: "{{ prepare_debian_install_pkg + (['crun', 'dbus'] if k3s_containerd_use_crun else []) }}"
     update_cache: true
     cache_valid_time: 3600
     state: present
-  when:
-  - ansible_facts['os_family'] == "Debian"
-  - k3s_containerd_use_crun
+  when: ansible_facts['os_family'] == "Debian"
 
 - name: Enable and start dbus
   when:
@@ -18,14 +14,6 @@
     name: dbus
     state: started
     enabled: "true"
-
-- name: Ensure debian packages are installed
-  ansible.builtin.apt:
-    pkg: "{{ prepare_debian_install_pkg }}"
-    update_cache: true
-    cache_valid_time: 3600
-    state: present
-  when: ansible_facts['os_family'] == "Debian"
 
 - name: Add overlay module
   community.general.modprobe:
@@ -74,6 +62,15 @@
   ansible.posix.sysctl:
     name: kernel.pid_max
     value: "{{ 4194304 if ansible_facts.userspace_bits == '64' else 32768 }}"
+    sysctl_file: "{{ sysctl_file }}"
+    state: present
+
+- name: Set net.netfilter.nf_conntrack_max
+  when:
+  - ansible_connection not in [ "container", "docker", "community.docker.docker" ]
+  ansible.posix.sysctl:
+    name: net.netfilter.nf_conntrack_max
+    value: 2600000
     sysctl_file: "{{ sysctl_file }}"
     state: present
 

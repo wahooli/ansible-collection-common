@@ -1,0 +1,204 @@
+---
+- name: Set bootstrap related facts
+  ansible.builtin.set_fact:
+    # keys_directory: "{{ bootstrap_ssh_key_path | regex_replace('^~(.*)', '~' + current_user_name + '\\1') }}/{{ fluxcd_bootstrap_key_name }}"
+    # private_key_path: "{{ bootstrap_ssh_key_path | regex_replace('^~(.*)', '~' + current_user_name + '\\1') }}/{{ fluxcd_bootstrap_key_name }}/id_{{ fluxcd_bootstrap_ssh_key_type }}"
+    # public_key_path: "{{ bootstrap_ssh_key_path | regex_replace('^~(.*)', '~' + current_user_name + '\\1') }}/{{ fluxcd_bootstrap_key_name }}/id_{{ fluxcd_bootstrap_ssh_key_type }}.pub"
+    keys_directory: "{{ bootstrap_ssh_key_path }}/{{ fluxcd_bootstrap_key_name }}"
+    private_key_path: "{{ bootstrap_ssh_key_path }}/{{ fluxcd_bootstrap_key_name }}/id_{{ fluxcd_bootstrap_ssh_key_type }}"
+    public_key_path: "{{ bootstrap_ssh_key_path }}/{{ fluxcd_bootstrap_key_name }}/id_{{ fluxcd_bootstrap_ssh_key_type }}.pub"
+    bootstrap_param_components: "{{ '--components ' + fluxcd_bootstrap_components | join(',') if fluxcd_bootstrap_components is defined and fluxcd_bootstrap_components | length > 0 }}"
+    bootstrap_param_components_extra: "{{ '--components-extra=' + fluxcd_bootstrap_components_extra | join(',') if fluxcd_bootstrap_components_extra is defined and fluxcd_bootstrap_components_extra | length > 0 }}"
+    bootstrap_param_cluster_domain: "{{ '--cluster-domain=' + fluxcd_bootstrap_cluster_domain if fluxcd_bootstrap_cluster_domain is defined }}"
+    bootstrap_param_network_policy: "{{ '--network-policy=' + fluxcd_bootstrap_network_policy | string | lower  if fluxcd_bootstrap_network_policy is defined }}"
+    bootstrap_param_git_url: "{{ '--url=' + fluxcd_bootstrap_git_url if fluxcd_bootstrap_git_url is defined }}"
+    bootstrap_param_pk_file: "{{ '--private-key-file=' + bootstrap_ssh_key_path + '/' + fluxcd_bootstrap_key_name + '/id_' + fluxcd_bootstrap_ssh_key_type }}"
+    bootstrap_param_git_branch: "{{ '--branch=' + fluxcd_bootstrap_git_branch if fluxcd_bootstrap_git_branch is defined }}"
+    bootstrap_param_git_path: "{{ '--path=' + fluxcd_bootstrap_git_path if fluxcd_bootstrap_git_path is defined }}"
+    bootstrap_param_key_passphrase: "{{ '--password=' + fluxcd_bootstrap_ssh_key_passphrase if fluxcd_bootstrap_ssh_key_passphrase is defined }}"
+    bootstrap_param_namespace: "{{ '--namespace=' + fluxcd_bootstrap_namespace if fluxcd_bootstrap_namespace is defined }}"
+    bootstrap_param_version: "{{ '--version=' + fluxcd_bootstrap_version if fluxcd_bootstrap_version is defined }}"
+
+- name: Create directory for ssh keys
+  ansible.builtin.file:
+    path: "{{ keys_directory }}"
+    state: directory
+    mode: '0700'
+
+- name: Chceck if private key exists
+  ansible.builtin.stat:
+    path: "{{ private_key_path }}"
+  register: flux_bootstrap_pk
+
+- name: Install required software
+  when:
+  - not flux_bootstrap_pk.stat.exists or fluxcd_bootstrap_key_rotate
+  - ansible_facts['os_family'] == "Debian"
+  block:
+  - name: Gather the package facts
+    ansible.builtin.package_facts:
+      manager: auto
+  - name: Install dependencies
+    when:
+    - "'openssh-client' not in ansible_facts.packages or 'python3-setuptools' not in ansible_facts.packages"
+    become: true
+    ansible.builtin.apt:
+      pkg: |
+        {{
+          []
+          + (["openssh-client"] if 'openssh-client' not in ansible_facts.packages else [])
+          + (["python3-pip", "python3-setuptools"] if 'python3-setuptools' not in ansible_facts.packages else [])
+        }}
+      update_cache: true
+      cache_valid_time: 3600
+  - name: Gather pip package facts
+    community.general.pip_package_info:
+    register: pip_facts
+  - name: Install python pre-requisites
+    when: "'kubernetes' not in pip_facts.packages.pip"
+    ansible.builtin.pip:
+      name: kubernetes
+      extra_args: "{{ '--break-system-packages' if ansible_distribution_major_version | string == '12' else '' }}"
+# end block Install required software
+
+- name: Set ssh keys same across hosts having same key name
+  run_once: true
+  tags:
+  - molecule-idempotence-notest
+  block:
+  - name: Use passed values as keys
+    # run_once: true
+    when:
+    - fluxcd_bootstrap_ssh_key_private_content | default("") != ""
+    - fluxcd_bootstrap_ssh_key_public_content | default("") != ""
+    ansible.builtin.set_fact:
+      bootstrap_private_key_content: "{{ fluxcd_bootstrap_ssh_key_private_content }}"
+      bootstrap_public_key_content: "{{ fluxcd_bootstrap_ssh_key_public_content }}"
+
+  - name: Create ssh keys for bootstrapping
+    when:
+    - not flux_bootstrap_pk.stat.exists or fluxcd_bootstrap_key_rotate
+    - bootstrap_private_key_content is undefined
+    - bootstrap_public_key_content is undefined
+    block:
+    - name: Create .tmp in user home
+      ansible.builtin.file:
+        path: "~/.tmp/"
+        state: directory
+        mode: '0700'
+    - name: Create temporary directory for keys
+      ansible.builtin.tempfile:
+        path: "~/.tmp/" # chattr fails on tmpfs, eg. /tmp
+        state: directory
+      register: flux_bootstrap_ssh_key_temp
+    - name: Generate an OpenSSH keypair for bootstrap
+      community.crypto.openssh_keypair:
+        path: "{{ flux_bootstrap_ssh_key_temp.path }}/{{ fluxcd_bootstrap_key_name }}"
+        size: "{{ fluxcd_bootstrap_ssh_key_size }}"
+        passphrase: "{{ fluxcd_bootstrap_ssh_key_passphrase | default('') }}"
+        type: "{{ fluxcd_bootstrap_ssh_key_type }}"
+    - name: Read generated keys
+      ansible.builtin.slurp:
+        src: "{{ flux_bootstrap_ssh_key_temp.path }}/{{ ssh_key_name }}"
+      register: generated_keys
+      loop:
+        - "{{ fluxcd_bootstrap_key_name }}"
+        - "{{ fluxcd_bootstrap_key_name }}.pub"
+      loop_control:
+        loop_var: ssh_key_name
+    - name: Read keys into envs
+      ansible.builtin.set_fact:
+        bootstrap_private_key_content: "{{ generated_keys.results | selectattr('ssh_key_name', 'equalto', fluxcd_bootstrap_key_name) | map(attribute='content') | first | ansible.builtin.b64decode | trim }}"
+        bootstrap_public_key_content: "{{ generated_keys.results | selectattr('ssh_key_name', 'equalto', fluxcd_bootstrap_key_name + '.pub') | map(attribute='content') | first | ansible.builtin.b64decode | trim }}"
+    always:
+    - name: Delete keys temp path
+      ansible.builtin.file:
+        state: absent
+        path: "{{ flux_bootstrap_ssh_key_temp.path }}"
+# end block Set ssh keys same across hosts having same key name
+
+- name: "Write public key"
+  when:
+  - bootstrap_public_key_content is defined
+  ansible.builtin.copy:
+    content: "{{ bootstrap_public_key_content }}"
+    dest: "{{ public_key_path }}"
+    mode: '0644'
+  register: bootstrap_public_key_write
+
+- name: "Write private key"
+  when:
+  - bootstrap_private_key_content is defined
+  ansible.builtin.copy:
+    content: "{{ bootstrap_private_key_content }}"
+    dest: "{{ private_key_path }}"
+    mode: '0600'
+  register: bootstrap_private_key_write
+
+- name: Remove existing SSH keys from cluster
+  when: bootstrap_public_key_write.changed or bootstrap_private_key_write.changed or fluxcd_bootstrap_key_rotate
+  kubernetes.core.k8s:
+    state: absent
+    api_version: v1
+    kind: Secret
+    namespace: flux-system
+    name: flux-system
+
+- name: Add deploy key to GitHub
+  when:
+  - fluxcd_bootstrap_github_deploy_key_create
+  block:
+  - name: Enter GitHub OTP code
+    when:
+    - fluxcd_bootstrap_github_deploy_key_otp_login
+    ansible.builtin.pause:
+      prompt: "Enter GitHub OTP code:"
+      echo: true
+    register: otp_prompt
+    run_once: true
+  - name: Add deploy key to GitHub repo with OTP code
+    when:
+    - bootstrap_public_key_write.changed
+    - fluxcd_bootstrap_github_deploy_key_otp_login
+    community.general.github_deploy_key:
+      owner: "{{ fluxcd_bootstrap_github_deploy_key_owner | default(fluxcd_bootstrap_github_deploy_key_username) }}"
+      repo: "{{ fluxcd_bootstrap_github_deploy_key_repo_name }}"
+      name: "{{ fluxcd_bootstrap_key_name }}"
+      key: "{{ bootstrap_public_key_content }}"
+      read_only: "{{ fluxcd_bootstrap_github_deploy_key_read_only }}"
+      force: "{{ fluxcd_bootstrap_key_rotate }}"
+      username: "{{ fluxcd_bootstrap_github_deploy_key_username }}"
+      password: "{{ fluxcd_bootstrap_github_deploy_key_password }}"
+      otp: "{{ otp_prompt.user_input | int if not otp_prompt.skipped | default(false) }}"
+
+  - name: Add deploy key to GitHub repo with PAT
+    when:
+    - bootstrap_public_key_write.changed
+    - not fluxcd_bootstrap_github_deploy_key_otp_login
+    community.general.github_deploy_key:
+      owner: "{{ fluxcd_bootstrap_github_deploy_key_owner | default(fluxcd_bootstrap_github_deploy_key_username) }}"
+      repo: "{{ fluxcd_bootstrap_github_deploy_key_repo_name }}"
+      name: "{{ fluxcd_bootstrap_key_name }}yes"
+      key: "{{ bootstrap_public_key_content }}"
+      read_only: "{{ fluxcd_bootstrap_github_deploy_key_read_only }}"
+      force: "{{ fluxcd_bootstrap_key_rotate }}"
+      token: "{{ fluxcd_bootstrap_github_deploy_key_password }}"
+# end block Add deploy key to GitHub
+
+- name: Run flux bootstrap
+  when:
+  - not fluxcd_bootstrap_install_only
+  ansible.builtin.command: "flux bootstrap git {{ bootstrap_param_git_url }} {{ bootstrap_param_pk_file }} {{ bootstrap_param_key_passphrase }} {{ bootstrap_param_git_path }} {{ bootstrap_param_git_path }}"
+  failed_when: flux_cli_install.rc != 0
+  changed_when: false
+  register: flux_cli_bootstrap
+
+- name: Run flux install
+  when:
+  - fluxcd_bootstrap_install_only
+  ansible.builtin.command: "flux install {{ bootstrap_param_components }} {{ bootstrap_param_components_extra }} {{ bootstrap_param_cluster_domain }} {{ bootstrap_param_network_policy }} {{ bootstrap_param_namespace }} {{ bootstrap_param_version }}"
+  failed_when: flux_cli_install.rc != 0
+  changed_when: false
+  register: flux_cli_install
+
+# TODO: Add repo bootstrap locally, without doing any git commits?

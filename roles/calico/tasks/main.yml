@@ -38,23 +38,19 @@
   failed_when: false
   changed_when: false
 
-- name: Get current user name
-  ansible.builtin.command: whoami
-  register: whoami_command
-  changed_when: whoami_command.rc != 0
-
-- name: Set current_user_name fact
-  ansible.builtin.set_fact:
-    current_user_name: "{{ whoami_command.stdout | trim  }}"
+- name: Determine calico_kubeconfig fact if not set
+  when:
+  - calico_kubeconfig | default("") == ""
+  ansible.builtin.import_tasks: resolve-kubeconfig.yml
 
 - name: Install calico with helm
   when:
   - kubectl_command.rc == 0
+  environment:
+    K8S_AUTH_KUBECONFIG: "{{ calico_kubeconfig }}"
   block:
   - name: Install calico with helm
     ansible.builtin.include_tasks: helm-install.yml
-  environment:
-    K8S_AUTH_KUBECONFIG: "{{ (current_user_name == 'root') | ternary('/etc/rancher/k3s/k3s.yaml', '~/.kube/config') }}"
 
 - name: Install calicoctl
   ansible.builtin.import_tasks: kubectl-calicoctl-plugin.yml

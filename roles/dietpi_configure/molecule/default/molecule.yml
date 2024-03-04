@@ -26,5 +26,9 @@ provisioner:
           password: qwerty
           authorized_keys:
           - ssh_rsa abcdefg wahooli@dietpi
+        dietpi_configure_packages:
+        - vim
+        - nano
+        - nfs-common
 verifier:
   name: ansible

@@ -1,0 +1,113 @@
+---
+# This is an example playbook to execute Ansible tests.
+
+- name: Verify all hosts
+  hosts: all
+  gather_facts: false
+  tasks:
+  - name: Check flux bin is found in path
+    ansible.builtin.command: "which flux"
+    failed_when: false
+    changed_when: which_flux.rc != 0
+    register: which_flux
+
+  - name: Check flux command works
+    ansible.builtin.command: "flux --help"
+    failed_when: false
+    changed_when: flux_cli_help.rc != 0
+    register: flux_cli_help
+
+  - name: "Stat file /home/molecule/.fluxcd/fluxcd/id_ed25519"
+    ansible.builtin.stat:
+      path: "/home/molecule/.fluxcd/fluxcd/id_ed25519"
+    register: flux_private_key
+
+  - name: "Stat file /home/molecule/.fluxcd/fluxcd/id_ed25519.pub"
+    ansible.builtin.stat:
+      path: "/home/molecule/.fluxcd/fluxcd/id_ed25519.pub"
+    register: flux_public_key
+
+  - name: Check cluster FluxCD installation
+    ansible.builtin.command: "flux check"
+    failed_when: false
+    changed_when: flux_cli_check.rc != 0
+    register: flux_cli_check
+
+  - name: Assert
+    ansible.builtin.assert:
+      that:
+      - flux_cli_help is not changed
+      - which_flux is not changed
+      - not flux_private_key.stat.exists
+      - not flux_public_key.stat.exists
+      - flux_cli_check is not changed
+
+- name: Verify shared key servers
+  hosts:
+  - fluxcd-multi-cluster-server-1
+  - fluxcd-multi-cluster-server-3
+  gather_facts: false
+  tasks:
+  - name: "Stat file /home/molecule/.fluxcd/shared/id_ed25519"
+    ansible.builtin.stat:
+      path: "/home/molecule/.fluxcd/shared/id_ed25519"
+    register: flux_private_key
+
+  - name: "Stat file /home/molecule/.fluxcd/shared/id_ed25519.pub"
+    ansible.builtin.stat:
+      path: "/home/molecule/.fluxcd/shared/id_ed25519.pub"
+    register: flux_public_key
+
+  - name: Read private key contents
+    run_once: true
+    ansible.builtin.slurp:
+      src: "/home/molecule/.fluxcd/shared/id_ed25519"
+    register: private_key_content
+
+  - name: Read public key contents
+    run_once: true
+    ansible.builtin.slurp:
+      src: "/home/molecule/.fluxcd/shared/id_ed25519.pub"
+    register: public_key_content
+
+  - name: Verify private key is equal between hosts
+    ansible.builtin.copy:
+      dest: "/home/molecule/.fluxcd/shared/id_ed25519"
+      content: "{{ private_key_content.content | ansible.builtin.b64decode }}"
+      mode: '0600'
+    register: private_key_contains
+
+  - name: Verify public key is equal between hosts
+    ansible.builtin.copy:
+      dest: "/home/molecule/.fluxcd/shared/id_ed25519.pub"
+      content: "{{ public_key_content.content | ansible.builtin.b64decode }}"
+      mode: '0644'
+    register: public_key_contains
+
+  - name: Assert
+    ansible.builtin.assert:
+      that:
+      - flux_private_key.stat.exists
+      - flux_public_key.stat.exists
+      - public_key_contains is not changed
+      - private_key_contains is not changed
+
+- name: Verify server-2
+  hosts: fluxcd-multi-cluster-server-2
+  gather_facts: false
+  tasks:
+  - name: "Stat file /home/molecule/.fluxcd/server-2/id_rsa"
+    ansible.builtin.stat:
+      path: "/home/molecule/.fluxcd/server-2/id_rsa"
+    register: flux_private_key
+
+  - name: "Stat file /home/molecule/.fluxcd/server-2/id_rsa.pub"
+    ansible.builtin.stat:
+      path: "/home/molecule/.fluxcd/server-2/id_rsa.pub"
+    register: flux_public_key
+
+  - name: Assert
+    ansible.builtin.assert:
+      that:
+      - flux_private_key.stat.exists
+      - flux_public_key.stat.exists

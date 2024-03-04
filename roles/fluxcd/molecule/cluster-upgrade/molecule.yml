@@ -1,0 +1,54 @@
+---
+dependency:
+  name: galaxy
+driver:
+  name: docker
+platforms:
+- name: fluxcd-cluster-upgrade-server
+  image: "debian:12"
+  tmpfs:
+  - /run
+  - /tmp
+  volumes:
+  - /lib/modules:/lib/modules:ro
+  privileged: true
+  pre_build_image: false
+  tty: true
+provisioner:
+  name: ansible
+  inventory:
+    host_vars:
+      fluxcd-cluster-upgrade-server:
+        k3s_role: server
+        k3s_config:
+          disable:
+          - traefik
+          cluster-cidr: 10.42.0.0/16
+          service-cidr: 10.43.0.0/16
+          cluster-dns: 10.43.0.10
+          disable-cloud-controller: true
+          kube-apiserver-arg:
+          - default-not-ready-toleration-seconds=10
+          - default-unreachable-toleration-seconds=10
+          snapshotter: native
+          write-kubeconfig-mode: 644
+          kube-controller-manager-arg:
+          - bind-address=0.0.0.0
+          - terminated-pod-gc-threshold=10
+          kube-proxy-arg:
+          - metrics-bind-address=0.0.0.0
+          kube-scheduler-arg:
+          - bind-address=0.0.0.0
+    group_vars:
+      all:
+        ansible_user: molecule
+        fluxcd_bootstrap_install_only: true
+        fluxcd_bootstrap_allow: true
+        k3s_allow_swap: true
+        # fluxcd_version: "0.29.5"
+        k3s_kubelet_config:
+          maxPods: 250
+          shutdownGracePeriod: 30s
+          shutdownGracePeriodCriticalPods: 10s
+verifier:
+  name: ansible

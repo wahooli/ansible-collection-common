@@ -90,7 +90,7 @@
   - name: Start K3s server node with cluster-init
     throttle: 1
     when:
-    - using_embedded_etcd
+    - using_embedded_etcd | default(false)
     - inventory_hostname == k3s_cluster_init_host
     ansible.builtin.systemd_service:
       name: k3s
@@ -100,7 +100,7 @@
   - name: Start K3s server node
     throttle: 1
     when: |
-      not using_embedded_etcd
+      not using_embedded_etcd | default(false)
       or
       k3s_role == "server"
     ansible.builtin.systemd_service:
@@ -129,7 +129,7 @@
   - install
   when:
   - "'k3s.service' not in services or k3s_force_cluster_init is defined"
-  - using_embedded_etcd
+  - using_embedded_etcd | default(false)
   - inventory_hostname == k3s_cluster_init_host
   block:
   - name: Remove cluster-init from configuration

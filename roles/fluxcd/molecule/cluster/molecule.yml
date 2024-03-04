@@ -1,0 +1,88 @@
+---
+dependency:
+  name: galaxy
+driver:
+  name: docker
+platforms:
+- name: fluxcd-cluster-server
+  image: "debian:12"
+  # groups:
+  # - test1
+  # groups:
+  # - k3s_servers
+  # - k3s_nodes
+  tmpfs:
+  - /run
+  - /tmp
+  volumes:
+  - /lib/modules:/lib/modules:ro
+  privileged: true
+  pre_build_image: false
+  tty: true
+  networks:
+  - name: fluxcd-cluster
+  docker_networks:
+  - name: fluxcd-cluster
+- name: fluxcd-cluster-agent
+  image: "debian:12"
+  # groups:
+  # - k3s_servers
+  # - k3s_nodes
+  # groups:
+  # - test2
+  tmpfs:
+  - /run
+  - /tmp
+  volumes:
+  - /lib/modules:/lib/modules:ro
+  privileged: true
+  pre_build_image: false
+  tty: true
+  networks:
+  - name: fluxcd-cluster
+  docker_networks:
+  - name: fluxcd-cluster
+provisioner:
+  name: ansible
+  inventory:
+    host_vars:
+      fluxcd-cluster-server:
+        k3s_role: server
+        k3s_config:
+          disable:
+          - traefik
+          cluster-cidr: 10.42.0.0/16
+          service-cidr: 10.43.0.0/16
+          cluster-dns: 10.43.0.10
+          disable-cloud-controller: true
+          kube-apiserver-arg:
+          - default-not-ready-toleration-seconds=10
+          - default-unreachable-toleration-seconds=10
+          snapshotter: native
+          write-kubeconfig-mode: 644
+          kube-controller-manager-arg:
+          - bind-address=0.0.0.0
+          - terminated-pod-gc-threshold=10
+          kube-proxy-arg:
+          - metrics-bind-address=0.0.0.0
+          kube-scheduler-arg:
+          - bind-address=0.0.0.0
+      fluxcd-cluster-agent:
+        k3s_role: agent
+        k3s_config:
+          server: https://fluxcd-cluster-server:6443
+          snapshotter: native
+          kube-proxy-arg:
+          - metrics-bind-address=0.0.0.0
+    group_vars:
+      all:
+        ansible_user: molecule
+        fluxcd_bootstrap_install_only: true
+        fluxcd_bootstrap_allow: true
+        k3s_allow_swap: true
+        k3s_kubelet_config:
+          maxPods: 250
+          shutdownGracePeriod: 30s
+          shutdownGracePeriodCriticalPods: 10s
+verifier:
+  name: ansible

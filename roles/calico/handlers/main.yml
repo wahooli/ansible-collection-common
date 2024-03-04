@@ -1,0 +1,21 @@
+---
+# handlers file for dietpi_configure
+- name: Patch tigera-operator ClusterRole
+  run_once: true
+  environment:
+    K8S_AUTH_KUBECONFIG: "{{ calico_kubeconfig }}"
+  kubernetes.core.k8s_json_patch:
+    api_version: rbac.authorization.k8s.io/v1
+    kind: ClusterRole
+    name: tigera-operator
+    patch:
+    - op: add
+      path: /rules/-
+      value:
+        apiGroups:
+          - operator.tigera.io
+        resources:
+          - installations
+          - apiservers
+        verbs:
+          - delete

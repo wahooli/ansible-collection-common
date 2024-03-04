@@ -1,0 +1,16 @@
+---
+# This is an example playbook to execute Ansible tests.
+
+- name: Verify
+  hosts: all
+  gather_facts: false
+  tasks:
+  - name: Check if reboot-required exists
+    ansible.builtin.stat:
+      path: /var/run/reboot-required
+    register: reboot_required
+
+  - name: Assert
+    ansible.builtin.assert:
+      that:
+      - reboot_required.stat.exists

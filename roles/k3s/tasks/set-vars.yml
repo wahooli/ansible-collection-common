@@ -118,12 +118,13 @@
     ansible.builtin.set_fact:
       k3s_server_hosts: "{{ (dict((hostvars | dict2items | map(attribute='key')) | zip(ansible_play_hosts_all | map('extract', hostvars, 'k3s_role'))) | dict2items | rejectattr('value', '==', 'agent') | items2dict).keys() }}"
   - name: Determine if using embedded_etcd
+    when: k3s_allow_cluster_init
     run_once: true
     ansible.builtin.set_fact:
       using_embedded_etcd: "{{ hostvars[(k3s_server_hosts | first)]['k3s_datastore_endpoint'] is undefined and k3s_server_hosts | length > 2 if k3s_server_hosts | length > 1 else false }}"
   - name: Fail if there is less than 3 server nodes using embedded etcd
     when:
-    - using_embedded_etcd
+    - using_embedded_etcd | default(false)
     - k3s_server_hosts | length < 3
     ansible.builtin.fail:
       msg: There has to be at least 3 server nodes, when using embedded etcd!
@@ -132,7 +133,7 @@
 - name: Check if host has cluster-init configuration value
   when:
   - "'k3s.service' not in services or k3s_force_cluster_init is defined"
-  - using_embedded_etcd
+  - using_embedded_etcd | default(false)
   tags:
   - install
   block:
@@ -163,7 +164,7 @@
 
 - name: Add cluster-init to cluster_init_host
   when:
-  - using_embedded_etcd
+  - using_embedded_etcd | default(false)
   - k3s_cluster_init_host is defined
   - inventory_hostname == k3s_cluster_init_host
   - "'k3s.service' not in services or k3s_force_cluster_init is defined"
@@ -176,9 +177,9 @@
   when:
   - k3s_server is undefined or k3s_server | length < 1
   - "'k3s.service' not in services"
-  - (using_embedded_etcd and inventory_hostname != k3s_cluster_init_host)
+  - (using_embedded_etcd | default(false) and inventory_hostname != k3s_cluster_init_host)
     or
-    (not using_embedded_etcd and k3s_role == "agent")
+    (not using_embedded_etcd | default(false) and k3s_role == "agent")
   #  (not using_embedded_etcd and inventory_hostname != (k3s_server_hosts | first))
   # - k3s_server is undefined or k3s_server | length < 1
   # - k3s_cluster_init_host is undefined or (k3s_cluster_init_host is defined and k3s_cluster_init_host != inventory_hostname)
@@ -344,15 +345,12 @@
       containerd_pause_image: "{{ None if k3s_containerd_pause_image is undefined else k3s_containerd_pause_image ~ '-arm' }}"
 # end block Detect CPU arch
 
-- name: Get crun binary path
-  when: k3s_containerd_use_crun
-  ansible.builtin.command: "which crun"
-  register: which_crun_output
-  changed_when: which_crun_output.rc != 0
-
-- name: Get crun binary path
+# introduced in v1.28.4+k3s1, v1.27.8+k3s2, v1.26.11+k3s2 so ymmv
+- name: Modify k3s_config.default-runtime
   when:
   - k3s_containerd_use_crun
-  - which_crun_output.rc == 0
   ansible.builtin.set_fact:
-    crun_bin: "{{ which_crun_output.stdout | trim }}"
+    k3s_config: "{{ k3s_config | default({}) | combine({'default-runtime': 'crun'}) }}"
+  tags:
+  - install
+  - configure
