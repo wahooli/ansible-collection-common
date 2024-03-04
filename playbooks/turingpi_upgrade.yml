@@ -18,3 +18,12 @@
   - role: "calico"
   vars:
     calico_helm_upgrade: true
+
+- name: Bootstrap FluxCD repository
+  hosts: fluxcd_nodes
+  gather_facts: true
+  any_errors_fatal: true
+  roles:
+  - role: "fluxcd"
+  tags:
+  - fluxcd

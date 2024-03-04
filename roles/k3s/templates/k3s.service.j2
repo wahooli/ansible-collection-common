@@ -24,6 +24,7 @@ TasksMax=infinity
 TimeoutStartSec=0
 Restart=always
 RestartSec=5s
+ExecStartPre=-/sbin/modprobe ip_conntrack
 ExecStartPre=-/sbin/modprobe br_netfilter
 ExecStartPre=-/sbin/modprobe overlay
 ExecStart={{ k3s_bin_dir }}/k3s \

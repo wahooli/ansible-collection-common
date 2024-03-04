@@ -76,7 +76,8 @@ provisioner:
           - metrics-bind-address=0.0.0.0
     group_vars:
       all:
-        ansible_user: molecule
+        # run as root to test role works with that also
+        # ansible_user: molecule
         fluxcd_bootstrap_install_only: true
         fluxcd_bootstrap_allow: true
         k3s_allow_swap: true

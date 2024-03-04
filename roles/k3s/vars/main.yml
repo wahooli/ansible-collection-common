@@ -4,6 +4,10 @@ kubeconfig_default_context_name: default
 systemd_dir: /etc/systemd/system
 kubelet_config_apiversion: kubelet.config.k8s.io/v1beta1
 kubescheduler_config_apiversion: kubescheduler.config.k8s.io/v1
+prepare_load_kernel_modules:
+- br_netfilter
+- overlay
+- ip_conntrack
 prepare_debian_install_pkg:
 - procps
 - kmod

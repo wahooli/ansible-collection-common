@@ -1,9 +1,6 @@
 ---
 - name: Set bootstrap related facts
   ansible.builtin.set_fact:
-    # keys_directory: "{{ bootstrap_ssh_key_path | regex_replace('^~(.*)', '~' + current_user_name + '\\1') }}/{{ fluxcd_bootstrap_key_name }}"
-    # private_key_path: "{{ bootstrap_ssh_key_path | regex_replace('^~(.*)', '~' + current_user_name + '\\1') }}/{{ fluxcd_bootstrap_key_name }}/id_{{ fluxcd_bootstrap_ssh_key_type }}"
-    # public_key_path: "{{ bootstrap_ssh_key_path | regex_replace('^~(.*)', '~' + current_user_name + '\\1') }}/{{ fluxcd_bootstrap_key_name }}/id_{{ fluxcd_bootstrap_ssh_key_type }}.pub"
     keys_directory: "{{ bootstrap_ssh_key_path }}/{{ fluxcd_bootstrap_key_name }}"
     private_key_path: "{{ bootstrap_ssh_key_path }}/{{ fluxcd_bootstrap_key_name }}/id_{{ fluxcd_bootstrap_ssh_key_type }}"
     public_key_path: "{{ bootstrap_ssh_key_path }}/{{ fluxcd_bootstrap_key_name }}/id_{{ fluxcd_bootstrap_ssh_key_type }}.pub"
@@ -12,7 +9,6 @@
     bootstrap_param_cluster_domain: "{{ '--cluster-domain=' + fluxcd_bootstrap_cluster_domain if fluxcd_bootstrap_cluster_domain is defined }}"
     bootstrap_param_network_policy: "{{ '--network-policy=' + fluxcd_bootstrap_network_policy | string | lower  if fluxcd_bootstrap_network_policy is defined }}"
     bootstrap_param_git_url: "{{ '--url=' + fluxcd_bootstrap_git_url if fluxcd_bootstrap_git_url is defined }}"
-    bootstrap_param_pk_file: "{{ '--private-key-file=' + bootstrap_ssh_key_path + '/' + fluxcd_bootstrap_key_name + '/id_' + fluxcd_bootstrap_ssh_key_type }}"
     bootstrap_param_git_branch: "{{ '--branch=' + fluxcd_bootstrap_git_branch if fluxcd_bootstrap_git_branch is defined }}"
     bootstrap_param_git_path: "{{ '--path=' + fluxcd_bootstrap_git_path if fluxcd_bootstrap_git_path is defined }}"
     bootstrap_param_key_passphrase: "{{ '--password=' + fluxcd_bootstrap_ssh_key_passphrase if fluxcd_bootstrap_ssh_key_passphrase is defined }}"
@@ -185,11 +181,38 @@
       token: "{{ fluxcd_bootstrap_github_deploy_key_password }}"
 # end block Add deploy key to GitHub
 
+- name: Resolve absolute path of private key
+  when:
+  - not fluxcd_bootstrap_install_only
+  ansible.builtin.command: "realpath {{ private_key_path }}"
+  failed_when: pk_realpath.rc != 0
+  changed_when: false
+  register: pk_realpath
+
+- name: Generate ssh known hosts
+  when:
+  - fluxcd_bootstrap_git_url is defined
+  block:
+  - name: Run ssh-keyscan for git host
+    ansible.builtin.command: ssh-keyscan -T 10 {{ fluxcd_bootstrap_git_url | urlsplit('hostname') }}
+    register: keyscan
+    failed_when: keyscan.rc != 0
+    changed_when: false
+
+  - name: Add scanned keys to known_hosts
+    ansible.builtin.lineinfile:
+      name: ~/.ssh/known_hosts
+      create: true 
+      line: "{{ scan_result }}"
+    with_items: '{{ keyscan.stdout_lines }}'
+    loop_control:
+      loop_var: scan_result
+
 - name: Run flux bootstrap
   when:
   - not fluxcd_bootstrap_install_only
-  ansible.builtin.command: "flux bootstrap git {{ bootstrap_param_git_url }} {{ bootstrap_param_pk_file }} {{ bootstrap_param_key_passphrase }} {{ bootstrap_param_git_path }} {{ bootstrap_param_git_path }}"
-  failed_when: flux_cli_install.rc != 0
+  ansible.builtin.command: "flux bootstrap git --silent --private-key-file={{ pk_realpath.stdout }} {{ bootstrap_param_git_url }} {{ bootstrap_param_git_branch }} {{ bootstrap_param_key_passphrase }} {{ bootstrap_param_git_path }} {{ bootstrap_param_components }} {{ bootstrap_param_components_extra }} {{ bootstrap_param_cluster_domain }} {{ bootstrap_param_network_policy }} {{ bootstrap_param_namespace }} {{ bootstrap_param_version }}"
+  failed_when: flux_cli_bootstrap.rc != 0
   changed_when: false
   register: flux_cli_bootstrap
 

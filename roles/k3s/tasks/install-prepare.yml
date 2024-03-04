@@ -15,21 +15,14 @@
     state: started
     enabled: "true"
 
-- name: Add overlay module
+- name: Load kernel modules
   community.general.modprobe:
-    name: overlay
+    name: "{{ item }}"
     state: present
     persistent: present
   when:
   - ansible_connection not in [ "container", "docker", "community.docker.docker" ]
-
-- name: Add br_netfilter module
-  community.general.modprobe:
-    name: br_netfilter
-    state: present
-    persistent: present
-  when:
-  - ansible_connection not in [ "container", "docker", "community.docker.docker" ]
+  with_items: "{{ prepare_load_kernel_modules }}"
 
 - name: Disable swap for current session
   when:

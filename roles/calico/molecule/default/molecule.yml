@@ -20,7 +20,8 @@ provisioner:
     host_vars:
       k3s-calico:
         calico_iptables_backend: Legacy
-        ansible_user: molecule
+        # run as root to test role works with that also
+        # ansible_user: molecule
         k3s_kubelet_config:
           maxPods: 250
           shutdownGracePeriod: 30s

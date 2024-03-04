@@ -31,7 +31,6 @@
   any_errors_fatal: true
   roles:
   - role: helm
-  - role: reboot
   tags:
   - helm
 
@@ -61,3 +60,12 @@
   - role: "calico"
   tags:
   - calico
+
+- name: Bootstrap FluxCD repository
+  hosts: fluxcd_nodes
+  gather_facts: true
+  any_errors_fatal: true
+  roles:
+  - role: "fluxcd"
+  tags:
+  - fluxcd

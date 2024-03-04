@@ -17,21 +17,26 @@
     changed_when: flux_cli_help.rc != 0
     register: flux_cli_help
 
-  - name: "Stat file /home/molecule/.fluxcd/fluxcd/id_ed25519"
+  - name: "Stat file /root.fluxcd/fluxcd/id_ed25519"
     ansible.builtin.stat:
-      path: "/home/molecule/.fluxcd/fluxcd/id_ed25519"
+      path: "/root/.fluxcd/fluxcd/id_ed25519"
     register: flux_private_key
 
-  - name: "Stat file /home/molecule/.fluxcd/fluxcd/id_ed25519.pub"
+  - name: "Stat file /root/.fluxcd/fluxcd/id_ed25519.pub"
     ansible.builtin.stat:
-      path: "/home/molecule/.fluxcd/fluxcd/id_ed25519.pub"
+      path: "/root/.fluxcd/fluxcd/id_ed25519.pub"
     register: flux_public_key
 
   - name: Check cluster FluxCD installation
-    ansible.builtin.command: "flux check"
-    failed_when: false
-    changed_when: flux_cli_check.rc != 0
-    register: flux_cli_check
+    environment:
+      K8S_AUTH_KUBECONFIG: "/etc/rancher/k3s/k3s.yaml"
+      KUBECONFIG: "/etc/rancher/k3s/k3s.yaml"
+    block:
+    - name: Check cluster FluxCD installation
+      ansible.builtin.command: "flux check"
+      failed_when: false
+      changed_when: flux_cli_check.rc != 0
+      register: flux_cli_check
 
   - name: Assert
     ansible.builtin.assert:
