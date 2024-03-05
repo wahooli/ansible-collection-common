@@ -69,7 +69,7 @@
     - name: "Run assertions on file {{ raspi_boot_config_cmdline_path }}"
       ansible.builtin.assert:
         that:
-        - '"quiet" in "{{ boot_cmdline_contents.content | b64decode }}"'
-        - '"cgroup_enable=memory" in "{{ boot_cmdline_contents.content | b64decode }}"'
-        - '"cgroup_enable=cpu" in "{{ boot_cmdline_contents.content | b64decode }}"'
-        - '"logo.nologo" not in "{{ boot_cmdline_contents.content | b64decode }}"'
+        - "'quiet' in (boot_cmdline_contents.content | b64decode)"
+        - "'cgroup_enable=memory' in (boot_cmdline_contents.content | b64decode)"
+        - "'cgroup_enable=cpu' in (boot_cmdline_contents.content | b64decode)"
+        - "'logo.nologo' not in (boot_cmdline_contents.content | b64decode)"

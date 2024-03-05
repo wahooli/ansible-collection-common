@@ -27,6 +27,7 @@
 - name: Disable swap for current session
   when:
   - not k3s_allow_swap | default(false)
+  - ansible_connection not in [ "container", "docker", "community.docker.docker" ]
   ansible.builtin.command: swapoff -a
   register: swapoff_output
   changed_when: swapoff_output.rc != 0

@@ -48,10 +48,12 @@ provisioner:
     ANSIBLE_ROLES_PATH: "${MOLECULE_PROJECT_DIRECTORY}/roles"
   inventory:
     group_vars:
-      k3s_nodes:
-        calico_install_wait_retries: 120
+      all:
+        fluxcd_bootstrap_install_only: true
+        fluxcd_bootstrap_allow: true
         ansible_user: molecule
         k3s_allow_swap: true
+        calico_install_wait_retries: 120
         k3s_kubelet_config:
           maxPods: 250
           shutdownGracePeriod: 30s

@@ -1,8 +1,7 @@
 ---
 dependency:
-  name: galaxy
-  options:
-    requirements-file: requirements.yml
+  name: shell
+  command: "COLLECTION_INSTALL=false ${GITHUB_WORKSPACE:-..}/${GITHUB_REPOSITORY:-..}/tools/install-deps.sh"
 driver:
   name: docker
 platforms:
