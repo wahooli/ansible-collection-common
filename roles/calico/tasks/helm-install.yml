@@ -78,7 +78,7 @@
 - name: Wait until default FelixConfiguration has manifested
   run_once: true
   kubernetes.core.k8s_info:
-    api_version: "{{ felix_configuration_apiversion }}"
+    api_version: "{{ calico_felix_configuration_apiversion }}"
     kind: FelixConfiguration
     name: default
   register: felixconfig
@@ -89,7 +89,7 @@
 - name: Patch FelixConfiguration
   run_once: true
   kubernetes.core.k8s_json_patch:
-    api: "{{ felix_configuration_apiversion }}"
+    api: "{{ calico_felix_configuration_apiversion }}"
     kind: FelixConfiguration
     name: default
     patch:

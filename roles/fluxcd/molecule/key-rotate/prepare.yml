@@ -12,4 +12,3 @@
       fluxcd_bootstrap_install_only: true
       fluxcd_bootstrap_ssh_key_private_content: private
       fluxcd_bootstrap_ssh_key_public_content: public
-

@@ -13,15 +13,15 @@ if command -v rc-update; then
     rc-update delete k3s default
 fi
 
-rm -f {{ systemd_dir }}/k3s.service
-rm -f {{ systemd_dir }}/k3s.service.env
+rm -f {{ k3s_systemd_dir }}/k3s.service
+rm -f {{ k3s_systemd_dir }}/k3s.service.env
 
 remove_uninstall() {
     rm -f /usr/local/bin/k3s-uninstall.sh
 }
 trap remove_uninstall EXIT
 
-if (ls {{ systemd_dir }}/k3s*.service || ls /etc/init.d/k3s*) >/dev/null 2>&1; then
+if (ls {{ k3s_systemd_dir }}/k3s*.service || ls /etc/init.d/k3s*) >/dev/null 2>&1; then
     set +x; echo 'Additional k3s services installed, skipping uninstall of k3s'; set -x
     exit
 fi
@@ -32,7 +32,7 @@ for cmd in kubectl crictl ctr; do
     fi
 done
 
-rm -rf {{ config_path }}
+rm -rf {{ k3s_config_path }}
 rm -rf /run/k3s
 rm -rf /run/flannel
 rm -rf {{ k3s_data_dir }}
@@ -41,7 +41,7 @@ rm -rf /var/lib/kubelet
 rm -f {{ k3s_bin_dir }}/k3s
 rm -f {{ k3s_bin_dir }}/k3s-killall.sh
 rm -rf {{ k3s_bin_dir }}/k3s-killall.sh.d/
-rm -f {{ sysctl_file }}
+rm -f {{ k3s_sysctl_file }}
 
 if type yum >/dev/null 2>&1; then
     yum remove -y k3s-selinux

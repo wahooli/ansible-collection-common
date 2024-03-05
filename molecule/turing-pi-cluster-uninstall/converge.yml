@@ -1,8 +1,0 @@
----
-- name: Converge
-  hosts: all
-  collections:
-  - wahooli.k3s
-
-- name: Import uninstall playbook
-  ansible.builtin.import_playbook: "{{ lookup('env','MOLECULE_PROJECT_DIRECTORY') }}/playbooks/uninstall.yml"

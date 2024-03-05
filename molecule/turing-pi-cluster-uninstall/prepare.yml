@@ -1,9 +1,0 @@
----
-- name: Prepare ssd_nodes
-  hosts: ssd_nodes
-  collections:
-  - community.general
-  - wahooli.k3s
-
-- name: Create cluster
-  ansible.builtin.import_playbook: "{{ lookup('env','MOLECULE_PROJECT_DIRECTORY') }}/playbooks/turingpi_create_cluster.yml"

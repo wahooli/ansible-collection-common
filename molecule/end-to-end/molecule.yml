@@ -5,7 +5,7 @@ dependency:
 driver:
   name: docker
 platforms:
-- name: turing-pi-server-01-uninstall
+- name: end-to-end-server
   image: "debian:12"
   groups:
   - k3s_servers
@@ -20,16 +20,15 @@ platforms:
   pre_build_image: false
   tty: true
   networks:
-  - name: turingpi-cluster
+  - name: end-to-end-cluster
   docker_networks:
-  - name: turingpi-cluster
+  - name: end-to-end-cluster
 
-- name: turing-pi-agent-01-uninstall
+- name: end-to-end-agent
   image: "debian:12"
   groups:
   - k3s_agents
   - k3s_nodes
-  # - ssd_nodes
   tmpfs:
   - /run
   - /tmp
@@ -39,9 +38,9 @@ platforms:
   pre_build_image: false
   tty: true
   networks:
-  - name: turingpi-cluster
+  - name: end-to-end-cluster
   docker_networks:
-  - name: turingpi-cluster
+  - name: end-to-end-cluster
 
 provisioner:
   name: ansible
@@ -59,7 +58,7 @@ provisioner:
           shutdownGracePeriodCriticalPods: 10s
       k3s_servers:
         k3s_role: server
-        k3s_node_taints: 
+        k3s_node_taints:
         - node-role.kubernetes.io/master=true:NoSchedule
         k3s_node_labels:
         - node_type=master

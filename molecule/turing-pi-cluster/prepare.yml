@@ -1,8 +1,6 @@
 ---
 - name: Prepare
   hosts: ssd_nodes
-  collections:
-  - community.general
   tasks:
   - name: Create 1G dummy device files
     become: true

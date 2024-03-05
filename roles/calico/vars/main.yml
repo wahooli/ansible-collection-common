@@ -1,4 +1,4 @@
 ---
 # vars file for k3s
-felix_configuration_apiversion: crd.projectcalico.org/v1
-default_kubeconfig_path: "~/.kube/config"
+calico_felix_configuration_apiversion: crd.projectcalico.org/v1
+calico_default_kubeconfig_path: "~/.kube/config"

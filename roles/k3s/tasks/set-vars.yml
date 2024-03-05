@@ -5,7 +5,7 @@
   block:
   - name: Check if TOKEN file exists
     ansible.builtin.stat:
-      path: "{{ config_path }}/TOKEN"
+      path: "{{ k3s_config_path }}/TOKEN"
     register: token_file_stat
   - name: Read token from file
     when: token_file_stat.stat.exists
@@ -27,7 +27,7 @@
   block:
   - name: Check if SERVER file exists
     ansible.builtin.stat:
-      path: "{{ config_path }}/SERVER"
+      path: "{{ k3s_config_path }}/SERVER"
     register: server_file_stat
   - name: Read server from file
     when: server_file_stat.stat.exists
@@ -49,7 +49,7 @@
   block:
   - name: Check config.yaml exists
     ansible.builtin.stat:
-      path: "{{ config_path }}/config.yaml"
+      path: "{{ k3s_config_path }}/config.yaml"
     register: config_file_stat
   - name: "Read config file"
     when: config_file_stat.stat.exists
@@ -226,7 +226,7 @@
       regexp: '^config=.*'
     ansible.builtin.set_fact:
       kubelet_args: |
-        {{ (kubelet_args | difference (kubelet_args | map('regex_search', regexp) | list)) + ["config=" ~ config_path ~ "/kubelet.config.yml"] }}
+        {{ (kubelet_args | difference (kubelet_args | map('regex_search', regexp) | list)) + ["config=" ~ k3s_config_path ~ "/kubelet.config.yml"] }}
 
   - name: Replace root-dir from k3s_config.kubelet-arg when k3s_kubelet_root_dir is set
     when:
@@ -285,7 +285,7 @@
       regexp: '^config=.*'
     ansible.builtin.set_fact:
       kubescheduler_args: |
-        {{ (kubescheduler_args | difference (kubescheduler_args | map('regex_search', regexp) | list)) + ["config=" ~ config_path ~ "/kubescheduler.config.yml"] }}
+        {{ (kubescheduler_args | difference (kubescheduler_args | map('regex_search', regexp) | list)) + ["config=" ~ k3s_config_path ~ "/kubescheduler.config.yml"] }}
 
 # end block Configure kube-scheduler-args
 

@@ -60,6 +60,6 @@
   ansible.posix.sysctl:
     name: "vm.swappiness"
     value: "{{ dietpi_configure_vm_swappiness | default(60) }}"
-    sysctl_file: "{{ swap_sysctl_file }}"
+    sysctl_file: "{{ dietpi_configure_swap_sysctl_file }}"
     state: present
     reload: true

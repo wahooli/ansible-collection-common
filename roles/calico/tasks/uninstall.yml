@@ -62,7 +62,7 @@
   - name: Ensure the FelixConfiguration is removed
     run_once: true
     kubernetes.core.k8s:
-      api_version: "{{ felix_configuration_apiversion }}"
+      api_version: "{{ calico_felix_configuration_apiversion }}"
       kind: FelixConfiguration
       name: default
       state: absent

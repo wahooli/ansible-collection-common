@@ -1,8 +1,6 @@
 ---
 - name: Converge
   hosts: all
-  collections:
-  - wahooli.k3s
 
 - name: Import create_cluster playbook
-  ansible.builtin.import_playbook: "{{ lookup('env','MOLECULE_PROJECT_DIRECTORY') }}/playbooks/create_cluster.yml"
+  ansible.builtin.import_playbook: "{{ lookup('env','MOLECULE_PROJECT_DIRECTORY') | default('../..', true) }}/playbooks/create_cluster.yml"

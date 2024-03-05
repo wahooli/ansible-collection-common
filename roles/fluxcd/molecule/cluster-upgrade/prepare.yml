@@ -11,4 +11,3 @@
     vars:
       fluxcd_bootstrap_install_only: true
       fluxcd_tag: "v0.29.5"
-

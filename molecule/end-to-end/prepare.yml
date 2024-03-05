@@ -1,6 +1,6 @@
 ---
-- name: Converge
-  hosts: all
+- name: Prepare ssd_nodes
+  hosts: ssd_nodes
 
-- name: Import turingpi_create_cluster playbook
+- name: Create cluster
   ansible.builtin.import_playbook: "{{ lookup('env','MOLECULE_PROJECT_DIRECTORY') | default('../..', true) }}/playbooks/turingpi_create_cluster.yml"

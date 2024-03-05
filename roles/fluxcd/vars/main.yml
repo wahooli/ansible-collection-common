@@ -1,4 +1,4 @@
 ---
 # vars file for fluxcd
-bootstrap_ssh_key_path: ~/.fluxcd
-default_kubeconfig_path: "~/.kube/config"
+fluxcd_bootstrap_ssh_key_path: ~/.fluxcd
+fluxcd_default_kubeconfig_path: "~/.kube/config"

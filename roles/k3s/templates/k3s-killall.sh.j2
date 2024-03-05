@@ -7,7 +7,7 @@ done
 
 set -x
 
-for service in {{ systemd_dir }}/k3s*.service; do
+for service in {{ k3s_systemd_dir }}/k3s*.service; do
     [ -s $service ] && systemctl stop $(basename $service)
 done
 

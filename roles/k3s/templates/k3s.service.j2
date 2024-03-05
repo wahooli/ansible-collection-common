@@ -11,7 +11,7 @@ WantedBy=multi-user.target
 Type={{ k3s_install_type }}
 EnvironmentFile=-/etc/default/%N
 EnvironmentFile=-/etc/sysconfig/%N
-EnvironmentFile=-{{ systemd_dir }}/k3s.service.env
+EnvironmentFile=-{{ k3s_systemd_dir }}/k3s.service.env
 Environment="CONTAINERD_LOG_LEVEL={{ k3s_containerd_log_level | default("info") }}"
 KillMode=process
 Delegate=yes

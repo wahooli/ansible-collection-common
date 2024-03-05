@@ -1,0 +1,6 @@
+---
+- name: Converge
+  hosts: all
+
+- name: Import uninstall playbook
+  ansible.builtin.import_playbook: "{{ lookup('env','MOLECULE_PROJECT_DIRECTORY') | default('../..', true) }}/playbooks/uninstall.yml"

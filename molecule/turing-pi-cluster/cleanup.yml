@@ -13,5 +13,5 @@
   - name: Cleanup dummy devices
     become: true
     run_once: true
-    when: wait_for_instances is not changed
+    changed_when: false
     ansible.builtin.command: losetup -D

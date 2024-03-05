@@ -1,5 +1,9 @@
 ---
 collections:
-- community.general
-- kubernetes.core
-- community.crypto
+- name: community.general
+  version: 7.3.0
+- name: kubernetes.core
+  version: 2.4.0
+- name: community.crypto
+  version: 2.18.0
+- name: ansible.posix

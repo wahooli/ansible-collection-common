@@ -1,9 +1,9 @@
 ---
 - name: Set bootstrap related facts
   ansible.builtin.set_fact:
-    keys_directory: "{{ bootstrap_ssh_key_path }}/{{ fluxcd_bootstrap_key_name }}"
-    private_key_path: "{{ bootstrap_ssh_key_path }}/{{ fluxcd_bootstrap_key_name }}/id_{{ fluxcd_bootstrap_ssh_key_type }}"
-    public_key_path: "{{ bootstrap_ssh_key_path }}/{{ fluxcd_bootstrap_key_name }}/id_{{ fluxcd_bootstrap_ssh_key_type }}.pub"
+    keys_directory: "{{ fluxcd_bootstrap_ssh_key_path }}/{{ fluxcd_bootstrap_key_name }}"
+    private_key_path: "{{ fluxcd_bootstrap_ssh_key_path }}/{{ fluxcd_bootstrap_key_name }}/id_{{ fluxcd_bootstrap_ssh_key_type }}"
+    public_key_path: "{{ fluxcd_bootstrap_ssh_key_path }}/{{ fluxcd_bootstrap_key_name }}/id_{{ fluxcd_bootstrap_ssh_key_type }}.pub"
     bootstrap_param_components: "{{ '--components ' + fluxcd_bootstrap_components | join(',') if fluxcd_bootstrap_components is defined and fluxcd_bootstrap_components | length > 0 }}"
     bootstrap_param_components_extra: "{{ '--components-extra=' + fluxcd_bootstrap_components_extra | join(',') if fluxcd_bootstrap_components_extra is defined and fluxcd_bootstrap_components_extra | length > 0 }}"
     bootstrap_param_cluster_domain: "{{ '--cluster-domain=' + fluxcd_bootstrap_cluster_domain if fluxcd_bootstrap_cluster_domain is defined }}"
@@ -202,7 +202,8 @@
   - name: Add scanned keys to known_hosts
     ansible.builtin.lineinfile:
       name: ~/.ssh/known_hosts
-      create: true 
+      create: true
+      mode: '0600'
       line: "{{ scan_result }}"
     with_items: '{{ keyscan.stdout_lines }}'
     loop_control:

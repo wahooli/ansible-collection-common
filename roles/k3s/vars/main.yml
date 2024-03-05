@@ -1,21 +1,21 @@
 ---
 # vars file for k3s
-kubeconfig_default_context_name: default
-systemd_dir: /etc/systemd/system
-kubelet_config_apiversion: kubelet.config.k8s.io/v1beta1
-kubescheduler_config_apiversion: kubescheduler.config.k8s.io/v1
-prepare_load_kernel_modules:
+# k3s_kubeconfig_default_context_name: default
+k3s_systemd_dir: /etc/systemd/system
+k3s_kubelet_config_apiversion: kubelet.config.k8s.io/v1beta1
+k3s_kubescheduler_config_apiversion: kubescheduler.config.k8s.io/v1
+k3s_kernel_modules:
 - br_netfilter
 - overlay
 - ip_conntrack
-prepare_debian_install_pkg:
+k3s_debian_install_pkg:
 - procps
 - kmod
 - curl
 - zstd
-sysctl_file: /etc/sysctl.d/99-k3s.conf
-config_path: /etc/rancher/k3s
-prepare_sysctls:
+k3s_sysctl_file: /etc/sysctl.d/99-k3s.conf
+k3s_config_path: /etc/rancher/k3s
+k3s_sysctls:
 - name: net.ipv4.ip_forward
   value: 1
 - name: net.bridge.bridge-nf-call-iptables

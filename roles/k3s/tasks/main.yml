@@ -36,7 +36,7 @@
   become: true
   ansible.builtin.template:
     src: "k3s.service.j2"
-    dest: "{{ systemd_dir }}/k3s.service"
+    dest: "{{ k3s_systemd_dir }}/k3s.service"
     owner: root
     group: root
     mode: "0644"
@@ -140,7 +140,7 @@
     register: cluster_init_service_file
     ansible.builtin.template:
       src: "k3s.service.j2"
-      dest: "{{ systemd_dir }}/k3s.service"
+      dest: "{{ k3s_systemd_dir }}/k3s.service"
       owner: root
       group: root
       mode: "0644"
@@ -148,7 +148,7 @@
     when: k3s_use_config_file is defined and k3s_use_config_file
     register: cluster_init_config_file
     ansible.builtin.copy:
-      dest: "{{ config_path }}/config.yaml"
+      dest: "{{ k3s_config_path }}/config.yaml"
       owner: root
       group: root
       mode: "0644"

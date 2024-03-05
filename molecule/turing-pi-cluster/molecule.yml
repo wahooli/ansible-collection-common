@@ -128,7 +128,7 @@ provisioner:
           shutdownGracePeriodCriticalPods: 10s
       k3s_servers:
         k3s_role: server
-        k3s_node_taints: 
+        k3s_node_taints:
         - node-role.kubernetes.io/master=true:NoSchedule
         k3s_node_labels:
         - node_type=master

@@ -22,7 +22,7 @@
 - name: Remove sysctls
   become: true
   ansible.builtin.file:
-    path: "{{ sysctl_file }}"
+    path: "{{ k3s_sysctl_file }}"
     state: absent
   notify:
   - Reload sysctl

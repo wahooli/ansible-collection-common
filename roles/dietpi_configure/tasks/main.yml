@@ -52,7 +52,7 @@
   become: true
   ansible.builtin.lineinfile:
     line: "PermitRootLogin prohibit-password"
-    dest: "{{ sshd_config }}"
+    dest: "{{ dietpi_configure_sshd_config }}"
     regexp: '^([#]+)?(\s+)?PermitRootLogin \S+'
     state: "present"
   notify:
@@ -105,7 +105,7 @@
 
 - name: Check if ZRAM is configured
   ansible.builtin.stat:
-    path: "{{ zram_swap_udev_rules }}"
+    path: "{{ dietpi_configure_zram_swap_udev_rules }}"
   register: zram_udev_file
 
 - name: Configure ZRAM swap
@@ -123,7 +123,7 @@
   when:
   - dietpi_configure_zram_swap | default(false)
   ansible.builtin.lineinfile:
-    path: "{{ zram_swap_udev_rules }}"
+    path: "{{ dietpi_configure_zram_swap_udev_rules }}"
     regexp: '^(.*)swapon\s+\/dev\/zram0(.*)$'
     line: '\1swapon --priority 32767 /dev/zram0\2'
     backrefs: true
@@ -137,10 +137,10 @@
   ansible.posix.sysctl:
     name: "{{ item.name }}"
     value: "{{ item.value }}"
-    sysctl_file: "{{ zram_sysctl_file }}"
+    sysctl_file: "{{ dietpi_configure_zram_sysctl_file }}"
     state: present
     reload: "{{ ansible_loop.last }}"
-  with_items: "{{ zram_sysctls }}"
+  with_items: "{{ dietpi_configure_zram_sysctls }}"
   loop_control:
     extended: true
 
