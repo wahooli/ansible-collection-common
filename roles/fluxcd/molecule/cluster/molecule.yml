@@ -1,16 +1,12 @@
 ---
 dependency:
-  name: galaxy
+  name: shell
+  command: "COLLECTION_INSTALL=false ${GITHUB_WORKSPACE:-..}/${GITHUB_REPOSITORY:-..}/tools/install-deps.sh"
 driver:
   name: docker
 platforms:
 - name: fluxcd-cluster-server
   image: "debian:12"
-  # groups:
-  # - test1
-  # groups:
-  # - k3s_servers
-  # - k3s_nodes
   tmpfs:
   - /run
   - /tmp
@@ -25,11 +21,6 @@ platforms:
   - name: fluxcd-cluster
 - name: fluxcd-cluster-agent
   image: "debian:12"
-  # groups:
-  # - k3s_servers
-  # - k3s_nodes
-  # groups:
-  # - test2
   tmpfs:
   - /run
   - /tmp
