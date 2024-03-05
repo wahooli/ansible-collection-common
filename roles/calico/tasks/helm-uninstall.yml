@@ -12,6 +12,7 @@
     chart_ref: projectcalico/tigera-operator
     release_namespace: tigera-operator
     release_state: absent
+    wait_timeout: "10m0s"
 
 - name: Ensure the tigera-operator Namespace is removed
   run_once: true

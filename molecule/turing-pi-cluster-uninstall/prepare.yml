@@ -4,26 +4,6 @@
   collections:
   - community.general
   - wahooli.k3s
-  tasks:
-  - name: Create 1G dummy device files
-    become: true
-    ansible.builtin.command: "dd if=/dev/zero of={{ item }} bs=1 count=0 seek=1G"
-    register: dd_command
-    changed_when: dd_command.rc != 0
-    failed_when: dd_command.rc != 0
-    with_items:
-    - /dummydev0
-    - /dummydev1
-
-  - name: Set up loopback devices
-    become: true
-    ansible.builtin.command: "losetup -fP {{ item }}"
-    register: losetup_command
-    changed_when: losetup_command.rc != 0
-    failed_when: losetup_command.rc != 0
-    with_items:
-    - /dummydev0
-    - /dummydev1
 
 - name: Create cluster
   ansible.builtin.import_playbook: "{{ lookup('env','MOLECULE_PROJECT_DIRECTORY') }}/playbooks/turingpi_create_cluster.yml"

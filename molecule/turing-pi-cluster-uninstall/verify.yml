@@ -7,31 +7,31 @@
   - name: Check if helm exists
     ansible.builtin.command: "which helm"
     register: which_helm_command
-    changed_when: false
-    failed_when: which_helm_command.rc == 0
+    changed_when: which_helm_command.rc == 0
+    failed_when: false
 
   - name: Check if k3s exists
     ansible.builtin.command: "which k3s"
     register: which_k3s_command
-    changed_when: false
-    failed_when: which_k3s_command.rc == 0
+    changed_when: which_k3s_command.rc == 0
+    failed_when: false
 
   - name: Check if calicoctl exists
     ansible.builtin.command: "which calicoctl"
     register: which_calicoctl_command
-    changed_when: false
-    failed_when: which_calicoctl_command.rc == 0
+    changed_when: which_calicoctl_command.rc == 0
+    failed_when: false
 
   - name: Check if kubectl-calico exists
     ansible.builtin.command: "which kubectl-calico"
     register: which_kubectl_calico_command
-    changed_when: false
-    failed_when: which_kubectl_calico_command.rc == 0
+    changed_when: which_kubectl_calico_command.rc == 0
+    failed_when: false
 
   - name: Run assertions
     ansible.builtin.assert:
       that:
-      - which_helm_command.rc == 1
-      - which_k3s_command.rc == 1
-      - which_calicoctl_command.rc == 1
-      - which_kubectl_calico_command.rc == 1
+      - which_helm_command is not changed
+      - which_k3s_command is not changed
+      - which_calicoctl_command is not changed
+      - which_kubectl_calico_command is not changed

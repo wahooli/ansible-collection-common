@@ -83,7 +83,7 @@
     name: default
   register: felixconfig
   until: felixconfig.resources != []
-  retries: 60
+  retries: "{{ calico_install_wait_retries | default(60) }}"
   delay: 1
 
 - name: Patch FelixConfiguration
@@ -106,26 +106,6 @@
       path: /spec/ipv6Support
       value: "{{ calico_enable_ipv6 | default(false) }}"
 
-# - name: Patch tigera-operator ClusterRole, add capability to uninstall
-#   when:
-#   - helm_install_calico.changed
-#   run_once: true
-#   kubernetes.core.k8s_json_patch:
-#     api_version: rbac.authorization.k8s.io/v1
-#     kind: ClusterRole
-#     name:  tigera-operator
-#     patch:
-#     - op: add
-#       path: /rules/-
-#       value:
-#         apiGroups:
-#           - operator.tigera.io
-#         resources:
-#           - installations
-#           - apiservers
-#         verbs:
-#           - delete
-
 - name: Wait until calico-system namespace has manifested
   run_once: true
   kubernetes.core.k8s_info:
@@ -134,7 +114,7 @@
     name: calico-system
   register: calico_system_ns
   until: calico_system_ns.resources != []
-  retries: 60
+  retries: "{{ calico_install_wait_retries | default(60) }}"
   delay: 1
 
 - name: Patch calico-system namespace
@@ -157,7 +137,7 @@
   register: calico_apiserver_ns
   until: calico_apiserver_ns.resources != []
   when: calico_helm_values.apiServer.enabled | default(true)
-  retries: 60
+  retries: "{{ calico_install_wait_retries | default(60) }}"
   delay: 2
 
 - name: Patch calico-apiserver namespace

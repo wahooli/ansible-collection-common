@@ -1,6 +1,7 @@
 ---
 dependency:
-  name: galaxy
+  name: shell
+  command: "${MOLECULE_PROJECT_DIRECTORY}/tools/install-deps.sh"
 driver:
   name: docker
 platforms:
@@ -47,6 +48,7 @@ provisioner:
     group_vars:
       k3s_nodes:
         k3s_delete_images_tar_after_first_start: true
+        k3s_allow_swap: true
         ansible_user: molecule
         k3s_kubelet_config:
           maxPods: 250

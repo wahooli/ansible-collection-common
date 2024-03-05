@@ -1,6 +1,7 @@
 ---
 dependency:
-  name: galaxy
+  name: shell
+  command: "${MOLECULE_SCENARIO_DIRECTORY}/../../tools/install-deps.sh"
 driver:
   name: docker
 platforms:
@@ -81,6 +82,7 @@ provisioner:
     group_vars:
       k3s_nodes:
         ansible_user: molecule
+        k3s_allow_swap: true
         k3s_kubelet_config:
           maxPods: 250
           shutdownGracePeriod: 30s

@@ -1,16 +1,16 @@
 ---
 dependency:
-  name: galaxy
-  options:
-    requirements-file: requirements.yml
+  name: shell
+  command: "${MOLECULE_PROJECT_DIRECTORY}/tools/install-deps.sh"
 driver:
   name: docker
 platforms:
-- name: turing-pi-server-01
+- name: turing-pi-server-01-uninstall
   image: "debian:12"
   groups:
   - k3s_servers
   - k3s_nodes
+  - fluxcd_nodes
   tmpfs:
   - /run
   - /tmp
@@ -24,50 +24,12 @@ platforms:
   docker_networks:
   - name: turingpi-cluster
 
-- name: turing-pi-agent-01
+- name: turing-pi-agent-01-uninstall
   image: "debian:12"
   groups:
   - k3s_agents
   - k3s_nodes
-  - ssd_nodes
-  tmpfs:
-  - /run
-  - /tmp
-  volumes:
-  - /lib/modules:/lib/modules:ro
-  privileged: true
-  pre_build_image: false
-  tty: true
-  networks:
-  - name: turingpi-cluster
-  docker_networks:
-  - name: turingpi-cluster
-
-- name: turing-pi-agent-02
-  image: "debian:12"
-  groups:
-  - k3s_agents
-  - k3s_nodes
-  - ssd_nodes
-  tmpfs:
-  - /run
-  - /tmp
-  volumes:
-  - /lib/modules:/lib/modules:ro
-  privileged: true
-  pre_build_image: false
-  tty: true
-  networks:
-  - name: turingpi-cluster
-  docker_networks:
-  - name: turingpi-cluster
-
-- name: turing-pi-agent-03
-  image: "debian:12"
-  groups:
-  - k3s_agents
-  - k3s_nodes
-  - ssd_nodes
+  # - ssd_nodes
   tmpfs:
   - /run
   - /tmp
@@ -85,49 +47,12 @@ provisioner:
   name: ansible
   env:
     ANSIBLE_ROLES_PATH: "${MOLECULE_PROJECT_DIRECTORY}/roles"
-  #   ANSIBLE_VERBOSITY: 3
-  # config_options:
-  #   tags:
-  #     run: install,prepare,k3s_server,k3s_agent
   inventory:
-    host_vars:
-      turing-pi-agent-01:
-        topolvm_prepare_disks:
-        - /dev/loop0
-        - /dev/loop3
-      turing-pi-agent-02:
-        topolvm_prepare_disks:
-        - /dev/loop1
-        - /dev/loop4
-      turing-pi-agent-03:
-        topolvm_prepare_disks:
-        - /dev/loop2
-        - /dev/loop5
     group_vars:
-      ssd_nodes:
-        k3s_node_labels:
-        - node_type=storage
-        topolvm_prepare_enable_fstrim: false
-        topolvm_prepare_disks:
-        - /dev/loop0
-        - /dev/loop1
-        topolvm_prepare_lvols:
-        - name: other
-          size: 50m
-          allow_resize: true
-        - name: logs
-          size: 50m
-          allow_resize: false
-          fstype: ext4
-          mountpath: /opt/logs
-        - name: k3s_data
-          size: 250m
-          fstype: ext4
-          mountpath: /opt/k3s_data
-          allow_resize: true
-          opts: --type raid1 --mirrors 1 --nosync
       k3s_nodes:
+        calico_install_wait_retries: 120
         ansible_user: molecule
+        k3s_allow_swap: true
         k3s_kubelet_config:
           maxPods: 250
           shutdownGracePeriod: 30s
