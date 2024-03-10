@@ -1,0 +1,35 @@
+---
+- name: Prepare server
+  hosts: kubernetes_server
+  tasks:
+  - name: "Install k3s"
+    ansible.builtin.include_role:
+      name: "k3s"
+- name: Prepare client
+  hosts: client
+  tasks:
+  - name: "Install kubectl"
+    ansible.builtin.include_role:
+      name: "kubectl"
+- name: Copy kubeconfig to client
+  hosts: all
+  tasks:
+  - name: Read kubeconfig
+    when: ansible_hostname == 'kubernetes-secret-server'
+    ansible.builtin.include_tasks: ../../tasks/read_kubeconfig.yaml
+
+  - name: Create .kube directory in home
+    ansible.builtin.file:
+      path: "~/.kube/"
+      state: directory
+      mode: '0700'
+
+  - name: Write kubeconfig
+    run_once: true
+    when:
+    - ansible_hostname == 'client'
+    - kubeconfig.content is defined
+    ansible.builtin.copy:
+      content: "{{ kubeconfig.content | ansible.builtin.b64decode | replace('127.0.0.1', 'kubernetes-secret-server') }}"
+      dest: "/home/molecule/.kube/config"
+      mode: '0644'

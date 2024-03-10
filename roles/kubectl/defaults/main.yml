@@ -1,0 +1,7 @@
+---
+# defaults file for kubectl
+kubectl_version: "stable"
+kubectl_os: "linux"
+kubectl_install_path: "/usr/local/bin/"
+# kubectl_version:
+# kubectl_arch: amd64

@@ -1,0 +1,75 @@
+---
+# tasks file for kubernetes_secret
+- name: Check kubectl is found in install path
+  ansible.builtin.stat:
+    path: "{{ kubectl_install_path }}/kubectl"
+  register: kubectl_binary
+
+- name: Get latest kubectl version
+  when: kubectl_version | default("stable") == "stable"
+  block:
+  - name: Get latest kubectl version
+    ansible.builtin.uri:
+      url: https://dl.k8s.io/release/stable.txt
+      return_content: true
+    register: version
+  - name: Set stable version as fact
+    ansible.builtin.set_fact:
+      kubectl_version: "{{ version.content | trim }}"
+
+- name: Get installed kubectl version
+  when: kubectl_binary.stat.exists
+  ansible.builtin.command: "{{ kubectl_install_path }}/kubectl version --client=true --output=json"
+  failed_when: false
+  changed_when: kubectl_installed_version.rc != 0
+  register: kubectl_installed_version
+
+- name: Set current kubectl version as fact
+  when:
+  - kubectl_binary.stat.exists
+  - kubectl_installed_version.rc == 0
+  ansible.builtin.set_fact:
+    kubectl_current_version: "{{ (kubectl_installed_version.stdout | from_json).clientVersion.gitVersion | trim }}"
+
+- name: "Install kubectl {{ kubectl_version }}"
+  when: |
+    not kubectl_binary.stat.exists
+    or (kubectl_version | lower) != (kubectl_current_version | lower)
+  block:
+  - name: Create temporary download directory
+    ansible.builtin.tempfile:
+      state: directory
+    register: kubectl_temp
+
+  - name: Detect CPU arch
+    when: not kubectl_arch | default(false)
+    ansible.builtin.set_fact:
+      kubectl_arch: '{%- if (ansible_facts.architecture is search("arm") and ansible_facts.userspace_bits == "64") or ansible_facts.architecture is search("aarch64") -%}
+      arm64{%- elif ansible_facts.architecture is search("arm") and ansible_facts.userspace_bits == "32" -%}
+      arm{%- elif ansible_facts.architecture == "x86_64" -%}
+      amd64{%- elif ansible_facts.architecture == "i386" -%}
+      i386{%- else -%}
+      {%- endif -%}'
+
+  - name: "Download kubectl release {{ kubectl_version }}"
+    ansible.builtin.get_url:
+      url: https://dl.k8s.io/release/{{ kubectl_version }}/bin/{{ kubectl_os }}/{{ kubectl_arch }}/kubectl
+      checksum: sha256:https://dl.k8s.io/release/{{ kubectl_version }}/bin/{{ kubectl_os }}/{{ kubectl_arch }}/kubectl.sha256
+      dest: "{{ kubectl_temp.path }}"
+      mode: "0644"
+    register: kubectl_dl
+
+  - name: Copy kubectl binary to install path
+    become: true
+    ansible.builtin.copy:
+      src: "{{ kubectl_temp.path }}/kubectl"
+      dest: "{{ kubectl_install_path }}"
+      mode: "0755"
+      remote_src: true
+    when: kubectl_dl is success
+  always:
+  - name: Delete kubectl temp download path
+    ansible.builtin.file:
+      state: absent
+      path: "{{ kubectl_temp.path }}"
+# end block Install kubectl

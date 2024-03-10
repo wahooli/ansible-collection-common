@@ -1,0 +1,42 @@
+---
+# This is an example playbook to execute Ansible tests.
+
+- name: Verify
+  hosts: client
+  gather_facts: false
+  tasks:
+  - name: Create secret "test"
+    kubernetes.core.k8s:
+      state: present
+      definition:
+        apiVersion: v1
+        kind: Secret
+        type: Opaque
+        metadata:
+          name: "test"
+          namespace: "default"
+        data:
+          abc: "{{ '1' | b64encode }}"
+          cde: "{{ '2' | b64encode }}"
+    register: test1
+
+  - name: Create secret "test2"
+    kubernetes.core.k8s:
+      state: present
+      definition:
+        apiVersion: v1
+        kind: Secret
+        type: Opaque
+        metadata:
+          name: "test2"
+          namespace: "kube-system"
+        data:
+          fgh: "{{ '3' | b64encode }}"
+          ijk: "{{ '4' | b64encode }}"
+    register: test2
+
+  - name: Assert
+    ansible.builtin.assert:
+      that:
+      - test2 is not changed
+      - test1 is not changed
