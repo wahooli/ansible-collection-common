@@ -11,7 +11,7 @@ platforms:
   - /run
   - /tmp
   volumes:
-    - /lib/modules:/lib/modules:ro
+  - /lib/modules:/lib/modules:ro
   privileged: true
   pre_build_image: false
   tty: true

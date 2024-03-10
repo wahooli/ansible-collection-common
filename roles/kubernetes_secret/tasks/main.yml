@@ -1,0 +1,26 @@
+---
+# tasks file for kubernetes_secret
+- name: Gather pip package facts
+  community.general.pip_package_info:
+  register: pip_facts
+
+- name: Install python pre-requisites
+  when: "'kubernetes' not in pip_facts.packages.pip"
+  ansible.builtin.pip:
+    name: kubernetes
+    extra_args: "{{ '--break-system-packages' if ansible_distribution_major_version | string == '12' else '' }}"
+
+- name: Create secret
+  when:
+  - kubernetes_secret_data is defined
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: v1
+      kind: Secret
+      type: Opaque
+      metadata:
+        name: "{{ item.name }}"
+        namespace: "{{ item.namespace | default(kubernetes_secret_namespace | default('default')) }}"
+      stringData: "{{ item.data }}"
+  with_items: "{{ kubernetes_secret_data | default(omit) }}"

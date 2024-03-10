@@ -1,0 +1,4 @@
+---
+# defaults file for kubernetes_secret
+# kubernetes_secret_apply_localhost: true
+# kubernetes_secret_namespace: default

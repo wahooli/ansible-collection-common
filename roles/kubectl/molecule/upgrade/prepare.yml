@@ -2,8 +2,8 @@
 - name: Prepare
   hosts: all
   tasks:
-  - name: "Install older version of helm"
+  - name: "Install kubectl"
     ansible.builtin.include_role:
-      name: "helm"
+      name: "kubectl"
     vars:
-      helm_tag: v3.7.0
+      kubectl_version: v1.29.1
