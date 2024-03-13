@@ -38,6 +38,19 @@
     changed_when: false
     register: flux_cli_install
 
+- name: Wait until flux-system namespace has manifested been removed
+  when:
+  - inventory_hostname in fluxcd_bootstrap_hosts | default([])
+  run_once: true
+  kubernetes.core.k8s_info:
+    api_version: v1
+    kind: Namespace
+    name: flux-system
+  register: flux_system_ns
+  until: flux_system_ns.resources == []
+  retries: "{{ flux_uninstall_wait_retries | default(60) }}"
+  delay: 1
+
 - name: Remove flux bin
   become: true
   ansible.builtin.file:

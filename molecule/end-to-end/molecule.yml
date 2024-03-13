@@ -55,7 +55,8 @@ provisioner:
         ansible_user: molecule
         k3s_allow_swap: true
         calico_install_wait_retries: 120
-        calico_uninstall_wait_timeout: "20m0s"
+        calico_uninstall_wait_timeout: "5m0s"
+        calico_uninstall_retries: 10
         k3s_kubelet_config:
           maxPods: 250
           shutdownGracePeriod: 30s
