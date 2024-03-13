@@ -1,0 +1,9 @@
+---
+- name: Converge
+  hosts: all
+  gather_facts: true
+  tasks:
+  - name: "Include fluxcd"
+    ansible.builtin.include_role:
+      name: "fluxcd"
+      tasks_from: uninstall

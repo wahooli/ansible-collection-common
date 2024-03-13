@@ -1,0 +1,10 @@
+---
+- name: Prepare
+  hosts: all
+  tasks:
+  - name: "Install k3s"
+    ansible.builtin.include_role:
+      name: "k3s"
+  - name: "Include fluxcd"
+    ansible.builtin.include_role:
+      name: "fluxcd"
