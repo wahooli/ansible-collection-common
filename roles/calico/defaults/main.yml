@@ -12,4 +12,5 @@ calico_k3s_killalld_dir: "/usr/local/bin/k3s-killall.sh.d"
 calico_disable_file_logging: true
 calico_enable_bpf_dsr: true
 calico_install_wait_retries: 60
+calico_uninstall_wait_timeout: "10m0s"
 # calico_iptables_backend: Legacy
