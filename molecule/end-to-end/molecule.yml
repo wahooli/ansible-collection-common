@@ -29,6 +29,7 @@ platforms:
   groups:
   - k3s_agents
   - k3s_nodes
+  - lvm_hosts
   tmpfs:
   - /run
   - /tmp
@@ -54,10 +55,27 @@ provisioner:
         ansible_user: molecule
         k3s_allow_swap: true
         calico_install_wait_retries: 120
+        calico_uninstall_wait_timeout: "5m0s"
+        calico_uninstall_retries: 10
         k3s_kubelet_config:
           maxPods: 250
           shutdownGracePeriod: 30s
           shutdownGracePeriodCriticalPods: 10s
+      lvm_hosts:
+        lvm_vgs:
+        - name: endtoend.data
+          pvs:
+          - /dummydev7
+          - /dummydev8
+          lvols:
+          - name: emptyVol
+            size: 50%VG
+            opts: --zero n
+        lvm_lvols:
+        - name: anotherVol
+          vg: endtoend.data
+          size: 50%VG
+          opts: --zero n
       k3s_servers:
         k3s_role: server
         k3s_node_taints:

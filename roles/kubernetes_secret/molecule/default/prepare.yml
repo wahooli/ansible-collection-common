@@ -16,7 +16,7 @@
   tasks:
   - name: Read kubeconfig
     when: ansible_hostname == 'kubernetes-secret-server'
-    ansible.builtin.include_tasks: ../../tasks/read_kubeconfig.yaml
+    ansible.builtin.include_tasks: tasks/read_kubeconfig.yaml
 
   - name: Create .kube directory in home
     ansible.builtin.file:

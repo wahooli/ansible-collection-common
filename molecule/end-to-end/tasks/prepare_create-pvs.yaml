@@ -1,0 +1,14 @@
+---
+- name: "Find free loopdevice for pv {{ pv }}"
+  become: true
+  ansible.builtin.command: "losetup -f"
+  register: free_loopdev
+  changed_when: free_loopdev.rc != 0
+  failed_when: free_loopdev.rc != 0
+
+- name: "Set up loopback device for pv {{ pv }}"
+  become: true
+  ansible.builtin.command: "losetup {{ free_loopdev.stdout | trim }} {{ pv }}"
+  register: losetup_command
+  changed_when: losetup_command.rc != 0
+  failed_when: losetup_command.rc != 0

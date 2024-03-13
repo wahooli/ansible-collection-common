@@ -35,3 +35,41 @@
       - which_k3s_command is not changed
       - which_calicoctl_command is not changed
       - which_kubectl_calico_command is not changed
+
+- name: Verify lvm_hosts
+  hosts: lvm_hosts
+  gather_facts: false
+  tasks:
+  - name: Install lvm2
+    become: true
+    register: lvm_install
+    ansible.builtin.package:
+      update_cache: true
+      name:
+      - lvm2
+
+  - name: Get pvs
+    become: true
+    ansible.builtin.command: "pvdisplay -C -o pv_name --no-headings"
+    register: pvdisplay_output
+    changed_when: pvdisplay_output.rc != 0
+
+  - name: Get vgs
+    become: true
+    ansible.builtin.command: "vgdisplay -C -o name --no-headings"
+    register: vgdisplay_output
+    changed_when: vgdisplay_output.rc != 0
+
+  - name: Get lvs
+    become: true
+    ansible.builtin.command: "lvdisplay -C -o name --no-headings"
+    register: lvdisplay_output
+    changed_when: lvdisplay_output.rc != 0
+
+  - name: Run assertions
+    ansible.builtin.assert:
+      that:
+      - lvm_install is changed
+      - pvdisplay_output.stdout_lines | length == 2
+      - vgdisplay_output.stdout_lines | length == 1
+      - lvdisplay_output.stdout_lines | length == 2

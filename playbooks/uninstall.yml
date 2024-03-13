@@ -1,6 +1,11 @@
 - name: Run uninstall procedure on all nodes
   hosts: all
   tasks:
+  - name: Run fluxcd uninstall
+    ansible.builtin.include_role:
+      name: fluxcd
+      tasks_from: uninstall
+
   - name: Run calico uninstall
     ansible.builtin.include_role:
       name: calico
@@ -14,4 +19,9 @@
   - name: Run helm uninstall
     ansible.builtin.include_role:
       name: helm
+      tasks_from: uninstall
+
+  - name: Run lvm uninstall
+    ansible.builtin.include_role:
+      name: lvm
       tasks_from: uninstall

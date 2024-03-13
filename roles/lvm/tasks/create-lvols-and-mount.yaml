@@ -1,0 +1,81 @@
+- name: Lvol mountpath operations
+  when:
+  - lvol.vg | default(vg_name | default(false))
+  - lvol.mount is defined
+  - lvol.mount is mapping
+  - lvol.mount.path is defined
+  - lvol.state | default("present") == "present"
+  block:
+  - name: Create mount path for lvol
+    become: true
+    ansible.builtin.file:
+      path: "{{ lvol.mount.path }}"
+      state: directory
+      mode: '0755'
+    register: create_mount_path
+  - name: Unmount lvol without modifying fstab
+    become: true
+    when:
+    - lvol.resizefs | default(false)
+    - lvol.force | default(false)
+    ansible.posix.mount:
+      path: "{{ lvol.mount.path }}"
+      src: "/dev/{{ lvol.vg | default(vg_name) }}/{{ lvol.name }}"
+      state: unmounted
+# end block Lvol mountpath operations
+
+- name: "Create {{ ('thinpool' if lvol.name is undefined and lvol.thinpool is defined else 'lvol') + ' ' + lvol.name | default(lvol.thinpool) }}"
+  become: true
+  when:
+  - lvol.vg | default(vg_name | default(false))
+  - lvol.state | default("present") == "present"
+  community.general.lvol:
+    vg: "{{ lvol.vg | default(vg_name) }}"
+    lv: "{{ lvol.name | default(omit) }}"
+    thinpool: "{{ lvol.thinpool | default(omit) }}"
+    snapshot: "{{ lvol.snapshot | default(omit) }}"
+    size: "{{ lvol.size }}"
+    force: "{{ lvol.force | default(false) }}"
+    active: "{{ lvol.active | default(true) }}"
+    opts: "{{ lvol.opts | default(omit) }}"
+    shrink: "{{ lvol.shrink | default(true) }}"
+    resizefs: "{{ lvol.resizefs | default(false) }}"
+    pvs: "{{ lvol.pvs | default(omit) }}"
+    state: "{{ lvol.state | default(omit) }}"
+  register: lvol_create
+
+- name: Lvol filesystem operations
+  when:
+  - lvol.vg | default(vg_name | default(false))
+  - lvol.name is defined
+  - lvol.state | default("present") == "present"
+  - lvol.fs is defined
+  - lvol.fs is mapping
+  - lvol.fs.type is defined
+  block:
+  - name: "Create filesystem {{ lvol.fs.type + ' in lvol ' + lvol.name if lvol.fs.type is defined else '' }}"
+    become: true
+    community.general.filesystem:
+      dev: "/dev/{{ lvol.vg | default(vg_name) }}/{{ lvol.name }}"
+      fstype: "{{ lvol.fs.type }}"
+      resizefs: "{{ lvol.fs.resizefs | default(lvol.resizefs | default(lvol_create.changed)) }}"
+      opts: "{{ lvol.fs.opts | default(omit) }}"
+      force: "{{ lvol.fs.force | default(false) }}" # forces to fs to be created
+
+  - name: "Mount lvol {{ lvol.name if lvol.name is defined else '' }}"
+    become: true
+    ansible.posix.mount:
+      path: "{{ lvol.mount.path }}"
+      src: "/dev/{{ lvol.vg | default(vg_name) }}/{{ lvol.name }}"
+      fstype: "{{ lvol.fs.type }}"
+      state: "{{ lvol.mount.state | default('mounted') }}"
+      boot: "{{ lvol.mount.boot | default(true) }}"
+      opts: "{{ lvol.mount.opts | default(omit) }}"
+      backup: "{{ lvol.mount.backup | default(false) }}"
+    when:
+    - create_mount_path is defined
+    - create_mount_path is succeeded
+    - lvol.mount is defined
+    - lvol.mount is mapping
+    - lvol.mount.path is defined
+# end block Lvol filesystem operations

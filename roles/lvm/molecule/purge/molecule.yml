@@ -1,0 +1,48 @@
+---
+dependency:
+  name: galaxy
+  options:
+    requirements-file: requirements.yml
+driver:
+  name: docker
+platforms:
+- name: lvm-purge-test
+  image: debian:12
+  tmpfs:
+  - /run
+  - /tmp
+  volumes:
+  - /lib/modules:/lib/modules:ro
+  privileged: true
+  pre_build_image: false
+  tty: true
+provisioner:
+  name: ansible
+  inventory:
+    group_vars:
+      all:
+        ansible_user: molecule
+        lvm_uninstall_wipe_fs: true # this removes data also
+        lvm_vgs:
+        - name: vg.testdata
+          pvs:
+          - /dummydev3
+          - /dummydev4
+          lvols:
+          - name: emptyPool
+            size: 50%VG
+            opts: --zero n
+        lvm_lvols:
+        - name: mountedPool
+          vg: vg.testdata
+          size: 50%VG
+          opts: --zero n
+          # cannot find actually created lvm devices within containers
+          # fs:
+          #   type: ext4
+          # mount:
+          #   path: /mnt/test
+          #   opts: nofail,x-systemd.device-timeout=15
+          #   boot: true
+verifier:
+  name: ansible

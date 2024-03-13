@@ -1,3 +1,3 @@
-# Ansible Collection - wahooli.k3s
+# Ansible Collection - wahooli.common
 
 Documentation for the collection.

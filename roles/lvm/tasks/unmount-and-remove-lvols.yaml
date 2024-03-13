@@ -1,0 +1,69 @@
+- name: Lvol mountpath operations
+  when:
+  - lvol.vg | default(vg_name | default(false))
+  - lvol.mount is defined
+  - lvol.mount is mapping
+  - lvol.mount.path is defined
+  block:
+  - name: Remove lvol from fstab
+    become: true
+    ansible.posix.mount:
+      path: "{{ lvol.mount.path }}"
+      src: "/dev/{{ lvol.vg | default(vg_name) }}/{{ lvol.name }}"
+      state: absent
+  - name: Remove lvol mount path
+    become: true
+    ansible.builtin.file:
+      path: "{{ lvol.mount.path }}"
+      state: absent
+# end block Lvol mountpath operations
+
+- name: Prompt for possible data deletion
+  when:
+  - not allow_purge | default(false)
+  - lvol.state | default("present") == "absent"
+  - ansible_connection not in [ "container", "docker", "community.docker.docker" ]
+  ansible.builtin.pause:
+    prompt: 'Type "yes" if you really want to wipe data for lvol {{ lvol.name }}'
+    echo: true
+  register: wipe_prompt
+
+- name: Set lvol state as fact
+  ansible.builtin.set_fact:
+    lvol_state: "{{ 'absent' if ((wipe_prompt is defined and wipe_prompt.user_input is defined and wipe_prompt.user_input == 'yes') and not allow_purge | default(false)) or (allow_purge | default(false)) else 'present' }}"
+
+- name: Set lvol state as fact in molecule tests
+  when:
+  - ansible_connection in [ "container", "docker", "community.docker.docker" ]
+  ansible.builtin.set_fact:
+    lvol_state: "{{ 'absent' if allow_purge | default(false) else 'present' }}"
+
+- name: Lvol filesystem operations
+  become: true
+  when:
+  - lvol.vg | default(vg_name | default(false))
+  - lvol.name is defined or lvol.thinpool is defined
+  - lvol_state == "absent"
+  block:
+  - name: "Remove filesystem {{ lvol.fs.type + ' in lvol ' + lvol.name if lvol.fs.type is defined else '' }}"
+    when:
+    - lvol.name is defined
+    community.general.filesystem:
+      dev: "/dev/{{ lvol.vg | default(vg_name) }}/{{ lvol.name }}"
+      force: "{{ lvol.fs.force | default(false) }}"
+      state: "{{ lvol_state }}"
+  - name: "Remove {{ ('thinpool' if lvol.name is undefined and lvol.thinpool is defined else 'lvol') + ' ' + lvol.name | default(lvol.thinpool) }}"
+    community.general.lvol:
+      vg: "{{ lvol.vg | default(vg_name) }}"
+      lv: "{{ lvol.name | default(omit) }}"
+      thinpool: "{{ lvol.thinpool | default(omit) }}"
+      snapshot: "{{ lvol.snapshot | default(omit) }}"
+      # size: "{{ lvol.size }}"
+      force: "{{ lvol.force | default(true) }}"
+      active: "{{ lvol.active | default(false) }}"
+      opts: "{{ lvol.opts | default(omit) }}"
+      shrink: "{{ lvol.shrink | default(false) }}"
+      resizefs: "{{ lvol.resizefs | default(false) }}"
+      pvs: "{{ lvol.pvs | default(omit) }}"
+      state: "{{ lvol_state }}"
+# end block Lvol filesystem operations

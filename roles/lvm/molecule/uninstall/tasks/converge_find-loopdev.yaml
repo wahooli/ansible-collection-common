@@ -1,0 +1,11 @@
+---
+- name: "Find loop device for {{ pv }}"
+  become: true
+  ansible.builtin.command: "losetup -j {{ pv }} -n --output NAME"
+  register: found_loopdev
+  changed_when: found_loopdev.rc != 0
+  failed_when: found_loopdev.rc != 0
+
+- name: Append found loopdevice to fact
+  ansible.builtin.set_fact:
+    created_loopdevs: "{{ (created_loopdevs | default([])) + [found_loopdev.stdout_lines | first | trim] }}"

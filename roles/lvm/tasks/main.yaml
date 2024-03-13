@@ -1,0 +1,47 @@
+---
+- name: Gather the package facts
+  become: true
+  ansible.builtin.package_facts:
+    manager: auto
+
+- name: Install dependencies for lvm
+  become: true
+  when:
+  - "'lvm2' not in ansible_facts.packages or 'udev' not in ansible_facts.packages"
+  ansible.builtin.package:
+    update_cache: true
+    name:
+    - lvm2
+    - udev
+    state: present
+
+- name: Copy lvm configuration
+  become: true
+  ansible.builtin.template:
+    src: "lvm.conf.j2"
+    dest: "/etc/lvm/lvm.conf"
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Create vgs
+  ansible.builtin.include_tasks: create-vgs.yaml
+  loop: "{{ lvm_vgs }}"
+  loop_control:
+    loop_var: vg
+
+- name: Create lvols
+  ansible.builtin.include_tasks: create-lvols-and-mount.yaml
+  loop: "{{ lvm_lvols }}"
+  loop_control:
+    loop_var: lvol
+
+- name: Enable systemd timer for fstrim
+  become: true
+  ansible.builtin.systemd_service:
+    name: fstrim.timer
+    state: started
+    enabled: true
+  when: lvm_enable_fstrim | bool
+  tags:
+  - molecule-idempotence-notest

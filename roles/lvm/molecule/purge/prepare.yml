@@ -1,28 +1,23 @@
 ---
-- name: Prepare lvm_hosts
+- name: Prepare
   hosts: all
-  gather_facts: true
   tasks:
   - name: Set up loopback devices
-    when: "'lvm_hosts' in group_names"
     ansible.builtin.include_tasks: tasks/prepare_create-vgs.yaml
     with_items: "{{ lvm_vgs }}"
     loop_control:
       loop_var: vg
 
   - name: Set up loopback devices
-    when: "'lvm_hosts' in group_names"
     ansible.builtin.include_tasks: tasks/converge_iterate-vgs.yaml
     with_items: "{{ lvm_vgs }}"
     loop_control:
       loop_var: vg
 
   - name: Update lvm_vgs fact
-    when: "'lvm_hosts' in group_names"
     ansible.builtin.set_fact:
       lvm_vgs: "{{ new_lvm_vgs }}"
 
-- name: Prepare all
-  hosts: all
-- name: Create cluster
-  ansible.builtin.import_playbook: "{{ lookup('env', 'MOLECULE_PROJECT_DIRECTORY') | default('../..', true) }}/playbooks/turingpi_create_cluster.yml"
+  - name: "Set up lvm"
+    ansible.builtin.include_role:
+      name: "lvm"

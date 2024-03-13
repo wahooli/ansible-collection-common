@@ -1,0 +1,14 @@
+---
+- name: Determine loopdevices
+  ansible.builtin.include_tasks: tasks/converge_find-loopdev.yaml
+  with_items: "{{ vg.pvs }}"
+  loop_control:
+    loop_var: pv
+
+- name: Update vg pvs fact
+  ansible.builtin.set_fact:
+    new_vg: "{{ vg | combine({'pvs': created_loopdevs}) }}"
+
+- name: Append vg to new_lvm_vgs fact
+  ansible.builtin.set_fact:
+    new_lvm_vgs: "{{ (new_lvm_vgs | default([])) + [new_vg] }}"

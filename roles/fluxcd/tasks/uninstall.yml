@@ -1,0 +1,63 @@
+- name: Determine fluxcd_kubeconfig fact if not set
+  when:
+  - fluxcd_kubeconfig | default("") == ""
+  ansible.builtin.import_tasks: resolve-kubeconfig.yml
+
+- name: Determine if host is master
+  when:
+  - fluxcd_bootstrap_hosts is undefined
+  block:
+  - name: Check if can access cluster with kubectl
+    become: true
+    ansible.builtin.command: "kubectl get nodes"
+    register: kubectl_command
+    failed_when: false
+    changed_when: false
+  - name: Add host to bootstrap hosts list
+    when:
+    - kubectl_command.rc == 0
+    ansible.builtin.set_fact:
+      fluxcd_bootstrap_hosts: "{{ [inventory_hostname] }}"
+
+- name: Check flux cli is found in install path
+  ansible.builtin.stat:
+    path: "{{ fluxcd_cli_install_path }}/flux"
+  register: flux_cli_binary
+
+- name: Uninstall fluxcd
+  when:
+  - flux_cli_binary.stat.exists
+  - inventory_hostname in fluxcd_bootstrap_hosts | default([])
+  environment:
+    K8S_AUTH_KUBECONFIG: "{{ fluxcd_kubeconfig }}"
+    KUBECONFIG: "{{ fluxcd_kubeconfig }}"
+  block:
+  - name: Run flux uninstall
+    ansible.builtin.command: "flux uninstall --silent"
+    failed_when: flux_cli_install.rc != 0
+    changed_when: false
+    register: flux_cli_install
+
+- name: Wait until flux-system namespace has manifested been removed
+  when:
+  - inventory_hostname in fluxcd_bootstrap_hosts | default([])
+  run_once: true
+  kubernetes.core.k8s_info:
+    api_version: v1
+    kind: Namespace
+    name: flux-system
+  register: flux_system_ns
+  until: flux_system_ns.resources == []
+  retries: "{{ flux_uninstall_wait_retries | default(60) }}"
+  delay: 1
+
+- name: Remove flux bin
+  become: true
+  ansible.builtin.file:
+    path: "{{ fluxcd_cli_install_path }}/flux"
+    state: absent
+
+- name: Remove flux bootstrap keys
+  ansible.builtin.file:
+    path: "{{ fluxcd_bootstrap_ssh_key_path }}"
+    state: absent

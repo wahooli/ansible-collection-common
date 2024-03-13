@@ -22,13 +22,13 @@
     path: "{{ which_calicoctl_command.stdout | trim }}"
     state: absent
 
-- name: Check if calicoctl exists
+- name: Check if kubectl-calicoctl exists
   ansible.builtin.command: "which kubectl-calico"
   register: which_kubectl_calico_command
   changed_when: false
   failed_when: false
 
-- name: Remove calicoctl
+- name: Remove kubectl-calicoctl
   become: true
   when: which_kubectl_calico_command.rc == 0
   ansible.builtin.file:
@@ -42,11 +42,18 @@
     path: "{{ calico_k3s_killalld_dir }}/99-remove-calico-interfaces.sh"
     state: absent
 
+- name: Check if helm exists
+  ansible.builtin.command: "which helm"
+  register: which_helm_command
+  changed_when: false
+  failed_when: false
+
 - name: Uninstall calico
   environment:
     K8S_AUTH_KUBECONFIG: "{{ calico_kubeconfig }}"
   when:
   - kubectl_command.rc == 0
+  - which_helm_command.rc == 0
   block:
   - name: Uninstall calico helm chart
     ansible.builtin.include_tasks: helm-uninstall.yml
@@ -64,14 +71,6 @@
     kubernetes.core.k8s:
       api_version: "{{ calico_felix_configuration_apiversion }}"
       kind: FelixConfiguration
-      name: default
-      state: absent
-
-  - name: Ensure the calico Installation manifest is removed
-    run_once: true
-    kubernetes.core.k8s:
-      api_version: "operator.tigera.io/v1"
-      kind: Installation
       name: default
       state: absent
 
@@ -101,4 +100,10 @@
       name: calico-system
       state: absent
 
+  - name: Remove calico helm repo
+    when: which_helm_command.rc == 0
+    kubernetes.core.helm_repository:
+      name: projectcalico
+      repo_url: https://docs.tigera.io/calico/charts
+      state: absent
 # end block Uninstall calico

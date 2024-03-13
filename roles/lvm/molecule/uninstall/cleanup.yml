@@ -1,0 +1,41 @@
+---
+- name: Cleanup
+  hosts: all
+  gather_facts: false
+  tasks:
+  - name: Wait for docker instances to be created
+    ansible.builtin.wait_for_connection:
+      timeout: 2
+    register: wait_for_instances
+    failed_when: false
+    changed_when:
+    - wait_for_instances.msg is defined
+    - '"timed out waiting" in wait_for_instances.msg'
+
+  - name: Cleanup lvm
+    when:
+    - wait_for_instances is not changed
+    block:
+    - name: Gather the package facts
+      become: true
+      ansible.builtin.package_facts:
+        manager: auto
+
+    - name: "Remove vgs"
+      when:
+      - "'lvm2' in ansible_facts.packages"
+      become: true
+      community.general.lvg:
+        vg: "{{ vg.name }}"
+        force: true
+        state: absent
+      with_items: "{{ lvm_vgs }}"
+      loop_control:
+        loop_var: vg
+
+    - name: Remove loopback devices
+      ansible.builtin.include_tasks: tasks/cleanup_remove-loopdevs.yaml
+      with_items: "{{ lvm_vgs }}"
+      loop_control:
+        loop_var: vg
+# end block Cleanup lvm
