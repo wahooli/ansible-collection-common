@@ -1,12 +1,3 @@
-- name: Add lvm to ssd nodes
-  hosts: ssd_nodes
-  gather_facts: true
-  any_errors_fatal: true
-  roles:
-  - role: topolvm_prepare
-  tags:
-  - lvm
-
 - name: Edit boot config
   hosts: all
   gather_facts: true
@@ -24,6 +15,15 @@
   - role: update_os
   tags:
   - update_os
+
+- name: Run lvm role against lvm_hosts group
+  hosts: lvm_hosts
+  gather_facts: true
+  any_errors_fatal: true
+  roles:
+  - role: lvm
+  tags:
+  - lvm
 
 - name: Install helm
   hosts: all

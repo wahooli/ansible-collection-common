@@ -1,19 +1,17 @@
 ---
 - name: Converge
   hosts: all
-  gather_facts: true
   tasks:
   - name: Set up loopback devices
-    when: "'lvm_hosts' in group_names"
     ansible.builtin.include_tasks: tasks/converge_iterate-vgs.yaml
     with_items: "{{ lvm_vgs }}"
     loop_control:
       loop_var: vg
 
   - name: Update lvm_vgs fact
-    when: "'lvm_hosts' in group_names"
     ansible.builtin.set_fact:
       lvm_vgs: "{{ new_lvm_vgs }}"
 
-- name: Import uninstall playbook
-  ansible.builtin.import_playbook: "{{ lookup('env','MOLECULE_PROJECT_DIRECTORY') | default('../..', true) }}/playbooks/uninstall.yml"
+  - name: "Include lvm role"
+    ansible.builtin.include_role:
+      name: "lvm"

@@ -15,3 +15,8 @@
     ansible.builtin.include_role:
       name: helm
       tasks_from: uninstall
+
+  - name: Run lvm uninstall
+    ansible.builtin.include_role:
+      name: lvm
+      tasks_from: uninstall

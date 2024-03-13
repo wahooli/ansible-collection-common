@@ -1,0 +1,9 @@
+---
+- name: Prepare
+  hosts: all
+  tasks:
+  - name: Set up loopback devices
+    ansible.builtin.include_tasks: tasks/prepare_create-vgs.yaml
+    with_items: "{{ lvm_vgs }}"
+    loop_control:
+      loop_var: vg

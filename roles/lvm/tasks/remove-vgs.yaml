@@ -1,0 +1,33 @@
+- name: "Remove lvols"
+  when:
+  - vg.lvols is defined
+  - vg.lvols is not string
+  - vg.lvols is iterable
+  ansible.builtin.include_tasks: tasks/unmount-and-remove-lvols.yaml
+  loop_control:
+    loop_var: lvol
+  vars:
+    vg_name: "{{ vg.name }}"
+  with_items: "{{ vg.lvols }}"
+
+- name: "Remove vg {{ vg.name }}"
+  become: true
+  community.general.lvg:
+    vg: "{{ vg.name }}"
+    pvs: "{{ ([vg.pvs] if vg.pvs is string else vg.pvs) | join(',') }}"
+    pvresize: "{{ vg.pvresize | default(false) }}"
+    pesize: "{{ vg.pesize | default(omit) }}"
+    pv_options: "{{ vg.pv_options | default(omit) }}"
+    vg_options: "{{ vg.vg_options | default(omit) }}"
+    state: "{{ 'absent' if allow_purge | default(false) else 'inactive' }}"
+
+- name: "Remove pvs from vg {{ vg.name }}"
+  become: true
+  when: allow_purge | default(false)
+  ansible.builtin.command: "pvremove {{ pv }}"
+  register: pvremove_output
+  changed_when: false
+  failed_when: pvremove_output.rc != 0
+  loop_control:
+    loop_var: pv
+  with_items: "{{ vg.pvs }}"

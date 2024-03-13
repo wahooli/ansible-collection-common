@@ -1,0 +1,48 @@
+---
+- name: Gather the package facts
+  ansible.builtin.package_facts:
+    manager: auto
+
+- name: Prompt for possible data deletion
+  when:
+  - lvm_uninstall_wipe_fs | default(false)
+  - ansible_connection not in [ "container", "docker", "community.docker.docker" ]
+  ansible.builtin.pause:
+    prompt: 'Type "yes" if you really want to wipe data'
+    echo: true
+  register: wipe_prompt_global
+
+- name: Set allow_purge as fact
+  ansible.builtin.set_fact:
+    allow_purge: "{{ true if ((wipe_prompt_global is defined and not wipe_prompt_global.skipped | default(false) and wipe_prompt_global.user_input == 'yes') or (ansible_connection in ['container', 'docker', 'community.docker.docker']) and lvm_uninstall_wipe_fs | default(false)) else false }}"
+
+- name: Unmount and delete lvols
+  when:
+  - "'lvm2' in ansible_facts.packages"
+  ansible.builtin.include_tasks: unmount-and-remove-lvols.yaml
+  loop: "{{ lvm_lvols }}"
+  loop_control:
+    loop_var: lvol
+
+- name: Delete vgs
+  when:
+  - "'lvm2' in ansible_facts.packages"
+  ansible.builtin.include_tasks: remove-vgs.yaml
+  loop: "{{ lvm_vgs }}"
+  loop_control:
+    loop_var: vg
+
+- name: Remove lvm2
+  become: true
+  ansible.builtin.package:
+    name:
+    - lvm2
+    state: absent
+
+- name: Disable systemd timer for fstrim
+  become: true
+  ansible.builtin.systemd_service:
+    name: fstrim.timer
+    state: stopped
+    enabled: false
+  when: not lvm_enable_fstrim | bool
