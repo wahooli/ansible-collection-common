@@ -2,7 +2,10 @@
 Description=Lightweight Kubernetes
 Documentation=https://k3s.io
 Wants=network-online.target
-After=network-online.target
+After=network-online.target {{ k3s_systemd_service_dependencies | default([]) | join(' ') }}
+{% if k3s_systemd_service_dependencies | default([]) != []  %}
+Requires={{ k3s_systemd_service_dependencies | join(' ') }}
+{% endif %}
 
 [Install]
 WantedBy=multi-user.target

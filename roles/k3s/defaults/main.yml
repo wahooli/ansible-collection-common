@@ -24,6 +24,8 @@
 # k3s_cluster_cidr # can override config.yaml cluster-cidr value
 # k3s_service_cidr # can override config.yaml service-cidr value
 # k3s_cluster_dns # can override config.yaml cluster-dns value
+# k3s_systemd_service_dependencies: # list of dependencies for systemd service template
+# - var-lib-longhorn.mount
 k3s_allow_cluster_init: true # joins multiple masters/server into same cluster if there are more than 2 in play
 k3s_containerd_log_level: "warn" # Supported levels are: "trace", "debug", "info", "warn", "error", "fatal", "panic"
 k3s_containerd_use_crun: true
