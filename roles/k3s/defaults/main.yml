@@ -19,6 +19,11 @@
 # k3s_kubeconfig_cluster_name
 # k3s_kubeconfig_user_name
 # k3s_kubeconfig_server
+# k3s_server # can override config.yaml server value
+# k3s_tls_san # can override config.yaml tls-san value
+# k3s_cluster_cidr # can override config.yaml cluster-cidr value
+# k3s_service_cidr # can override config.yaml service-cidr value
+# k3s_cluster_dns # can override config.yaml cluster-dns value
 k3s_allow_cluster_init: true # joins multiple masters/server into same cluster if there are more than 2 in play
 k3s_containerd_log_level: "warn" # Supported levels are: "trace", "debug", "info", "warn", "error", "fatal", "panic"
 k3s_containerd_use_crun: true

@@ -14,4 +14,6 @@ calico_enable_bpf_dsr: true
 calico_install_wait_retries: 60
 calico_uninstall_wait_timeout: "5m0s"
 calico_uninstall_retries: 2
+# calico_helm_values: # helm values for calico
+# calico_ip_pools: # can override installation.calicoNetwork.ipPools value in calico_helm_values
 # calico_iptables_backend: Legacy
