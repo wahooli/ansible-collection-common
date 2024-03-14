@@ -354,3 +354,27 @@
   tags:
   - install
   - configure
+
+- name: Combine k3s_tls_san into k3s_config
+  when:
+  - k3s_tls_san is defined
+  ansible.builtin.set_fact:
+    k3s_config: "{{ k3s_config | default({}) | combine({'tls-san': k3s_tls_san}) }}"
+
+- name: Combine k3s_cluster_cidr into k3s_config
+  when:
+  - k3s_cluster_cidr is defined
+  ansible.builtin.set_fact:
+    k3s_config: "{{ k3s_config | default({}) | combine({'cluster-cidr': k3s_cluster_cidr}) }}"
+
+- name: Combine k3s_service_cidr into k3s_config
+  when:
+  - k3s_service_cidr is defined
+  ansible.builtin.set_fact:
+    k3s_config: "{{ k3s_config | default({}) | combine({'service-cidr': k3s_service_cidr}) }}"
+
+- name: Combine k3s_cluster_dns into k3s_config
+  when:
+  - k3s_cluster_dns is defined
+  ansible.builtin.set_fact:
+    k3s_config: "{{ k3s_config | default({}) | combine({'cluster-dns': k3s_cluster_dns}) }}"

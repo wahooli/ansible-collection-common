@@ -70,10 +70,20 @@ provisioner:
                 allowedUses:
                 - Workload
                 - Tunnel
-                cidr: 10.42.0.0/16
+                cidr: 10.10.0.0/16
                 ipipMode: Always
                 natOutgoing: Enabled
                 nodeSelector: all()
                 vxlanMode: Never
+        calico_ip_pools:
+        - blockSize: 26
+          allowedUses:
+          - Workload
+          - Tunnel
+          cidr: 10.42.0.0/16
+          ipipMode: Always
+          natOutgoing: Enabled
+          nodeSelector: all()
+          vxlanMode: Never
 verifier:
   name: ansible

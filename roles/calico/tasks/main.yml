@@ -1,5 +1,14 @@
 ---
 # tasks file for calico
+- name: Combine calico_ip_pools into calico_helm_values
+  when:
+  - calico_ip_pools is defined
+  - calico_helm_values is defined
+  - calico_helm_values.installation is defined
+  - calico_helm_values.installation.calicoNetwork is defined
+  ansible.builtin.set_fact:
+    calico_helm_values: "{{ calico_helm_values | combine({'installation': {'calicoNetwork': {'ipPools': calico_ip_pools}}}, recursive=true) }}"
+
 - name: "Install debian packages"
   become: true
   ansible.builtin.apt:
