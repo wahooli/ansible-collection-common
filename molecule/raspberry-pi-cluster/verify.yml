@@ -20,13 +20,13 @@
     changed_when: calicoctl_version_output.rc > 1
 
   - name: Check server taint
-    ansible.builtin.command: "kubectl get nodes -o custom-columns=TAINTS:.spec.taints[].key --no-headers turing-pi-server-01"
+    ansible.builtin.command: "kubectl get nodes -o custom-columns=TAINTS:.spec.taints[].key --no-headers raspberry-pi-server-01"
     register: server_taints
     changed_when: server_taints.rc != 0
 
   - name: Check agent labels
     ansible.builtin.command: |
-      kubectl get nodes -o jsonpath="{.metadata.labels.node_type}" --no-headers turing-pi-agent-01
+      kubectl get nodes -o jsonpath="{.metadata.labels.node_type}" --no-headers raspberry-pi-agent-01
     register: node_type_label
     changed_when: node_type_label.rc != 0
 

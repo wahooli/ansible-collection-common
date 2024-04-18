@@ -6,21 +6,21 @@
   - role: update_os
   - role: reboot
 - name: Upgrade k3s cluster
-  hosts: k3s_nodes
+  hosts: k3s_hosts
   roles:
   - role: "k3s"
   vars:
     k3s_skip_prepare: true
 
 - name: Upgrade calico
-  hosts: k3s_nodes
+  hosts: calico_hosts
   roles:
   - role: "calico"
   vars:
     calico_helm_upgrade: true
 
 - name: Bootstrap FluxCD repository
-  hosts: fluxcd_nodes
+  hosts: fluxcd_hosts
   gather_facts: true
   any_errors_fatal: true
   roles:

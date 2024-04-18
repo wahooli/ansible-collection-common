@@ -35,8 +35,33 @@
           ijk: "{{ '4' | b64encode }}"
     register: test2
 
+  - name: Create namespace "nonexistant-ns"
+    kubernetes.core.k8s:
+      name: "nonexistant-ns"
+      api_version: v1
+      kind: Namespace
+      state: present
+    register: ns
+
+  - name: Create secret "test3"
+    kubernetes.core.k8s:
+      state: present
+      definition:
+        apiVersion: v1
+        kind: Secret
+        type: Opaque
+        metadata:
+          name: "test3"
+          namespace: "nonexistant-ns"
+        data:
+          lmn: "{{ '5' | b64encode }}"
+          opq: "{{ '6' | b64encode }}"
+    register: test3
+
   - name: Assert
     ansible.builtin.assert:
       that:
+      - ns is not changed
+      - test3 is not changed
       - test2 is not changed
       - test1 is not changed

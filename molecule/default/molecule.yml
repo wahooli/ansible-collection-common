@@ -9,7 +9,7 @@ platforms:
   image: "debian:12"
   groups:
   - k3s_servers
-  - k3s_nodes
+  - k3s_hosts
   tmpfs:
   - /run
   - /tmp
@@ -27,7 +27,7 @@ platforms:
   image: "debian:12"
   groups:
   - k3s_agents
-  - k3s_nodes
+  - k3s_hosts
   tmpfs:
   - /run
   - /tmp
@@ -46,7 +46,7 @@ provisioner:
     ANSIBLE_ROLES_PATH: "${MOLECULE_PROJECT_DIRECTORY}/roles"
   inventory:
     group_vars:
-      k3s_nodes:
+      k3s_hosts:
         k3s_delete_images_tar_after_first_start: true
         k3s_allow_swap: true
         ansible_user: molecule

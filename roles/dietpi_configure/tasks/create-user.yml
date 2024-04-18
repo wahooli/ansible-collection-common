@@ -3,6 +3,7 @@
     append: true
     name: "{{ item.name }}"
     password: "{{ (item.password | default(dietpi_configure_users_default_password)) | password_hash }}"
+    shell: "{{ item.shell | default(omit) }}"
     create_home: true
     groups: "{{ item.groups }}"
     update_password: on_create

@@ -10,17 +10,10 @@
     name: kubernetes
     extra_args: "{{ '--break-system-packages' if ansible_distribution_major_version | string == '12' else '' }}"
 
-- name: Create secret
+- name: Create secrets
   when:
   - kubernetes_secret_data is defined
-  kubernetes.core.k8s:
-    state: present
-    definition:
-      apiVersion: v1
-      kind: Secret
-      type: Opaque
-      metadata:
-        name: "{{ item.name }}"
-        namespace: "{{ item.namespace | default(kubernetes_secret_namespace | default('default')) }}"
-      stringData: "{{ item.data }}"
-  with_items: "{{ kubernetes_secret_data | default(omit) }}"
+  ansible.builtin.include_tasks: create-secret-with-ns.yml
+  loop: "{{ kubernetes_secret_data | default(omit) }}"
+  loop_control:
+    loop_var: secret

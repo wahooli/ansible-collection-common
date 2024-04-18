@@ -9,7 +9,7 @@ platforms:
   image: "debian:12"
   groups:
   - k3s_servers
-  - k3s_nodes
+  - k3s_hosts
   tmpfs:
   - /run
   - /tmp
@@ -27,7 +27,7 @@ platforms:
   image: "debian:12"
   groups:
   - k3s_servers
-  - k3s_nodes
+  - k3s_hosts
   tmpfs:
   - /run
   - /tmp
@@ -45,7 +45,7 @@ platforms:
   image: "debian:12"
   groups:
   - k3s_agents
-  - k3s_nodes
+  - k3s_hosts
   tmpfs:
   - /run
   - /tmp
@@ -80,7 +80,7 @@ provisioner:
   #     run: install,prepare,k3s_server,k3s_agent
   inventory:
     group_vars:
-      k3s_nodes:
+      k3s_hosts:
         ansible_user: molecule
         k3s_allow_swap: true
         k3s_kubelet_config:

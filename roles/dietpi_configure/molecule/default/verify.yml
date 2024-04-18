@@ -37,9 +37,16 @@
       update_password: on_create
     register: wahooli_user
 
+  - name: Verify root password has been changed
+    ansible.builtin.user:
+      name: "root"
+      password: "{{ 'root_root' | password_hash('sha512', 'salty.Salt') }}"
+    register: root_pw
+
   - name: Assert
     ansible.builtin.assert:
       that:
+      - root_pw is not changed
       - authorized_keys_contains is not changed
       - dietpi_user is not changed
       - dietpi_group is not changed

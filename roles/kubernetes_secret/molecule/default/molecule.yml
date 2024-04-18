@@ -49,6 +49,11 @@ provisioner:
           data:
             fgh: "3"
             ijk: "4"
+        - name: test3
+          namespace: nonexistant-ns
+          data:
+            lmn: "5"
+            opq: "6"
     group_vars:
       kubernetes_server:
         k3s_allow_swap: true
