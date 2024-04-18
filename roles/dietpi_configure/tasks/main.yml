@@ -1,4 +1,11 @@
 ---
+- name: Change root password
+  when:
+  - dietpi_configure_root_password | default("") != ""
+  ansible.builtin.user:
+    name: "root"
+    password: "{{ dietpi_configure_root_password | password_hash('sha512', dietpi_configure_root_password_salt | default('')) }}"
+
 - name: Ensure dbus and libpam-systemd is installed
   become: true
   ansible.builtin.apt:

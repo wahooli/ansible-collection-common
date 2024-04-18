@@ -9,8 +9,10 @@ platforms:
   image: "debian:12"
   groups:
   - k3s_servers
-  - k3s_nodes
-  - fluxcd_nodes
+  - helm_hosts
+  - k3s_hosts
+  - calico_hosts
+  - fluxcd_hosts
   tmpfs:
   - /run
   - /tmp
@@ -28,7 +30,7 @@ platforms:
   image: "debian:12"
   groups:
   - k3s_agents
-  - k3s_nodes
+  - k3s_hosts
   - lvm_hosts
   tmpfs:
   - /run

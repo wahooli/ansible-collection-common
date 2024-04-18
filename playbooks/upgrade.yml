@@ -1,5 +1,5 @@
 - name: Upgrade k3s cluster
-  hosts: all
+  hosts: k3s_hosts
   roles:
   - role: "k3s"
   vars:

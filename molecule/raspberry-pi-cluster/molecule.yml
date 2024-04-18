@@ -5,12 +5,14 @@ dependency:
 driver:
   name: docker
 platforms:
-- name: turing-pi-server-01
+- name: raspberry-pi-server-01
   image: "debian:12"
   groups:
   - k3s_servers
-  - k3s_nodes
-  - fluxcd_nodes
+  - k3s_hosts
+  - fluxcd_hosts
+  - calico_hosts
+  - helm_hosts
   tmpfs:
   - /run
   - /tmp
@@ -20,16 +22,17 @@ platforms:
   pre_build_image: false
   tty: true
   networks:
-  - name: turingpi-cluster
+  - name: raspberry-pi-cluster
   docker_networks:
-  - name: turingpi-cluster
+  - name: raspberry-pi-cluster
 
-- name: turing-pi-agent-01
+- name: raspberry-pi-agent-01
   image: "debian:12"
   groups:
   - k3s_agents
-  - k3s_nodes
-  - ssd_nodes
+  - k3s_hosts
+  - storage_hosts
+  # - lvm_hosts
   tmpfs:
   - /run
   - /tmp
@@ -39,16 +42,17 @@ platforms:
   pre_build_image: false
   tty: true
   networks:
-  - name: turingpi-cluster
+  - name: raspberry-pi-cluster
   docker_networks:
-  - name: turingpi-cluster
+  - name: raspberry-pi-cluster
 
-- name: turing-pi-agent-02
+- name: raspberry-pi-agent-02
   image: "debian:12"
   groups:
   - k3s_agents
-  - k3s_nodes
-  - ssd_nodes
+  - k3s_hosts
+  - storage_hosts
+  # - lvm_hosts
   tmpfs:
   - /run
   - /tmp
@@ -58,16 +62,17 @@ platforms:
   pre_build_image: false
   tty: true
   networks:
-  - name: turingpi-cluster
+  - name: raspberry-pi-cluster
   docker_networks:
-  - name: turingpi-cluster
+  - name: raspberry-pi-cluster
 
-- name: turing-pi-agent-03
+- name: raspberry-pi-agent-03
   image: "debian:12"
   groups:
   - k3s_agents
-  - k3s_nodes
-  - ssd_nodes
+  - k3s_hosts
+  - storage_hosts
+  # - lvm_hosts
   tmpfs:
   - /run
   - /tmp
@@ -77,49 +82,20 @@ platforms:
   pre_build_image: false
   tty: true
   networks:
-  - name: turingpi-cluster
+  - name: raspberry-pi-cluster
   docker_networks:
-  - name: turingpi-cluster
+  - name: raspberry-pi-cluster
 
 provisioner:
   name: ansible
   env:
     ANSIBLE_ROLES_PATH: "${MOLECULE_PROJECT_DIRECTORY}/roles"
   inventory:
-    host_vars:
-      turing-pi-agent-01:
-        topolvm_prepare_disks:
-        - /dev/loop0
-        - /dev/loop3
-      turing-pi-agent-02:
-        topolvm_prepare_disks:
-        - /dev/loop1
-        - /dev/loop4
-      turing-pi-agent-03:
-        topolvm_prepare_disks:
-        - /dev/loop2
-        - /dev/loop5
     group_vars:
-      ssd_nodes:
+      storage_hosts:
         k3s_node_labels:
         - node_type=storage
-        topolvm_prepare_enable_fstrim: false
-        topolvm_prepare_lvols:
-        - name: other
-          size: 50m
-          allow_resize: true
-        - name: logs
-          size: 50m
-          allow_resize: false
-          fstype: ext4
-          mountpath: /opt/logs
-        - name: k3s_data
-          size: 250m
-          fstype: ext4
-          mountpath: /opt/k3s_data
-          allow_resize: true
-          opts: --type raid1 --mirrors 1 --nosync
-      k3s_nodes:
+      k3s_hosts:
         ansible_user: molecule
         k3s_allow_swap: true
         k3s_kubelet_config:

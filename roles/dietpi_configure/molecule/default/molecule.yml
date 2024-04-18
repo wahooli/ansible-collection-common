@@ -20,6 +20,8 @@ provisioner:
   inventory:
     group_vars:
       all:
+        dietpi_configure_root_password: root_root
+        dietpi_configure_root_password_salt: salty.Salt
         dietpi_configure_users:
         - name: wahooli
           groups: sudo

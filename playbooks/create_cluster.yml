@@ -1,4 +1,4 @@
 - name: Set up k3s cluster
-  hosts: k3s_nodes
+  hosts: k3s_hosts
   roles:
   - role: "k3s"

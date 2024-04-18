@@ -14,13 +14,13 @@
   - fluxcd_bootstrap_hosts is defined
   run_once: true
   block:
-  - name: Fail if k3s_role is not list
+  - name: Fail if fluxcd_bootstrap_hosts is not list
     when:
     - fluxcd_bootstrap_hosts is iterable
     - fluxcd_bootstrap_hosts is mapping or fluxcd_bootstrap_hosts is string
     ansible.builtin.fail:
       msg: "fluxcd_bootstrap_hosts variable is not list"
-  - name: Fail if k3s_role is empty
+  - name: Fail if fluxcd_bootstrap_hosts is empty
     when:
     - fluxcd_bootstrap_hosts | length <= 0
     ansible.builtin.fail:
@@ -31,7 +31,6 @@
   - fluxcd_bootstrap_hosts is undefined
   block:
   - name: Check if can access cluster with kubectl
-    become: true
     ansible.builtin.command: "kubectl get nodes"
     register: kubectl_command
     failed_when: false
