@@ -1,11 +1,22 @@
 ---
-- name: Ensure debian packages are installed
+- name: Ensure Debian packages are installed
+  become: true
   ansible.builtin.apt:
     pkg: "{{ k3s_debian_install_pkg + (['crun', 'dbus'] if k3s_containerd_use_crun else []) }}"
     update_cache: true
     cache_valid_time: 3600
     state: present
   when: ansible_facts['os_family'] == "Debian"
+
+- name: Install crun on Archlinux
+  become: true
+  community.general.pacman:
+    name: crun
+    state: present
+    update_cache: true
+  when:
+  - "'crun' not in ansible_facts.packages"
+  - ansible_facts['os_family'] == "Archlinux"
 
 - name: Enable and start dbus
   when:

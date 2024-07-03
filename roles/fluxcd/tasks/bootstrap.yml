@@ -30,32 +30,12 @@
 - name: Install required software
   when:
   - not flux_bootstrap_pk.stat.exists or fluxcd_bootstrap_key_rotate
-  - ansible_facts['os_family'] == "Debian"
   block:
   - name: Gather the package facts
     ansible.builtin.package_facts:
       manager: auto
   - name: Install dependencies
-    when:
-    - "'openssh-client' not in ansible_facts.packages or 'python3-setuptools' not in ansible_facts.packages"
-    become: true
-    ansible.builtin.apt:
-      pkg: |
-        {{
-          []
-          + (["openssh-client"] if 'openssh-client' not in ansible_facts.packages else [])
-          + (["python3-pip", "python3-setuptools"] if 'python3-setuptools' not in ansible_facts.packages else [])
-        }}
-      update_cache: true
-      cache_valid_time: 3600
-  - name: Gather pip package facts
-    community.general.pip_package_info:
-    register: pip_facts
-  - name: Install python pre-requisites
-    when: "'kubernetes' not in pip_facts.packages.pip"
-    ansible.builtin.pip:
-      name: kubernetes
-      extra_args: "{{ '--break-system-packages' if ansible_distribution_major_version | string == '12' else '' }}"
+    ansible.builtin.include_tasks: "bootstrap-{{ ansible_os_family | lower }}.yml"
 # end block Install required software
 
 - name: Set ssh keys same across hosts having same key name
@@ -132,14 +112,45 @@
     mode: '0600'
   register: bootstrap_private_key_write
 
-- name: Remove existing SSH keys from cluster
+- name: Run kubernetes commands in venv
   when: bootstrap_public_key_write.changed or bootstrap_private_key_write.changed or fluxcd_bootstrap_key_rotate
-  kubernetes.core.k8s:
-    state: absent
-    api_version: v1
-    kind: Secret
-    namespace: flux-system
-    name: flux-system
+  vars:
+    virtualenv_command: "{{ 'python -m venv' if ansible_facts['os_family'] == 'Archlinux' else 'virtualenv' }}"
+  block:
+  - name: Get user home path
+    ansible.builtin.shell:
+      executable: /bin/bash
+      cmd: |-
+        set -o pipefail
+        grep -E {{ ansible_user | default('root') }}: /etc/passwd | awk -F: '{ print $6 }'
+    failed_when: user_home_path.rc != 0
+    changed_when: false
+    register: user_home_path
+
+  - name: Ensure the virtual environment exists
+    ansible.builtin.pip:
+      name: packaging
+      virtualenv: "{{ user_home_path.stdout }}/.ansible-venv"
+      virtualenv_command: "{{ virtualenv_command }}"
+
+  - name: Run commands in venv
+    vars:
+      ansible_python_interpreter: "{{ venv_python }}"
+      venv_dir: "{{ user_home_path.stdout }}/.ansible-venv"
+      venv_python: "{{ venv_dir }}/bin/python"
+    block:
+    - name: Install python pre-requisites
+      ansible.builtin.pip:
+        name: kubernetes
+    - name: Remove existing SSH keys from cluster
+      kubernetes.core.k8s:
+        state: absent
+        api_version: v1
+        kind: Secret
+        namespace: flux-system
+        name: flux-system
+  # end block Run commands in venv
+# end block Run kubernetes commands in venv
 
 - name: Add deploy key to GitHub
   when:
@@ -209,6 +220,7 @@
     with_items: '{{ keyscan.stdout_lines }}'
     loop_control:
       loop_var: scan_result
+# end block Generate ssh known hosts
 
 - name: Run flux bootstrap
   when:

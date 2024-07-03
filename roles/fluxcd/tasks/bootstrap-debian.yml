@@ -1,0 +1,13 @@
+- name: Install dependencies
+  when:
+  - "'openssh-client' not in ansible_facts.packages or 'python3-virtualenv' not in ansible_facts.packages"
+  become: true
+  ansible.builtin.apt:
+    pkg: |
+      {{
+        []
+        + (["python3-virtualenv"] if 'python3-virtualenv' not in ansible_facts.packages else [])
+        + (["openssh-client"] if 'openssh-client' not in ansible_facts.packages else [])
+      }}
+    update_cache: true
+    cache_valid_time: 3600

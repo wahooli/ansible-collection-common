@@ -2,11 +2,16 @@
 
 - name: Detect CPU arch
   ansible.builtin.set_fact:
-    calicoctl_cpu_arch: '{%- if (ansible_facts.architecture is search("arm") and ansible_facts.userspace_bits == "64") or ansible_facts.architecture is search("aarch64") -%}
-    arm64{%- elif ansible_facts.architecture is search("arm") and ansible_facts.userspace_bits == "32" -%}
-    armv7{%- elif ansible_facts.architecture == "x86_64" -%}
-    amd64{%- else -%}
-    {%- endif -%}'
+    calicoctl_cpu_arch: |-
+      {%- if (ansible_facts.architecture is search("arm") and ansible_facts.userspace_bits == "64") or ansible_facts.architecture is search("aarch64") -%}
+        arm64
+      {%- elif ansible_facts.architecture is search("arm") and ansible_facts.userspace_bits == "32" -%}
+        armv7
+      {%- elif ansible_facts.architecture == "x86_64" -%}
+        amd64
+      {%- elif ansible_facts.architecture in ["s390x", "ppc64le"] -%}
+        {{ ansible_facts.architecture }}
+      {%- endif -%}
 
 - name: "Download calicoctl binary {{ calicoctl_cpu_arch }}"
   ansible.builtin.get_url:

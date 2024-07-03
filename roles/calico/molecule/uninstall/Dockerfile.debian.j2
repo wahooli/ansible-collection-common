@@ -11,10 +11,10 @@ RUN apt-get update \
     sudo \
     systemd \
     systemd-sysv \
+    iptables \
     procps \
     iproute2 \
-    iptables \
-    python3-dev python3-wheel python3-apt \
+    python3-pip python3-dev python3-setuptools python3-wheel python3-apt \
     && rm -rf /var/lib/apt/lists/* \
     && rm -Rf /usr/share/doc && rm -Rf /usr/share/man \
     && apt-get clean \
@@ -38,6 +38,6 @@ RUN mkdir -p /etc/modules-load.d/ ; \
     rm -f /lib/systemd/system/local-fs.target.wants/*; \
     rm -f /lib/systemd/system/sockets.target.wants/*udev*; \
     rm -f /lib/systemd/system/sockets.target.wants/*initctl*; \
-    rm -f /lib/systemd/system/basic.target.wants/*;
+    rm -f /lib/systemd/system/basic.target.wants/*; 
 
 ENTRYPOINT [ "/lib/systemd/systemd", "log-level=info", "unit=sysinit.target" ]

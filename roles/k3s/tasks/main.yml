@@ -4,6 +4,11 @@
   become: true
   ansible.builtin.service_facts:
 
+- name: Gather the package facts
+  become: true
+  ansible.builtin.package_facts:
+    manager: auto
+
 - name: Fail if k3s_role is undefined
   when: k3s_role is undefined
   ansible.builtin.fail:

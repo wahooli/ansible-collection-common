@@ -1,0 +1,13 @@
+- name: Install dependencies
+  when:
+  - "'openssh' not in ansible_facts.packages or 'python-packaging' not in ansible_facts.packages"
+  become: true
+  community.general.pacman:
+    name: |
+      {{
+        []
+        + (["openssh"] if 'openssh' not in ansible_facts.packages else [])
+        + (["python-packaging"] if 'python-packaging' not in ansible_facts.packages else [])
+      }}
+    update_cache: true
+    state: present

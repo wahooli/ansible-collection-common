@@ -1,19 +1,41 @@
 ---
 # tasks file for kubernetes_secret
-- name: Gather pip package facts
-  community.general.pip_package_info:
-  register: pip_facts
+- name: Create venv and install kubernetes pip module
+  vars:
+    virtualenv_command: "{{ 'python -m venv' if ansible_facts['os_family'] == 'Archlinux' else 'virtualenv' }}"
+  block:
+  - name: Get user home path
+    ansible.builtin.shell:
+      executable: /bin/bash
+      cmd: |-
+        set -o pipefail
+        grep -E {{ ansible_user | default('root') }}: /etc/passwd | awk -F: '{ print $6 }'
+    failed_when: user_home_path.rc != 0
+    changed_when: false
+    register: user_home_path
 
-- name: Install python pre-requisites
-  when: "'kubernetes' not in pip_facts.packages.pip"
-  ansible.builtin.pip:
-    name: kubernetes
-    extra_args: "{{ '--break-system-packages' if ansible_distribution_major_version | string == '12' else '' }}"
+  - name: Ensure the virtual environment exists
+    ansible.builtin.pip:
+      name: packaging
+      virtualenv: "{{ user_home_path.stdout }}/.ansible-venv"
+      virtualenv_command: "{{ virtualenv_command }}"
 
-- name: Create secrets
-  when:
-  - kubernetes_secret_data is defined
-  ansible.builtin.include_tasks: create-secret-with-ns.yml
-  loop: "{{ kubernetes_secret_data | default(omit) }}"
-  loop_control:
-    loop_var: secret
+  - name: Run commands in venv
+    vars:
+      ansible_python_interpreter: "{{ venv_python }}"
+      venv_dir: "{{ user_home_path.stdout }}/.ansible-venv"
+      venv_python: "{{ venv_dir }}/bin/python"
+    block:
+    - name: Install python pre-requisites
+      ansible.builtin.pip:
+        name: kubernetes
+    - name: Create secrets
+      when:
+      - kubernetes_secret_data is defined
+      ansible.builtin.include_tasks: create-secret-with-ns.yml
+      loop: "{{ kubernetes_secret_data | default(omit) }}"
+      loop_control:
+        loop_var: secret
+
+  # end block Run commands in venv
+# end block Create venv and install kubernetes pip module

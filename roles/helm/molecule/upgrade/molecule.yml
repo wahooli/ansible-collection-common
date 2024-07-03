@@ -4,7 +4,15 @@ dependency:
 driver:
   name: docker
 platforms:
-- name: helm-upgrade
+- name: helm-upgrade-arch
+  image: archlinux:base
+  dockerfile: Dockerfile.arch.j2
+  pre_build_image: false
+- name: helm-upgrade-debian-11
+  image: debian:11
+  dockerfile: Dockerfile.debian.j2
+  pre_build_image: false
+- name: helm-upgrade-debian-12
   image: debian:12
   dockerfile: Dockerfile.debian.j2
   pre_build_image: false

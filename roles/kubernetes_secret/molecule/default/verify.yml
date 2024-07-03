@@ -3,60 +3,89 @@
 
 - name: Verify
   hosts: client
-  gather_facts: false
+  gather_facts: true
   tasks:
-  - name: Create secret "test"
-    kubernetes.core.k8s:
-      state: present
-      definition:
-        apiVersion: v1
-        kind: Secret
-        type: Opaque
-        metadata:
-          name: "test"
-          namespace: "default"
-        data:
-          abc: "{{ '1' | b64encode }}"
-          cde: "{{ '2' | b64encode }}"
-    register: test1
+  - name: Create venv and install kubernetes pip module
+    vars:
+      virtualenv_command: "{{ 'python -m venv' if ansible_facts['os_family'] == 'Archlinux' else 'virtualenv' }}"
+    block:
+    - name: Get user home path
+      ansible.builtin.shell:
+        executable: /bin/bash
+        cmd: |-
+          set -o pipefail
+          grep -E {{ ansible_user | default('root') }}: /etc/passwd | awk -F: '{ print $6 }'
+      failed_when: user_home_path.rc != 0
+      changed_when: false
+      register: user_home_path
 
-  - name: Create secret "test2"
-    kubernetes.core.k8s:
-      state: present
-      definition:
-        apiVersion: v1
-        kind: Secret
-        type: Opaque
-        metadata:
-          name: "test2"
-          namespace: "kube-system"
-        data:
-          fgh: "{{ '3' | b64encode }}"
-          ijk: "{{ '4' | b64encode }}"
-    register: test2
+    - name: Ensure the virtual environment exists
+      ansible.builtin.pip:
+        name: packaging
+        virtualenv: "{{ user_home_path.stdout }}/.ansible-venv"
+        virtualenv_command: "{{ virtualenv_command }}"
 
-  - name: Create namespace "nonexistant-ns"
-    kubernetes.core.k8s:
-      name: "nonexistant-ns"
-      api_version: v1
-      kind: Namespace
-      state: present
-    register: ns
+    - name: Run commands in venv
+      vars:
+        ansible_python_interpreter: "{{ venv_python }}"
+        venv_dir: "{{ user_home_path.stdout }}/.ansible-venv"
+        venv_python: "{{ venv_dir }}/bin/python"
+      block:
+      - name: Install python pre-requisites
+        ansible.builtin.pip:
+          name: kubernetes
+      - name: Create secret "test"
+        kubernetes.core.k8s:
+          state: present
+          definition:
+            apiVersion: v1
+            kind: Secret
+            type: Opaque
+            metadata:
+              name: "test"
+              namespace: "default"
+            data:
+              abc: "{{ '1' | b64encode }}"
+              cde: "{{ '2' | b64encode }}"
+        register: test1
 
-  - name: Create secret "test3"
-    kubernetes.core.k8s:
-      state: present
-      definition:
-        apiVersion: v1
-        kind: Secret
-        type: Opaque
-        metadata:
-          name: "test3"
-          namespace: "nonexistant-ns"
-        data:
-          lmn: "{{ '5' | b64encode }}"
-          opq: "{{ '6' | b64encode }}"
-    register: test3
+      - name: Create secret "test2"
+        kubernetes.core.k8s:
+          state: present
+          definition:
+            apiVersion: v1
+            kind: Secret
+            type: Opaque
+            metadata:
+              name: "test2"
+              namespace: "kube-system"
+            data:
+              fgh: "{{ '3' | b64encode }}"
+              ijk: "{{ '4' | b64encode }}"
+        register: test2
+
+      - name: Create namespace "nonexistant-ns"
+        kubernetes.core.k8s:
+          name: "nonexistant-ns"
+          api_version: v1
+          kind: Namespace
+          state: present
+        register: ns
+
+      - name: Create secret "test3"
+        kubernetes.core.k8s:
+          state: present
+          definition:
+            apiVersion: v1
+            kind: Secret
+            type: Opaque
+            metadata:
+              name: "test3"
+              namespace: "nonexistant-ns"
+            data:
+              lmn: "{{ '5' | b64encode }}"
+              opq: "{{ '6' | b64encode }}"
+        register: test3
 
   - name: Assert
     ansible.builtin.assert:

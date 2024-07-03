@@ -2,7 +2,7 @@
 # This is an example playbook to execute Ansible tests.
 
 - name: Verify
-  hosts: fluxcd-cluster-server
+  hosts: server
   gather_facts: false
   tasks:
   - name: Check flux bin is found in path
