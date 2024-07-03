@@ -1,0 +1,16 @@
+- name: Create FAT32 filesystem in boot partition
+  community.general.filesystem:
+    dev: '{{ archlinux_install_boot_partition }}'
+    fstype: vfat
+    opts: -F32
+
+- name: Create filesystem in root volume
+  community.general.filesystem:
+    dev: '{{ archlinux_install_root_partition }}'
+    fstype: '{{ archlinux_install_root_fstype if archlinux_install_root_fstype else "ext4" }}'
+    opts: '-L ArchLinux'
+  notify:
+  - Mount root filesystem
+
+- name: Flush handlers
+  ansible.builtin.meta: flush_handlers

@@ -1,0 +1,135 @@
+- name: Configure local timezone
+  ansible.builtin.command:
+    cmd: arch-chroot /mnt ln -sf /usr/share/zoneinfo/{{ archlinux_install_timezone }} /etc/localtime
+  failed_when: configure_local_tz.rc != 0
+  changed_when: false
+  register: configure_local_tz
+
+# MOVE TO POST INSTALL
+# - name: Configure set RTC timezone
+#   ansible.builtin.command:
+#     cmd: arch-chroot /mnt timedatectl set-local-rtc {{ '1' if archlinux_install_rtc_local_tz else '0' }}
+#   failed_when: ansible_connection not in [ "container", "docker", "community.docker.docker" ] and configure_rtc_tz.rc != 0
+#   changed_when: false
+#   register: configure_rtc_tz
+
+- name: Set HW clock
+  ansible.builtin.command:
+    cmd: arch-chroot /mnt hwclock --systohc
+  failed_when: ansible_connection not in [ "container", "docker", "community.docker.docker" ] and configure_hwclock.rc != 0
+  changed_when: false
+  register: configure_hwclock
+
+- name: Setup /etc/locale.gen
+  ansible.builtin.replace:
+    path: /mnt/etc/locale.gen
+    regexp: "^#({{ item }}.*)$"
+    replace: '\1'
+  with_items: "{{ archlinux_install_gen_locales }}"
+
+- name: Create the locale conf file
+  ansible.builtin.copy:
+    dest: /mnt/etc/locale.conf
+    content: "{{ archlinux_install_locale_conf if archlinux_install_locale_conf is defined else 'LANG=' + (archlinux_install_gen_locales | first) }}\n"
+    force: false
+    mode: "0644"
+
+- name: Generate locales
+  ansible.builtin.command:
+    cmd: arch-chroot /mnt locale-gen
+  failed_when: configure_locale_gen.rc != 0
+  changed_when: false
+  register: configure_locale_gen
+
+- name: Set console keyboard layout
+  ansible.builtin.lineinfile:
+    dest: /mnt/etc/vconsole.conf
+    line: "KEYMAP={{ archlinux_install_vconsole_keymap }}"
+    create: true
+    mode: "0644"
+  when:
+  - archlinux_install_vconsole_keymap is defined
+  - archlinux_install_vconsole_keymap | length > 0
+
+- name: Create the hostname file
+  ansible.builtin.copy:
+    dest: /mnt/etc/hostname
+    content: "{{ archlinux_install_hostname | default(inventory_hostname) }}\n"
+    force: false
+    mode: "0644"
+
+- name: Add this host the hosts file
+  ansible.builtin.blockinfile:
+    path: /mnt/etc/hosts
+    block: |
+      127.0.0.1  localhost
+      ::1        localhost
+      127.0.1.1  {{ archlinux_install_hostname | default(inventory_hostname) }}.localdomain  {{ archlinux_install_hostname | default(inventory_hostname) }}
+
+- name: Add blacklisted kernel modules
+  ansible.builtin.lineinfile:
+    dest: /mnt/etc/modprobe.d/blacklist.conf
+    line: "blacklist {{ item }}"
+    create: true
+    mode: "0644"
+  with_items: "{{ archlinux_install_blacklist_modules }}"
+  when:
+  - archlinux_install_blacklist_modules is defined
+  - archlinux_install_blacklist_modules | length > 0
+
+- name: Install mkinitcpio
+  ansible.builtin.command:
+    argv:
+    - arch-chroot
+    - /mnt
+    - pacman
+    - -S
+    - mkinitcpio
+    - --noconfirm
+  args:
+    creates: /mnt/etc/mkinitcpio.conf
+  failed_when: configure_install_mkinitcpio.rc != 0
+  changed_when: false
+  register: configure_install_mkinitcpio
+
+- name: Add btrfs to ramdisk
+  ansible.builtin.lineinfile:
+    dest: /mnt/etc/mkinitcpio.conf
+    regexp: ^BINARIES
+    line: 'BINARIES=(btrfs)'
+  when: archlinux_install_root_fstype == 'btrfs'
+  notify:
+  - Recreate ramdisk
+
+- name: Flush handlers
+  ansible.builtin.meta: flush_handlers
+
+- name: Enable SSH server
+  ansible.builtin.command:
+    cmd: arch-chroot /mnt systemctl enable sshd
+  failed_when: configure_enable_sshd.rc != 0
+  changed_when: false
+  register: configure_enable_sshd
+
+- name: Enable NetworkManager
+  ansible.builtin.command:
+    cmd: arch-chroot /mnt systemctl enable NetworkManager
+  failed_when: configure_enable_networkmanager.rc != 0
+  changed_when: false
+  register: configure_enable_networkmanager
+
+- name: Enable qemu-guest-agent
+  ansible.builtin.command:
+    cmd: arch-chroot /mnt systemctl enable qemu-guest-agent
+  failed_when: configure_enable_networkmanager.rc != 0
+  changed_when: false
+  register: configure_enable_networkmanager
+  when: "'qemu-guest-agent' in archlinux_install_packages"
+
+- name: Enable sudo for users in the `wheel` group
+  ansible.builtin.lineinfile:
+    path: /mnt/etc/sudoers
+    regexp: "^# %wheel ALL=\\(ALL:ALL\\) ALL"
+    line: "%wheel ALL=(ALL:ALL) ALL"
+    validate: 'visudo -cf %s'
+  when: "'sudo' in archlinux_install_packages"

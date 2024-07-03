@@ -1,0 +1,15 @@
+- name: Install GRUB
+  ansible.builtin.command:
+    cmd: arch-chroot /mnt grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=GRUB-ARCH
+  failed_when: configure_grub_install.rc != 0
+  changed_when: false
+  register: configure_grub_install
+  when: ansible_connection not in ["container", "docker", "community.docker.docker"]
+
+- name: Create GRUB config
+  ansible.builtin.command:
+    cmd: arch-chroot /mnt grub-mkconfig -o /boot/grub/grub.cfg
+  failed_when: configure_grub_config.rc != 0
+  changed_when: false
+  register: configure_grub_config
+  when: ansible_connection not in ["container", "docker", "community.docker.docker"]

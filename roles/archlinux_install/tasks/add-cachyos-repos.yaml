@@ -1,0 +1,74 @@
+- name: Get supported instruction set
+  ansible.builtin.shell:
+    cmd: |
+      set -o pipefail
+      /lib/ld-linux-x86-64.so.2 --help | grep supported | awk '{print $1;}' | head -n 1
+  failed_when: cachyos_supported_isa.stderr != ''
+  changed_when: false
+  register: cachyos_supported_isa
+
+- name: Check CachyOS key exists in keyring
+  ansible.builtin.shell:
+    cmd: |
+      set -o pipefail
+      pacman-key --list-keys | grep F3B607488DB35A47
+  failed_when: false
+  changed_when: cachyos_key_exists.stdout == ''
+  register: cachyos_key_exists
+
+- name: Import CachyOS pacman key
+  when: cachyos_key_exists.stdout == ''
+  community.general.pacman_key:
+    id: 882DCFE48E2051D48E2562ABF3B607488DB35A47
+    keyserver: keyserver.ubuntu.com
+    force_update: false
+
+- name: Install CachyOS mirror lists
+  community.general.pacman:
+    update_cache: true
+    name:
+    - https://mirror.cachyos.org/repo/x86_64/cachyos/cachyos-keyring-20240331-1-any.pkg.tar.zst
+    - https://mirror.cachyos.org/repo/x86_64/cachyos/cachyos-mirrorlist-18-1-any.pkg.tar.zst
+    - https://mirror.cachyos.org/repo/x86_64/cachyos/cachyos-v3-mirrorlist-18-1-any.pkg.tar.zst
+    - https://mirror.cachyos.org/repo/x86_64/cachyos/cachyos-v4-mirrorlist-6-1-any.pkg.tar.zst
+    - https://mirror.cachyos.org/repo/x86_64/cachyos/pacman-6.1.0-5-x86_64.pkg.tar.zst
+
+- name: Insert CachyOS mirrors into pacman.conf
+  ansible.builtin.blockinfile:
+    path: /etc/pacman.conf
+    append_newline: true
+    prepend_newline: true
+    backup: true
+    insertbefore: "^\\[core\\]"
+    block: |
+      {%- if cachyos_supported_isa.stdout == "x86-64-v3" -%}
+      [cachyos-v3]
+      Include = /etc/pacman.d/cachyos-v3-mirrorlist
+      [cachyos-core-v3]
+      Include = /etc/pacman.d/cachyos-v3-mirrorlist
+      [cachyos-extra-v3]
+      Include = /etc/pacman.d/cachyos-v3-mirrorlist
+      {% elif cachyos_supported_isa.stdout == "x86-64-v4" -%}
+      [cachyos-v4]
+      Include = /etc/pacman.d/cachyos-v4-mirrorlist
+      [cachyos-core-v4]
+      Include = /etc/pacman.d/cachyos-v4-mirrorlist
+      [cachyos-extra-v4]
+      Include = /etc/pacman.d/cachyos-v4-mirrorlist
+      {% endif %}
+      [cachyos]
+      Include = /etc/pacman.d/cachyos-mirrorlist
+
+- name: Refresh package cache
+  community.general.pacman:
+    update_cache: true
+
+- name: Override archlinux_install_kernel value
+  ansible.builtin.set_fact:
+    archlinux_install_kernel: linux-cachyos
+  when: archlinux_install_kernel == 'linux' or archlinux_install_kernel is undefined or archlinux_install_kernel == ''
+
+- name: Add cachyos mirror packages into additional packages
+  ansible.builtin.set_fact:
+    archlinux_install_additional_packages: "{{ (archlinux_install_additional_packages | default([])) + ['cachyos-keyring', 'cachyos-mirrorlist', 'cachyos-v3-mirrorlist', 'cachyos-v4-mirrorlist', 'pacman'] }}"
+  when: archlinux_install_packages is undefined or archlinux_install_packages | length < 1

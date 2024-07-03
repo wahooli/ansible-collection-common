@@ -1,0 +1,18 @@
+---
+# handlers file for archlinux_install
+- name: Mount root filesystem
+  ansible.posix.mount:
+    path: /mnt
+    src: "{{ archlinux_install_root_partition }}"
+    fstype: "{{ archlinux_install_root_fstype }}"
+    state: mounted
+
+- name: Remount to root subvolume
+  ansible.builtin.include_tasks: tasks/btrfs-remount-to-root-subvolume.yaml
+
+- name: Recreate ramdisk
+  ansible.builtin.command:
+    cmd: arch-chroot /mnt mkinitcpio -P
+  failed_when: recreate_ramdisk.rc != 0
+  changed_when: false
+  register: recreate_ramdisk

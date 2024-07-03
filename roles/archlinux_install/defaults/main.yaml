@@ -1,0 +1,55 @@
+---
+# defaults file for archlinux_install
+archlinux_install_uefi: true
+archlinux_install_timezone: UTC
+archlinux_install_wipe_drive: false # this option is not idempotent
+# archlinux_install_drive: /dev/sda
+# archlinux_install_boot_partition: /dev/sda1
+# archlinux_install_root_partition: /dev/sda2
+# archlinux_install_swapfile: /swap/swapfile
+# archlinux_install_swapfile_size: 4G
+archlinux_install_root_fstype: btrfs
+archlinux_install_btrfs_subvolumes: []
+# archlinux_install_vconsole_keymap: fi
+archlinux_install_enable_cachyos_repositories: false
+archlinux_install_rankmirrors: true
+# archlinux_install_rankmirrors_countries: [] # https://archlinux.org/mirrorlist/
+archlinux_install_rankmirrors_protocols:
+- https
+- http
+# archlinux_install_rankmirros_ip_version:
+# - 4
+# - 6
+archlinux_install_kernel: linux
+archlinux_install_rtc_local_tz: true
+archlinux_install_ucode: true # this will be appended into archlinux_install_packages
+archlinux_install_additional_packages:
+- base-devel
+- grub
+- sudo
+- efibootmgr
+- grub-btrfs
+- btrfs-progs
+- man-db
+- openssh
+- networkmanager
+- pacman-contrib
+- vim
+- os-prober
+# archlinux_install_hostname: hostname
+archlinux_install_gen_locales:
+- en_US.UTF-8
+# archlinux_install_locale_conf: |
+#   LANG=en_US.UTF-8
+# archlinux_install_packages: [] # setting this value overrides all packages
+archlinux_install_blacklist_modules: []
+# - modname
+# - modprefix*
+archlinux_install_users: []
+# - name: wahooli
+#   password:
+#   groups:
+#   - wheel
+#   - network
+#   shell: /bin/bash
+# archlinux_install_root_password:

@@ -1,0 +1,127 @@
+---
+# tasks file for archlinux_install
+- name: Abort if the host is not booted from the Arch install media
+  ansible.builtin.fail:
+    msg: "This host is not booted from the Arch install media!"
+  when: ansible_nodename != 'archiso'
+
+- name: Abort if archlinux_install_drive is not set
+  ansible.builtin.fail:
+    msg: "archlinux_install_drive var is not defined!"
+  when:
+  - archlinux_install_drive is not defined
+  - archlinux_install_drive | length < 1
+
+- name: Abort if archlinux_install_root_partition is not set
+  ansible.builtin.fail:
+    msg: "archlinux_install_boot_partition var is not defined!"
+  when:
+  - archlinux_install_boot_partition is not defined
+  - archlinux_install_boot_partition | length < 1
+
+- name: Abort if archlinux_install_root_partition is not set
+  ansible.builtin.fail:
+    msg: "archlinux_install_root_partition var is not defined!"
+  when:
+  - archlinux_install_root_partition is not defined
+  - archlinux_install_root_partition | length < 1
+
+- name: Verify the boot mode
+  ansible.builtin.stat:
+    path: /sys/firmware/efi/efivars
+  register: efivars
+
+- name: Abort if host is not UEFI-capabile
+  ansible.builtin.fail:
+    msg: Target system is not UEFI-capabile. Aborting.
+  when: archlinux_install_uefi and not efivars.stat.exists
+
+- name: Install package python-passlib and parted
+  community.general.pacman:
+    name: |-
+      {{
+        ["parted"]
+        + (["python-passlib"] if archlinux_install_users is defined else [])
+        + (["pacman-contrib"] if archlinux_install_rankmirrors is defined else [])
+      }}
+    state: present
+    update_cache: true
+
+- name: Update the system clock
+  ansible.builtin.command:
+    cmd: timedatectl set-ntp true
+  failed_when: timedatectl_ntp.rc != 0
+  changed_when: false
+  register: timedatectl_ntp
+
+- name: Set up partitions
+  ansible.builtin.include_tasks: partitioning.yaml
+
+- name: Create mountpoint for root volume
+  ansible.builtin.file:
+    path: /mnt
+    state: directory
+    mode: "0755"
+
+- name: Create filesystems
+  ansible.builtin.include_tasks: mkfs-and-mount-root.yaml
+
+- name: Create btrfs subvolumes
+  when:
+  - archlinux_install_root_fstype == 'btrfs'
+  - archlinux_install_btrfs_subvolumes is defined
+  - archlinux_install_btrfs_subvolumes | length > 0
+  ansible.builtin.include_tasks: btrfs-subvolumes.yaml
+
+- name: "Create mountpoint boot volume in {{ '/mnt/boot/efi' if archlinux_install_uefi else '/mnt/boot' }}"
+  ansible.builtin.file:
+    path: "{{ '/mnt/boot/efi' if archlinux_install_uefi else '/mnt/boot' }}"
+    mode: "0711"
+    state: directory
+
+- name: Mount boot filesystem
+  ansible.posix.mount:
+    path: "{{ '/mnt/boot/efi' if archlinux_install_uefi else '/mnt/boot' }}"
+    src: "{{ archlinux_install_boot_partition }}"
+    fstype: vfat
+    state: mounted
+
+- name: Create swapfile
+  when:
+  - archlinux_install_swapfile is defined
+  - archlinux_install_swapfile | length > 0
+  - archlinux_install_swapfile_size is defined
+  - archlinux_install_swapfile_size | length > 0
+  ansible.builtin.include_tasks: swapfile.yaml
+
+- name: Add CachyOS repositories
+  ansible.builtin.include_tasks: add-cachyos-repos.yaml
+  when: archlinux_install_enable_cachyos_repositories
+
+- name: Install base system
+  ansible.builtin.include_tasks: pacstrap.yaml
+
+- name: Configure install
+  ansible.builtin.include_tasks: configure.yaml
+
+- name: Setup GRUB
+  ansible.builtin.include_tasks: grub.yaml
+  when: "'grub' in archlinux_install_packages"
+
+- name: Create users
+  ansible.builtin.include_tasks: create-user.yaml
+  when:
+  - archlinux_install_users is defined
+  loop: "{{ archlinux_install_users }}"
+  loop_control:
+    loop_var: user
+
+- name: "Set root password"
+  ansible.builtin.command:
+    cmd: "arch-chroot /mnt usermod --password {{ archlinux_install_root_password | password_hash('sha512') }} root"
+  failed_when: root_password.rc != 0
+  changed_when: false
+  register: root_password
+  when:
+  - archlinux_install_root_password is defined
+  - archlinux_install_root_password | length > 1

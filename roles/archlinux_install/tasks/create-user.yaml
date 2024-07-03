@@ -1,0 +1,64 @@
+- name: "Check user exists"
+  ansible.builtin.command:
+    cmd: arch-chroot /mnt id {{ user.name }}
+  failed_when: false
+  changed_when: false
+  register: users_check_exists
+
+- name: "Create user {{ user.name }}"
+  ansible.builtin.command:
+    cmd: "arch-chroot /mnt useradd -m -U -G {{ (['users'] + (user.groups | default([]))) | join(',') }} -s {{ user.shell | default('/bin/bash') }} {{ user.name }}"
+  failed_when: users_useradd.rc != 0
+  changed_when: false
+  register: users_useradd
+  when: users_check_exists.stdout_lines | length < 1
+
+- name: "Create groups for user {{ user.name }}"
+  ansible.builtin.command:
+    cmd: "arch-chroot /mnt usermod -a -G {{ user.groups | join(',') }} {{ user.name }}"
+  failed_when: users_usermod_groups.rc != 0
+  changed_when: false
+  register: users_usermod_groups
+  when:
+  - users_check_exists.stdout_lines | length > 0
+  - user.groups | length > 0
+
+- name: "Set password for user {{ user.name }}"
+  ansible.builtin.command:
+    cmd: "arch-chroot /mnt usermod --password {{ user.password | password_hash('sha512') }} {{ user.name }}"
+  failed_when: users_usermod_password.rc != 0
+  changed_when: false
+  register: users_usermod_password
+  when:
+  - user.password is defined
+  - user.password | length > 0
+
+- name: Create ~/.ssh/ directory
+  ansible.builtin.file:
+    path: /mnt/home/{{ user.name }}/.ssh
+    state: directory
+    mode: "0700"
+
+- name: Create ~/.ssh/authorized_keys file
+  ansible.builtin.file:
+    path: /mnt/home/{{ user.name }}/.ssh/authorized_keys
+    state: touch
+    mode: "0600"
+    modification_time: preserve
+    access_time: preserve
+
+- name: "Add authorized keys"
+  ansible.builtin.lineinfile:
+    line: "{{ authorized_key }}"
+    dest: /mnt/home/{{ user.name }}/.ssh/authorized_keys
+    state: "present"
+  with_items: "{{ user.authorized_keys }}"
+  loop_control:
+    loop_var: authorized_key
+
+- name: "Chown ~/.ssh directory for user"
+  ansible.builtin.command:
+    cmd: "arch-chroot /mnt chown -R {{ user.name }}:{{ user.name }} /home/{{ user.name }}/.ssh/"
+  failed_when: users_chown.rc != 0
+  changed_when: false
+  register: users_chown
