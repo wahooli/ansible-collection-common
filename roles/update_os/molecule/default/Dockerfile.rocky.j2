@@ -5,7 +5,7 @@ ENV container=docker \
     DEPLOY_GROUP=deployer \
     SUDO_GROUP={{'sudo' if 'debian' in item.image else 'wheel' }}
 
-RUN yum install -y sudo \
+RUN {{ 'microdnf' if 'minimal' in item.image else 'dnf' }} install -y sudo {{ 'dnf' if 'minimal' in item.image else '' }} \
     && set -xe \
     && groupadd -r ${ANSIBLE_USER} \
     && groupadd -r ${DEPLOY_GROUP} \
