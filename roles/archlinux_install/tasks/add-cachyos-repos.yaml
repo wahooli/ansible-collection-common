@@ -21,18 +21,13 @@
   community.general.pacman_key:
     id: "{{ archlinux_install_cachyos_key_id }}"
     keyserver: "{{ archlinux_install_cachyos_key_server }}"
-    force_update: false
+    force_update: true
 
 - name: Install CachyOS mirror lists
   when: "pacman_conf | default('/etc/pacman.conf') == '/etc/pacman.conf'"
   community.general.pacman:
-    update_cache: true
-    name:
-    - https://mirror.cachyos.org/repo/x86_64/cachyos/cachyos-keyring-20240331-1-any.pkg.tar.zst
-    - https://mirror.cachyos.org/repo/x86_64/cachyos/cachyos-mirrorlist-18-1-any.pkg.tar.zst
-    - https://mirror.cachyos.org/repo/x86_64/cachyos/cachyos-v3-mirrorlist-18-1-any.pkg.tar.zst
-    - https://mirror.cachyos.org/repo/x86_64/cachyos/cachyos-v4-mirrorlist-6-1-any.pkg.tar.zst
-    - https://mirror.cachyos.org/repo/x86_64/cachyos/pacman-6.1.0-5-x86_64.pkg.tar.zst
+    update_cache: false
+    name: "{{ archlinux_install_cachyos_install_packages }}"
 
 - name: Insert CachyOS mirrors into pacman.conf
   ansible.builtin.blockinfile:

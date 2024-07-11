@@ -14,6 +14,12 @@ archlinux_install_btrfs_subvolumes: []
 archlinux_install_enable_cachyos_repositories: false
 archlinux_install_cachyos_key_id: 882DCFE48E2051D48E2562ABF3B607488DB35A47
 archlinux_install_cachyos_key_server: keyserver.ubuntu.com
+archlinux_install_cachyos_install_packages:
+- https://mirror.cachyos.org/repo/x86_64/cachyos/cachyos-keyring-20240331-1-any.pkg.tar.zst
+- https://mirror.cachyos.org/repo/x86_64/cachyos/cachyos-mirrorlist-18-1-any.pkg.tar.zst
+- https://mirror.cachyos.org/repo/x86_64/cachyos/cachyos-v3-mirrorlist-18-1-any.pkg.tar.zst
+- https://mirror.cachyos.org/repo/x86_64/cachyos/cachyos-v4-mirrorlist-6-1-any.pkg.tar.zst
+- https://mirror.cachyos.org/repo/x86_64/cachyos/pacman-6.1.0-6-x86_64.pkg.tar.zst
 archlinux_install_rankmirrors: true
 archlinux_install_rankmirrors_count: 5
 # archlinux_install_rankmirrors_countries: [] # https://archlinux.org/mirrorlist/
