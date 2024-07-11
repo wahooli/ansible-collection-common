@@ -1,0 +1,64 @@
+---
+# tasks file for zfs
+- name: Install dependencies
+  ansible.builtin.include_tasks: "prepare-{{ ansible_os_family | lower }}.yml"
+
+- name: Create trim timer service
+  ansible.builtin.include_tasks: zfs-trim-service.yaml
+  when: zfs_create_trim_timer | default(true)
+
+- name: List active zpools
+  become: true
+  ansible.builtin.shell:
+    executable: /bin/sh
+    cmd: |-
+      set -o pipefail
+      zpool list -H -o name
+  changed_when: false
+  register: active_zpools
+
+- name: List importable zpools
+  become: true
+  ansible.builtin.shell:
+    executable: /bin/sh
+    cmd: |-
+      set -o pipefail
+      zpool import {{ import_args }} | sed -nr 's/pool: (.*)$/\1/p' | xargs -L 1
+  changed_when: false
+  register: importable_zpools
+  vars:
+    import_args: "{{ zfs_zpool_import_default_args | default([]) | join(' ') }}"
+
+- name: Handle zpools
+  ansible.builtin.include_tasks: zpools.yaml
+  when:
+  - zfs_zpools is defined
+  - zfs_zpools | length > 0
+  loop: "{{ zfs_zpools }}"
+  loop_control:
+    loop_var: zpool
+
+- name: Enable zfs cache import service
+  become: true
+  ansible.builtin.systemd_service:
+    name: "zfs-import-cache.service"
+    state: started
+    enabled: true
+
+- name: Enable zfs mount service
+  become: true
+  ansible.builtin.systemd_service:
+    name: "zfs-mount.service"
+    enabled: true
+
+- name: Enable zfs-import target
+  become: true
+  ansible.builtin.systemd_service:
+    name: "zfs-import.target"
+    enabled: true
+
+- name: Enable zfs target
+  become: true
+  ansible.builtin.systemd_service:
+    name: "zfs.target"
+    enabled: true

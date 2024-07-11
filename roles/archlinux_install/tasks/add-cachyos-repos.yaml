@@ -11,7 +11,7 @@
   ansible.builtin.shell:
     cmd: |
       set -o pipefail
-      pacman-key --list-keys | grep F3B607488DB35A47
+      pacman-key --list-keys | grep {{ archlinux_install_cachyos_key_id }}
   failed_when: false
   changed_when: cachyos_key_exists.stdout == ''
   register: cachyos_key_exists
@@ -19,11 +19,12 @@
 - name: Import CachyOS pacman key
   when: cachyos_key_exists.stdout == ''
   community.general.pacman_key:
-    id: 882DCFE48E2051D48E2562ABF3B607488DB35A47
-    keyserver: keyserver.ubuntu.com
+    id: "{{ archlinux_install_cachyos_key_id }}"
+    keyserver: "{{ archlinux_install_cachyos_key_server }}"
     force_update: false
 
 - name: Install CachyOS mirror lists
+  when: "pacman_conf | default('/etc/pacman.conf') == '/etc/pacman.conf'"
   community.general.pacman:
     update_cache: true
     name:
@@ -35,7 +36,7 @@
 
 - name: Insert CachyOS mirrors into pacman.conf
   ansible.builtin.blockinfile:
-    path: /etc/pacman.conf
+    path: "{{ pacman_conf | default('/etc/pacman.conf') }}"
     append_newline: true
     prepend_newline: true
     backup: true
@@ -59,16 +60,35 @@
       [cachyos]
       Include = /etc/pacman.d/cachyos-mirrorlist
 
+- name: Import CachyOS keyring
+  ansible.builtin.command:
+    cmd: "arch-chroot /mnt pacman-key --recv-keys {{ archlinux_install_cachyos_key_id }} --keyserver {{ archlinux_install_cachyos_key_server }}"
+  failed_when: false
+  changed_when: false
+  when: "pacman_conf | default('/etc/pacman.conf') == '/mnt/etc/pacman.conf'"
+
+- name: Sign CachyOS keyring
+  ansible.builtin.command:
+    cmd: arch-chroot /mnt pacman-key --lsign-key {{ archlinux_install_cachyos_key_id }}
+  failed_when: false
+  changed_when: false
+  when: "pacman_conf | default('/etc/pacman.conf') == '/mnt/etc/pacman.conf'"
+
 - name: Refresh package cache
+  when: "pacman_conf | default('/etc/pacman.conf') == '/etc/pacman.conf'"
   community.general.pacman:
     update_cache: true
 
 - name: Override archlinux_install_kernel value
   ansible.builtin.set_fact:
     archlinux_install_kernel: linux-cachyos
-  when: archlinux_install_kernel == 'linux' or archlinux_install_kernel is undefined or archlinux_install_kernel == ''
+  when:
+  - "pacman_conf | default('/etc/pacman.conf') == '/etc/pacman.conf'"
+  - archlinux_install_kernel == 'linux' or archlinux_install_kernel is undefined or archlinux_install_kernel == ''
 
 - name: Add cachyos mirror packages into additional packages
   ansible.builtin.set_fact:
     archlinux_install_additional_packages: "{{ (archlinux_install_additional_packages | default([])) + ['cachyos-keyring', 'cachyos-mirrorlist', 'cachyos-v3-mirrorlist', 'cachyos-v4-mirrorlist', 'pacman'] }}"
-  when: archlinux_install_packages is undefined or archlinux_install_packages | length < 1
+  when:
+  - "pacman_conf | default('/etc/pacman.conf') == '/etc/pacman.conf'"
+  - archlinux_install_packages is undefined or archlinux_install_packages | length < 1

@@ -32,9 +32,10 @@ provisioner:
         - BE
         - "NO"
         - SE
+        - US
+        archlinux_install_rankmirrors_count: 2
         # archlinux_install_swapfile: /swap/swapfile
         # archlinux_install_swapfile_size: 1G
-        archlinux_install_rtc_local_tz: false
         archlinux_install_blacklist_modules:
         - nouveau
         # archlinux_install_locale_conf: |

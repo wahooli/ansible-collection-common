@@ -10,17 +10,3 @@
     cmd: pacstrap -K /mnt archlinux-keyring
   failed_when: false
   changed_when: false
-
-- name: Import CachyOS keyring
-  ansible.builtin.command:
-    cmd: arch-chroot /mnt pacman-key --recv-keys F3B607488DB35A47 --keyserver keyserver.ubuntu.com
-  failed_when: false
-  changed_when: false
-  when: archlinux_install_enable_cachyos_repositories
-
-- name: Sign CachyOS keyring
-  ansible.builtin.command:
-    cmd: arch-chroot /mnt pacman-key --lsign-key F3B607488DB35A47
-  failed_when: false
-  changed_when: false
-  when: archlinux_install_enable_cachyos_repositories

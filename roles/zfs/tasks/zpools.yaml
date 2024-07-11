@@ -1,0 +1,154 @@
+- name: Handle zpool
+  when:
+  - zpool.name is defined
+  - zpool.name | length > 0
+  vars:
+    # noqa: jinja[spacing]
+    zpool_action: |-
+      {%- set is_active_zpool = zpool.name in active_zpools.stdout_lines -%}
+      {%- set is_exported_zpool = zpool.name in importable_zpools.stdout_lines -%}
+      {%- if zpool.state | default('present') != 'present' -%}
+        {%- if (is_active_zpool or is_exported_zpool) or zpool.force | default(false) -%}
+          {%- if zpool.state == 'absent' and is_active_zpool -%}
+            export
+          {%- elif zpool.state == 'destroyed' and not is_exported_zpool -%}
+            destroy
+          {%- elif zpool.state == 'imported' and zpool.force | default(false) -%}
+            import
+          {%- endif -%}
+        {%- endif -%}
+      {%- elif zpool.state | default('present') == 'present' -%}
+        {%- if not is_active_zpool and (not is_exported_zpool or zpool.force | default(false)) -%}
+          create
+        {%- elif is_exported_zpool -%}
+          import
+      {%- endif -%}
+      {%- endif -%}
+    props: |-
+      {%- if zpool_action in ["create", "import"] -%}
+        {%- set _props = lookup('vars', 'zfs_zpool_' + zpool_action + '_default_props', default={}) -%}
+        {%- if zpool.properties is defined and zpool.properties is mapping -%}
+          {%- set _props = zpool.properties -%}
+        {%- endif -%}
+        {{- ["-o"] | product(_props.items() | map("reject", "==", None) | map("reject", "match", "^$") | map("join", "=")) | map("join", " ") | join(" ") -}}
+      {%- endif -%}
+    fs_props: |-
+      {%- if zpool_action == "create" -%}
+        {%- set _fs_props = lookup('vars', 'zfs_zpool_' + zpool_action + '_default_fs_props', default={}) -%}
+        {%- if zpool.fs_properties is defined and zpool.fs_properties is mapping -%}
+          {%- set _fs_props = zpool.fs_properties -%}
+        {%- endif -%}
+        {{- ["-O"] | product(_fs_props.items() | map("reject", "==", None) | map("reject", "match", "^$") | map("join", "=")) | map("join", " ") | join(" ") -}}
+      {%- endif -%}
+    vdev_args: |-
+      {%- set _output_vdevs = [] -%}
+      {%- if zpool_action == "create" -%}
+        {%- for vdev in zpool.vdevs -%}
+          {% if vdev.disks is defined and vdev.disks | length > 0 -%}
+            {%- set _vdev = [vdev.mode] if vdev.mode is defined and vdev.mode | length > 0 else [] -%}
+            {{ _output_vdevs.append((_vdev + [vdev.disks | join(" ")]) | join(" ")) }}
+          {%- endif -%}
+        {%- endfor -%}
+      {%- endif -%}
+      {{- _output_vdevs | join(" ") -}}
+    zpool_args: "{{ (zpool.args if zpool.args is defined and zpool.args | length > 0 else (lookup('vars', 'zfs_zpool_' + zpool_action + '_default_args', default=[]))) | join(' ') }}"
+    zpool_command: |-
+      {% if zpool_action != "" -%}
+        {%- set _commandline = ["zpool", zpool_action] -%}
+        {%- if zpool.force | default(false) -%}
+          {{ _commandline.append("-f") }}
+        {%- endif -%}
+        {%- if zpool_args != "" -%}
+          {{ _commandline.append(zpool_args) }}
+        {%- endif -%}
+        {%- if props != "" -%}
+          {{ _commandline.append(props) }}
+        {%- endif -%}
+        {%- if fs_props != "" -%}
+          {{ _commandline.append(fs_props) }}
+        {%- endif -%}
+        {{- _commandline.append(zpool.name) -}}
+        {%- if vdev_args != "" -%}
+          {{ _commandline.append(vdev_args) }}
+        {%- endif -%}
+        {{- _commandline | join(" ") -}}
+      {%- else -%}
+        true
+      {%- endif -%}
+    zpool_command_name: |-
+      {%- set _zpool_action = "skip" -%}
+      {%- if zpool.state | default('present') == 'present' -%}
+        {%- if (zpool.name not in importable_zpools.stdout_lines and zpool.name not in active_zpools.stdout_lines) or zpool.force | default(false) -%}
+          {%- set _zpool_action = "create" -%}
+        {%- else -%}
+          {%- set _zpool_action = "import" -%}
+        {%- endif -%}
+      {%- elif zpool.state == "imported" -%}
+        {%- set _zpool_action = "import" -%}
+      {%- elif zpool.state == "absent" -%}
+        {%- set _zpool_action = "export" -%}
+      {%- elif zpool.state == "destroyed" -%}
+        {%- set _zpool_action = "destroy" -%}
+      {%- endif -%}
+      {{ "force " if _zpool_action != "skip" and zpool.force | default(false) else "" -}} {{ _zpool_action }} zpool "{{ zpool.name }}"
+  block:
+  - name: "Debug: {{ zpool_command_name | capitalize }}"
+    when: zfs_debug | default(false)
+    ansible.builtin.debug:
+      msg: "{{ 'cmd: ' + zpool_command if zpool_command != 'true' else 'no command executed' }}"
+
+  - name: "{{ zpool_command_name | capitalize }}"
+    become: true
+    ansible.builtin.command:
+      cmd: "{{ zpool_command }}"
+    failed_when: zpool_command_exec.rc != 0
+    changed_when: "zpool_command != 'true'"
+    register: zpool_command_exec
+    when: not zfs_debug | default(false)
+
+  - name: Gather zpool facts from pool
+    community.general.zfs_facts:
+      name: "{{ zpool.name }}"
+      recurse: true
+      parsable: true
+    when:
+    - zpool_action not in ["create", "destroy", "export"]
+    - not (zpool_action == "import" and zfs_debug | default(false))
+
+  - name: "Handle datasets in {{ zpool.name }}"
+    ansible.builtin.include_tasks: datasets.yaml
+    when:
+    - zpool.datasets is defined
+    - zpool.datasets | length > 0
+    - zpool_action not in ["destroy", "export"]
+    loop: "{{ zpool.datasets }}"
+    loop_control:
+      loop_var: dataset
+
+  - name: Enable a timer unit for zfs scrub
+    become: true
+    when: zpool.scrub | default("none") in ["weekly", "monthly"]
+    ansible.builtin.systemd_service:
+      name: "zfs-scrub-{{- zpool.scrub -}}@{{- zpool.name -}}.timer"
+      state: started
+      enabled: true
+
+  - name: Disable a timer unit for zfs scrub
+    become: true
+    when: zpool.scrub | default("none") not in ["weekly", "monthly"]
+    ansible.builtin.systemd_service:
+      name: "zfs-scrub-{{- item -}}@{{- zpool.name -}}.timer"
+      state: stopped
+      enabled: false
+    with_items:
+    - weekly
+    - monthly
+
+  - name: "Set timer unit for zfs trim {{ 'enabled' if zpool.enable_trim | default(false) else 'disabled' }}"
+    become: true
+    when: zpool.enable_trim | default(false)
+    ansible.builtin.systemd_service:
+      name: "zfs-trim@{{- zpool.name -}}.timer"
+      state: "{{ 'started' if zpool.enable_trim | default(false) else 'stopped' }}"
+      enabled: "{{ zpool.enable_trim | default(false) }}"
+# end block Handle zpool

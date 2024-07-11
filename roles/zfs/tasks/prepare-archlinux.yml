@@ -1,0 +1,12 @@
+- name: Install zfs-utils
+  become: true
+  community.general.pacman:
+    name: zfs-utils
+    state: present
+    update_cache: true
+
+- name: Add zfs kernel module
+  become: true
+  community.general.modprobe:
+    name: zfs
+    state: present

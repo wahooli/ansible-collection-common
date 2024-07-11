@@ -13,7 +13,7 @@
       {%- for ip_version in (archlinux_install_rankmirros_ip_version | default(['4'])) -%}
         ip_version={{ ip_version }}&
       {%- endfor -%}
-      use_mirror_status=on" | sed -e 's/^#Server/Server/' -e '/^#/d' | rankmirrors -n 5 - > /etc/pacman.d/mirrorlist
+      use_mirror_status=on" | sed -e 's/^#Server/Server/' -e '/^#/d' | rankmirrors -n {{ archlinux_install_rankmirrors_count | default('5') }} - > /etc/pacman.d/mirrorlist
   failed_when: rankmirrors.rc != 0
   changed_when: false
   register: rankmirrors
@@ -50,3 +50,11 @@
     path: "/mnt/etc/pacman.conf"
   register: pacstrap_pacman_conf
   failed_when: not pacstrap_pacman_conf.stat.exists
+
+- name: Add CachyOS repositories to installation
+  ansible.builtin.include_tasks: add-cachyos-repos.yaml
+  when:
+  - archlinux_install_enable_cachyos_repositories
+  - pacstrap_command.changed # noqa: no-handler
+  vars:
+    pacman_conf: /mnt/etc/pacman.conf

@@ -1,0 +1,37 @@
+---
+- name: Cleanup
+  hosts: all
+  gather_facts: false
+  tasks:
+  - name: Wait for docker instances to be created
+    ansible.builtin.wait_for_connection:
+      delay: 1
+      timeout: 2
+    register: wait_for_instances
+    failed_when: false
+    changed_when:
+    - wait_for_instances.msg is defined
+    - '"timed out waiting" in wait_for_instances.msg'
+
+  - name: Cleanup archlinux_install
+    when:
+    - wait_for_instances is not changed
+    block:
+    - name: "Destroy zpools"
+      become: true
+      ansible.builtin.command:
+        cmd: "zpool destroy -Rr {{ zpool.name }}"
+      failed_when: false
+      changed_when: false
+      when:
+      - zfs_zpools is defined
+      - zfs_zpools | length > 0
+      loop: "{{ zfs_zpools }}"
+      loop_control:
+        loop_var: zpool
+
+  - name: Remove /scratch directory
+    become: true
+    ansible.builtin.file:
+      path: /scratch
+      state: absent

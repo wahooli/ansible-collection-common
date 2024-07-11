@@ -32,6 +32,7 @@ jobs:
           files: roles/**/*
           files_ignore: |
             roles/reboot/**
+            roles/zfs/**
             *.md
             **/*.md
             **/.yamllint

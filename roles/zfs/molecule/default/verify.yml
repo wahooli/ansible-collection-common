@@ -1,0 +1,34 @@
+---
+# This is an example playbook to execute Ansible tests.
+
+- name: Verify
+  hosts: all
+  gather_facts: false
+  tasks:
+  - name: Check if /mnt/etc/pacman.conf exists
+    ansible.builtin.stat:
+      path: "/mnt/etc/pacman.conf"
+    register: verify_pacman_conf
+
+  - name: Check if /mnt/etc/pacman.conf exists
+    ansible.builtin.stat:
+      path: "/mnt/etc/mkinitcpio.conf"
+    register: verify_mkinitcpio_conf
+
+  - name: Check if /mnt/home exists
+    ansible.builtin.stat:
+      path: "/mnt/home"
+    register: verify_home
+
+  - name: Check if /mnt/var exists
+    ansible.builtin.stat:
+      path: "/mnt/var"
+    register: verify_var
+
+  - name: Run assertions
+    ansible.builtin.assert:
+      that:
+      - verify_pacman_conf.stat.exists
+      - verify_mkinitcpio_conf.stat.exists
+      - verify_home.stat.exists
+      - verify_var.stat.exists

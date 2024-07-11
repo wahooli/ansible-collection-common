@@ -12,7 +12,10 @@ archlinux_install_root_fstype: btrfs
 archlinux_install_btrfs_subvolumes: []
 # archlinux_install_vconsole_keymap: fi
 archlinux_install_enable_cachyos_repositories: false
+archlinux_install_cachyos_key_id: 882DCFE48E2051D48E2562ABF3B607488DB35A47
+archlinux_install_cachyos_key_server: keyserver.ubuntu.com
 archlinux_install_rankmirrors: true
+archlinux_install_rankmirrors_count: 5
 # archlinux_install_rankmirrors_countries: [] # https://archlinux.org/mirrorlist/
 archlinux_install_rankmirrors_protocols:
 - https
@@ -21,7 +24,6 @@ archlinux_install_rankmirrors_protocols:
 # - 4
 # - 6
 archlinux_install_kernel: linux
-archlinux_install_rtc_local_tz: true
 archlinux_install_ucode: true # this will be appended into archlinux_install_packages
 archlinux_install_additional_packages:
 - base-devel
