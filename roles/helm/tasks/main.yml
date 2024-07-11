@@ -88,9 +88,16 @@
 
 # end block Install helm
 
+- name: Get current user name
+  ansible.builtin.command: whoami
+  register: current_user_name
+  changed_when: current_user_name.rc != 0
+  when: ansible_user is undefined or ansible_user == ""
+
 - name: Install helm-diff plugin in python venv
   when: helm_diff_install | default(true)
   vars:
+    venv_user: "{{ ansible_user | default(current_user_name.stdout) | default(omit) }}"
     virtualenv_command: "{{ 'python -m venv' if ansible_facts['os_family'] == 'Archlinux' else 'virtualenv' }}"
   block:
   - name: "Install debian packages"
@@ -119,7 +126,7 @@
       executable: /bin/bash
       cmd: |-
         set -o pipefail
-        grep -E {{ ansible_user | default('root') }}: /etc/passwd | awk -F: '{ print $6 }'
+        grep -E {{ venv_user | default('root') }}: /etc/passwd | awk -F: '{ print $6 }'
     failed_when: user_home_path.rc != 0
     changed_when: false
     register: user_home_path

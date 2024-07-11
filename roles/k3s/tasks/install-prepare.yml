@@ -64,6 +64,8 @@
     state: present
 
 - name: Set kernel.pid_max
+  when:
+  - ansible_connection not in [ "container", "docker", "community.docker.docker" ]
   ansible.posix.sysctl:
     name: kernel.pid_max
     value: "{{ 4194304 if ansible_facts.userspace_bits == '64' else 32768 }}"
@@ -85,7 +87,7 @@
     value: "{{ item.value }}"
     sysctl_file: "{{ k3s_sysctl_file }}"
     state: present
-    reload: "{{ ansible_loop.last }}"
+    reload: "{{ ansible_loop.last and ansible_connection not in [ 'container', 'docker', 'community.docker.docker' ] }}"
   with_items: "{{ k3s_sysctls }}"
   loop_control:
     extended: true

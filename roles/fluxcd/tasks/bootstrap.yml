@@ -112,9 +112,16 @@
     mode: '0600'
   register: bootstrap_private_key_write
 
+- name: Get current user name
+  ansible.builtin.command: whoami
+  register: current_user_name
+  changed_when: current_user_name.rc != 0
+  when: ansible_user is undefined or ansible_user == ""
+
 - name: Run kubernetes commands in venv
   when: bootstrap_public_key_write.changed or bootstrap_private_key_write.changed or fluxcd_bootstrap_key_rotate
   vars:
+    venv_user: "{{ ansible_user | default(current_user_name.stdout) | default(omit) }}"
     virtualenv_command: "{{ 'python -m venv' if ansible_facts['os_family'] == 'Archlinux' else 'virtualenv' }}"
   block:
   - name: Get user home path
@@ -122,7 +129,7 @@
       executable: /bin/bash
       cmd: |-
         set -o pipefail
-        grep -E {{ ansible_user | default('root') }}: /etc/passwd | awk -F: '{ print $6 }'
+        grep -E {{ venv_user | default('root') }}: /etc/passwd | awk -F: '{ print $6 }'
     failed_when: user_home_path.rc != 0
     changed_when: false
     register: user_home_path
