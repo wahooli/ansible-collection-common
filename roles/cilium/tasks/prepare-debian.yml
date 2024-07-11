@@ -1,0 +1,10 @@
+- name: "Install debian packages"
+  become: true
+  ansible.builtin.apt:
+    pkg:
+    - git
+    - curl
+    - python3-pip
+    - virtualenv
+    update_cache: true
+    cache_valid_time: 3600

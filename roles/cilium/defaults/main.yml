@@ -1,0 +1,18 @@
+---
+# defaults file for cilium
+# cilium_version:
+# cilium_cli_version:
+cilium_default_kubeconfig: /etc/rancher/k3s/k3s.yaml
+# cilium_kubeconfig:
+cilium_cli_install_path: "/usr/local/bin"
+cilium_cli_install: true
+# cilium_helm_upgrade: true
+cilium_k3s_killall_script: true
+cilium_uninstall_remove_killall_script: false
+cilium_k3s_killalld_dir: "/usr/local/bin/k3s-killall.sh.d"
+cilium_require_install: true
+cilium_install_wait_retries: 60
+cilium_uninstall_wait_timeout: "5m0s"
+cilium_uninstall_retries: 2
+cilium_uninstall_remove_crds: true
+# cilium_helm_values: # helm values for cilium

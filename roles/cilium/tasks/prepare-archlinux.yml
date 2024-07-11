@@ -1,0 +1,6 @@
+- name: Install git on Archlinux
+  become: true
+  community.general.pacman:
+    name: git
+    state: present
+    update_cache: true

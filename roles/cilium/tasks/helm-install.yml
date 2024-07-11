@@ -1,0 +1,54 @@
+- name: Get current cilium helm version
+  block:
+  - name: Get cilium helmrelease information
+    kubernetes.core.helm_info:
+      release_name: cilium
+      release_namespace: kube-system
+      release_state:
+      - deployed
+    register: cilium_helmrelease
+  - name: Set current cilium version fact
+    ansible.builtin.set_fact:
+      cilium_installed_version: "{{ cilium_helmrelease.status.app_version }}"
+    when: cilium_helmrelease.status.app_version is defined
+
+- name: Add helm repo for cilium
+  kubernetes.core.helm_repository:
+    name: cilium
+    repo_url: https://helm.cilium.io/
+    state: present
+  register: cilium_repo_add
+
+- name: Separately update the repository cache
+  kubernetes.core.helm:
+    name: dummy
+    namespace: kube-system
+    state: absent
+    update_repo_cache: true
+  when: not cilium_repo_add.changed
+
+- name: "Helm deploy cilium {{ cilium_version }}"
+  kubernetes.core.helm:
+    name: cilium
+    chart_ref: cilium/cilium
+    release_namespace: kube-system
+    chart_version: "{{ cilium_version }}"
+    values: "{{ cilium_helm_values | default({}) }}"
+    wait: true
+  when:
+    cilium_version != (cilium_installed_version | default("default_value"))
+    or
+    cilium_helm_upgrade | default(false)
+  register: helm_install_cilium
+
+- name: Wait until cilium DaemonSet is up
+  kubernetes.core.k8s_info:
+    api_version: v1
+    kind: Pod
+    namespace: kube-system
+    label_selectors:
+    - app.kubernetes.io/name=cilium-agent
+    - app.kubernetes.io/part-of=cilium
+    - k8s-app=cilium
+  register: cilium_pod_list
+  until: cilium_pod_list|json_query('resources[*].status.phase')|unique == ["Running"]

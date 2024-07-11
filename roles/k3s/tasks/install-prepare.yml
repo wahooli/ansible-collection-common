@@ -87,7 +87,7 @@
     value: "{{ item.value }}"
     sysctl_file: "{{ k3s_sysctl_file }}"
     state: present
-    reload: "{{ ansible_loop.last and ansible_connection not in [ 'container', 'docker', 'community.docker.docker' ] }}"
+    reload: "{{ ansible_loop.last and ansible_connection not in ['container', 'docker', 'community.docker.docker'] }}"
   with_items: "{{ k3s_sysctls }}"
   loop_control:
     extended: true

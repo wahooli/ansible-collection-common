@@ -1,0 +1,3 @@
+---
+# vars file for cilium
+cilium_default_kubeconfig_path: "~/.kube/config"

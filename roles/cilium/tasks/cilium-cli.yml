@@ -1,0 +1,82 @@
+---
+# after v0.15.16 386 and arm versions are dropped
+- name: Detect CPU arch
+  ansible.builtin.set_fact:
+    cilium_cli_cpu_arch: |-
+      {%- if (ansible_facts.architecture is search("arm") and ansible_facts.userspace_bits == "64") or ansible_facts.architecture is search("aarch64") -%}
+        arm64
+      {%- elif ansible_facts.architecture is search("arm") and ansible_facts.userspace_bits == "32" -%}
+        arm
+      {%- elif ansible_facts.architecture == "x86_64" -%}
+        amd64
+      {%- elif ansible_facts.architecture == "i386" -%}
+        386
+      {%- endif -%}
+
+- name: Get current cilium version if installed
+  ansible.builtin.shell:
+    executable: /bin/bash
+    cmd: |-
+      set -o pipefail
+      cilium version --client | head -1 | awk '{print $2;}'
+  failed_when: false
+  changed_when: cilium_cli_current_version_command.stderr_lines | length > 0
+  register: cilium_cli_current_version_command
+- name: Set cilium cli current version fact
+  ansible.builtin.set_fact:
+    cilium_cli_current_version: "{{ cilium_cli_current_version_command.stdout | trim }}"
+  when: not cilium_cli_current_version_command.changed
+
+- name: Set cilium-cli version
+  when: cilium_cli_version | default("latest") == "latest"
+  block:
+  - name: Get stable version of cilium cli
+    run_once: true
+    ansible.builtin.uri:
+      url: https://raw.githubusercontent.com/cilium/cilium-cli/main/stable.txt
+      return_content: true
+    register: cilium_cli_stable
+  - name: Set cilium cli latest as fact
+    ansible.builtin.set_fact:
+      cilium_cli_version: "{{ cilium_cli_stable.content | trim }}"
+    when: not cilium_cli_stable.failed
+
+- name: Download and install cilium cli
+  when: cilium_cli_current_version | default("") != cilium_cli_version
+  block:
+  - name: Create temporary download directory
+    ansible.builtin.tempfile:
+      state: directory
+    register: cilium_cli_temp
+
+  - name: "Download cilium cli binary {{ cilium_cli_cpu_arch }}"
+    ansible.builtin.get_url:
+      url: "https://github.com/cilium/cilium-cli/releases/download/{{ cilium_cli_version }}/cilium-linux-{{ cilium_cli_cpu_arch }}.tar.gz"
+      checksum: "sha256:https://github.com/cilium/cilium-cli/releases/download/{{ cilium_cli_version }}/cilium-linux-{{ cilium_cli_cpu_arch }}.tar.gz.sha256sum"
+      dest: "{{ cilium_cli_temp.path }}"
+      mode: "0644"
+    register: cilium_cli_dl
+    retries: 10
+    until: cilium_cli_dl is success
+
+  - name: Extract cilium cli archive
+    ansible.builtin.unarchive:
+      src: "{{ cilium_cli_temp.path }}/cilium-linux-{{ cilium_cli_cpu_arch }}.tar.gz"
+      dest: "{{ cilium_cli_temp.path }}"
+      remote_src: true
+    when: cilium_cli_dl is success
+
+  - name: Copy helm binary to install path
+    become: true
+    ansible.builtin.copy:
+      src: "{{ cilium_cli_temp.path }}/cilium"
+      dest: "{{ cilium_cli_install_path }}"
+      mode: "0755"
+      remote_src: true
+    when: cilium_cli_dl is success
+
+  - name: Delete cilium cli temp path
+    ansible.builtin.file:
+      state: absent
+      path: "{{ cilium_cli_temp.path }}"
+# end block Download and install cilium cli
