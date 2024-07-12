@@ -22,46 +22,6 @@ platforms:
   privileged: true
   pre_build_image: false
   tty: true
-  # devices:
-  # - /dev/fuse:/dev/fuse:rwm
-  # # - /dev/kmsg
-  # - /dev/net/tun:/dev/net/tun:rwm
-
-# - name: k3s-cilium-arch
-#   image: archlinux:base
-#   dockerfile: Dockerfile.arch.j2
-#   tmpfs:
-#   # - /run
-#   - /tmp
-#   volumes:
-
-#   privileged: true
-#   pre_build_image: false
-#   tty: true
-
-# # - name: k3s-cilium-debian
-# #   image: debian:12
-# #   dockerfile: Dockerfile.debian.j2
-# #   tmpfs:
-# #   - /run
-# #   - /tmp
-# #   - /sys
-# #   # volumes:
-# #   # - /proc/:/proc/:ro
-# #   privileged: false
-# #   devices:
-# #   - /dev/fuse:/dev/fuse:rwm
-# #   # - /dev/kmsg
-# #   - /dev/net/tun:/dev/net/tun:rwm
-# #   capabilities:
-# #   - SYS_ADMIN
-# #   - NET_ADMIN
-# #   pre_build_image: false
-# #   sysctls:
-# #     net.ipv4.conf.all.route_localnet: 1
-# #     vm.overcommit_memory: 1
-# #     # user.max_user_namespaces: 15000
-# #   tty: true
 provisioner:
   name: ansible
   inventory:

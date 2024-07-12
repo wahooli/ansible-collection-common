@@ -92,14 +92,14 @@
   changed_when: false
   register: configure_install_mkinitcpio
 
-- name: Add btrfs to ramdisk
-  ansible.builtin.lineinfile:
-    dest: /mnt/etc/mkinitcpio.conf
-    regexp: ^BINARIES
-    line: 'BINARIES=(btrfs)'
+- name: "Add btrfs to ramdisk"
+  ansible.builtin.include_role:
+    name: "mkinitcpio"
+  vars:
+    mkinitcpio_binaries: [btrfs]
+    mkinitcpio_conf_path: "/mnt/etc/mkinitcpio.conf"
+    mkinitcpio_command: "arch-chroot /mnt mkinitcpio -P"
   when: archlinux_install_root_fstype == 'btrfs'
-  notify:
-  - Recreate ramdisk
 
 - name: Flush handlers
   ansible.builtin.meta: flush_handlers

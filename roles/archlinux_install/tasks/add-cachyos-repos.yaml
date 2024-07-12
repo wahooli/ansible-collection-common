@@ -23,11 +23,35 @@
     keyserver: "{{ archlinux_install_cachyos_key_server }}"
     force_update: true
 
-- name: Install CachyOS mirror lists
+- name: Install CachyOS mirrorlists
   when: "pacman_conf | default('/etc/pacman.conf') == '/etc/pacman.conf'"
-  community.general.pacman:
-    update_cache: false
-    name: "{{ archlinux_install_cachyos_install_packages }}"
+  block:
+  - name: Insert CachyOS base mirror into pacman.conf
+    ansible.builtin.blockinfile:
+      path: "{{ pacman_conf | default('/etc/pacman.conf') }}"
+      append_newline: true
+      prepend_newline: true
+      backup: true
+      insertbefore: "^\\[core\\]"
+      block: |
+        [cachyos]
+        Include = /etc/pacman.d/cachyos-mirrorlist
+    tags:
+    - molecule-idempotence-notest
+  - name: "Download CachyOS base mirrorlist"
+    ansible.builtin.get_url:
+      url: "https://mirror.cachyos.org/cachyos-mirrorlist"
+      dest: "/etc/pacman.d/cachyos-mirrorlist"
+      owner: root
+      group: root
+      mode: "0644"
+    register: cachyos_mirrorlist_dl
+    retries: 10
+    until: cachyos_mirrorlist_dl is success
+  - name: Install CachyOS mirror lists
+    community.general.pacman:
+      update_cache: true
+      name: "{{ archlinux_install_cachyos_install_packages }}"
 
 - name: Insert CachyOS mirrors into pacman.conf
   ansible.builtin.blockinfile:
@@ -54,6 +78,8 @@
       {% endif %}
       [cachyos]
       Include = /etc/pacman.d/cachyos-mirrorlist
+  tags:
+  - molecule-idempotence-notest
 
 - name: Import CachyOS keyring
   ansible.builtin.command:
@@ -83,7 +109,7 @@
 
 - name: Add cachyos mirror packages into additional packages
   ansible.builtin.set_fact:
-    archlinux_install_additional_packages: "{{ (archlinux_install_additional_packages | default([])) + ['cachyos-keyring', 'cachyos-mirrorlist', 'cachyos-v3-mirrorlist', 'cachyos-v4-mirrorlist', 'pacman'] }}"
+    archlinux_install_additional_packages: "{{ (archlinux_install_additional_packages | default([])) + ['cachyos-keyring', 'cachyos-mirrorlist', 'cachyos-v3-mirrorlist', 'cachyos-v4-mirrorlist', 'cachyos/pacman'] }}"
   when:
   - "pacman_conf | default('/etc/pacman.conf') == '/etc/pacman.conf'"
   - archlinux_install_packages is undefined or archlinux_install_packages | length < 1

@@ -1,0 +1,9 @@
+---
+# handlers file for mkinitcpio
+- name: Recreate ramdisk
+  become: true
+  ansible.builtin.command:
+    cmd: "{{ mkinitcpio_command }}"
+  failed_when: "'image generation successful' not in (recreate_ramdisk.stdout_lines | last | lower)"
+  changed_when: false
+  register: recreate_ramdisk

@@ -4,3 +4,5 @@
     name: git
     state: present
     update_cache: true
+  tags:
+  - molecule-idempotence-notest

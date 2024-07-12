@@ -52,3 +52,5 @@
     - k8s-app=cilium
   register: cilium_pod_list
   until: cilium_pod_list|json_query('resources[*].status.phase')|unique == ["Running"]
+  retries: "{{ cilium_install_wait_retries | default(60) }}"
+  delay: 1

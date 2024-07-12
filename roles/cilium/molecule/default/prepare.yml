@@ -25,20 +25,6 @@
       fstype: bpf
       state: ephemeral
 
-  # - name: Mount bpffs
-  #   become: true
-  #   ansible.builtin.command: mount bpffs /sys/fs/bpf -t bpf
-  #   register: mount_bpffs
-  #   changed_when: false
-  #   failed_when: mount_bpffs.rc != 0
-
-  # - name: Make shared bpffs
-  #   become: true
-  #   ansible.posix.mount:
-  #     path: /sys/fs/bpf
-  #     opts: --make-shared
-  #     state: present
-
   - name: Make shared bpffs # noqa: command-instead-of-module
     become: true
     ansible.builtin.command: mount --make-shared /sys/fs/bpf
@@ -54,11 +40,6 @@
       recurse: true
       mode: "0755"
 
-  # - name: Make cilium cgroupv2 dir
-  #   ansible.builtin.command: mkdir -p /run/cilium/cgroupv2
-  #   changed_when: false
-  #   failed_when: false
-
   - name: Mount cilium cgroupv2 dir
     become: true
     ansible.posix.mount:
@@ -66,18 +47,6 @@
       src: none
       fstype: cgroup2
       state: ephemeral
-
-  # - name: Mount cilium cgroupv2 dir
-  #   ansible.builtin.command: mount -t cgroup2 none /run/cilium/cgroupv2
-  #   changed_when: false
-  #   failed_when: false
-
-  # - name: Mount shared cilium cgroupv2 dir
-  #   become: true
-  #   ansible.posix.mount:
-  #     path: /run/cilium/cgroupv2
-  #     opts: --make-shared
-  #     state: present
 
   - name: Mount shared cilium cgroupv2 dir # noqa: command-instead-of-module
     become: true
