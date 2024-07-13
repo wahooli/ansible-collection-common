@@ -1,0 +1,163 @@
+---
+- name: "Config preset: Enable follow symlinks"
+  when: samba_preset.follow_symlinks | default(false)
+  ansible.builtin.set_fact:
+    samba_config: |-
+      {%- set _config = {
+        "global": {
+          "follow symlinks": "yes",
+          "wide links": "yes",
+          "unix extensions": "no"
+        }
+      }
+      -%}
+      {{ _config | combine(samba_config | default({"global": {}}), recursive=true, list_merge='prepend_rp') }}
+
+- name: "Config preset: Enable macOS server-side copy"
+  when: samba_preset.macos_server_side_copy | default(false)
+  ansible.builtin.set_fact:
+    samba_config: |-
+      {%- set _config = {
+        "global": {
+          "fruit:copyfile": "yes"
+        }
+      }
+      -%}
+      {{ _config | combine(samba_config | default({"global": {}}), recursive=true, list_merge='prepend_rp') }}
+
+- name: "Config preset: Enable usershares"
+  when: samba_preset.enable_usershares | default(false)
+  block:
+  - name: "Config preset: Enable usershares"
+    ansible.builtin.set_fact:
+      samba_config: |-
+        {%- set _config = {
+          "global": {
+            "usershare path": "/var/lib/samba/usershares",
+            "usershare max shares": 100,
+            "usershare allow guests": "yes",
+            "usershare owner only": "yes"
+          }
+        }
+        -%}
+        {{ _config | combine(samba_config | default({"global": {}}), recursive=true, list_merge='prepend_rp') }}
+
+  - name: "Ensure group exists '{{ samba_usershares_group | default('sambashare', true) }}'"
+    become: true
+    ansible.builtin.group:
+      name: "{{ samba_usershares_group | default('sambashare', true) }}"
+      state: present
+
+  - name: "Config preset: Ensure usershares directory exists"
+    become: true
+    ansible.builtin.file:
+      path: "{{ samba_config['global']['usershare path'] }}"
+      state: directory
+      recurse: true
+      owner: root
+      group: "{{ samba_usershares_group | default('sambashare', true) }}"
+      mode: "1770"
+# end block "Config preset: Enable usershares"
+
+- name: "Config preset: Enable guest access"
+  when: samba_preset.enable_guest_access | default(false)
+  block:
+  - name: "Config preset: Enable guest access"
+    ansible.builtin.set_fact:
+      samba_config: |-
+        {%- set _config = {
+          "global": {
+            "security": "user",
+            "map to guest": "bad user",
+            "guest account": samba_guest_account | default("guest", true)
+          }
+        }
+        -%}
+        {{ _config | combine(samba_config | default({"global": {}}), recursive=true, list_merge='prepend_rp') }}
+
+  - name: "Ensure user exists '{{ samba_config['global']['guest account'] }}'"
+    become: true
+    ansible.builtin.user:
+      name: "{{ samba_config['global']['guest account'] }}"
+      shell: /bin/nologin
+      system: true
+      create_home: false
+      state: present
+# end block "Config preset: Enable guest access"
+
+- name: "Config preset: Set min protocol version"
+  when:
+  - samba_preset.min_protocol is defined
+  - samba_preset.min_protocol is string
+  - samba_preset.min_protocol | length > 0
+  ansible.builtin.set_fact:
+    samba_config: |-
+      {%- set _config = {
+        "global": {
+          "server min protocol": samba_preset.min_protocol
+        }
+      }
+      -%}
+      {{ _config | combine(samba_config | default({"global": {}}), recursive=true, list_merge='prepend_rp') }}
+
+- name: "Config preset: Disable printer sharing"
+  when: samba_preset.disable_printer_sharing | default(false)
+  ansible.builtin.set_fact:
+    samba_config: |-
+      {%- set _config = {
+        "global": {
+          "load printers": "no",
+          "printing": "bsd",
+          "printcap name": "/dev/null",
+          "disable spoolss": "yes",
+          "show add printer wizard": "no"
+        }
+      }
+      -%}
+      {{ _config | combine(samba_config | default({"global": {}}), recursive=true, list_merge='prepend_rp') }}
+
+# https://wiki.archlinux.org/title/samba#Improve_throughput
+- name: "Config preset: Improve throughput"
+  when: samba_preset.improve_throughput | default(false)
+  ansible.builtin.set_fact:
+    samba_config: |-
+      {%- set _config = {
+        "global": {
+          "deadtime": 30,
+          "use sendfile": "yes",
+          "min receivefile size": 16384,
+          "socket options": "IPTOS_LOWDELAY TCP_NODELAY IPTOS_THROUGHPUT SO_RCVBUF=131072 SO_SNDBUF=131072"
+        }
+      }
+      -%}
+      {{ _config | combine(samba_config | default({"global": {}}), recursive=true, list_merge='prepend_rp') }}
+
+# https://wiki.archlinux.org/title/samba#Enable_access_for_old_clients/devices
+- name: "Config preset: Enable access for old clients/devices"
+  when: samba_preset.improve_throughput | default(false)
+  ansible.builtin.set_fact:
+    samba_config: |-
+      {%- set _config = {
+        "global": {
+          "server min protocol": "NT1",
+          "ntlm auth": "yes"
+        }
+      }
+      -%}
+      {{ _config | combine(samba_config | default({"global": {}}), recursive=true, list_merge='prepend_rp') }}
+
+# https://wiki.archlinux.org/title/samba#Enable_access_for_old_clients/devices
+- name: "Config preset: Set transport encryption"
+  when:
+  - samba_preset.transport_encryption is defined
+  - samba_preset.transport_encryption is string
+  - samba_preset.transport_encryption | length > 0
+  ansible.builtin.set_fact:
+    samba_config: |-
+      {%- set _config = {
+        "global": {
+          "server smb encrypt": samba_preset.transport_encryption
+        }
+      }
+      -%}
+      {{ _config | combine(samba_config | default({"global": {}}), recursive=true, list_merge='prepend_rp') }}

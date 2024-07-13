@@ -5,14 +5,6 @@
   changed_when: false
   register: configure_local_tz
 
-# MOVE TO POST INSTALL
-# - name: Configure set RTC timezone
-#   ansible.builtin.command:
-#     cmd: arch-chroot /mnt timedatectl set-local-rtc {{ '1' if archlinux_install_rtc_local_tz else '0' }}
-#   failed_when: ansible_connection not in [ "container", "docker", "community.docker.docker" ] and configure_rtc_tz.rc != 0
-#   changed_when: false
-#   register: configure_rtc_tz
-
 - name: Set HW clock
   ansible.builtin.command:
     cmd: arch-chroot /mnt hwclock --systohc
@@ -133,3 +125,31 @@
     line: "%wheel ALL=(ALL:ALL) ALL"
     validate: 'visudo -cf %s'
   when: "'sudo' in archlinux_install_packages"
+
+- name: Configure systemd-timesyncd
+  when: archlinux_install_enable_timesyncd | default(true)
+  block:
+  - name: "Create timesync.conf.d directory"
+    ansible.builtin.file:
+      path: "/mnt/etc/systemd/timesyncd.conf.d/"
+      owner: root
+      group: root
+      mode: "0755"
+      state: directory
+
+  - name: Create timesync.d local.conf
+    become: true
+    ansible.builtin.template:
+      src: "timesyncd.conf.j2"
+      dest: "/mnt/etc/systemd/timesyncd.conf.d/local.conf"
+      owner: root
+      group: root
+      mode: "0644"
+
+  - name: Enable systemd-timesyncd
+    ansible.builtin.command:
+      cmd: arch-chroot /mnt systemctl enable systemd-timesyncd.service
+    failed_when: configure_enable_systemd_timesyncd.rc != 0
+    changed_when: false
+    register: configure_enable_systemd_timesyncd
+# end block Configure systemd-timesyncd

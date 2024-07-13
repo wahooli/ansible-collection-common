@@ -1,5 +1,12 @@
+- name: Read mirrorlist file contents
+  ansible.builtin.slurp:
+    src: /etc/pacman.d/mirrorlist
+  register: mirrorlist_contents
+
 - name: Rank pacman mirrors
-  when: archlinux_install_rankmirrors
+  when:
+  - archlinux_install_rankmirrors
+  - (mirrorlist_contents.content | b64decode).splitlines() | length > (archlinux_install_rankmirrors_count | default(5) | int)
   ansible.builtin.shell:
     executable: /bin/bash
     cmd: |
