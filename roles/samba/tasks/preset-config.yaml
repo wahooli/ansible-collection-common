@@ -46,6 +46,7 @@
     become: true
     ansible.builtin.group:
       name: "{{ samba_usershares_group | default('sambashare', true) }}"
+      system: true
       state: present
 
   - name: "Config preset: Ensure usershares directory exists"

@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+# source https://web.archive.org/web/20170112020526/http://dominicm.com/configure-automated-smart-checks-on-arch-linux
+# identical in debian
+{{ ansible_managed | comment }}
+
+tmp=$(mktemp)
+cat >$tmp
+
+run-parts --report --lsbsysinit --arg=$tmp --arg="$1" \
+    --arg="$2" --arg="$3" -- {{ smartd_rund_dir }}
+
+rm -f $tmp

@@ -1,0 +1,14 @@
+---
+# handlers file for smartd
+- name: Restart smartd
+  become: true
+  ansible.builtin.systemd_service:
+    name: smartd
+    state: restarted
+  when:
+  - "'smartd.service' in services"
+
+- name: Systemd daemon reload
+  become: true
+  ansible.builtin.systemd_service:
+    daemon_reload: true

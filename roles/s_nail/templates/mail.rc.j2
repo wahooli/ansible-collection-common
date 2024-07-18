@@ -1,0 +1,65 @@
+{{ ansible_managed | comment }}
+
+# All the examples require v15-compat!
+set v15-compat
+
+# Arch Linux-specific locations of certificates.
+# Since these are subject to the Arch Linux update mechanism,
+# use only those, do not try to load OpenSSL builtin ones.
+# And use the TLS specific set: see "man 8 update-ca-trust"
+#set ssl-ca-dir=/etc/ssl/certs
+set ssl-ca-file=/etc/ssl/certs/ca-certificates.crt
+set ssl-ca-no-defaults
+
+# Do not use protocols older than TLS v1.2.
+# Change this only when the remote server does not support it:
+# maybe use ssl-protocol-HOST (or -USER@HOST) syntax to define
+# such explicit exceptions, then, e.g.
+#     ssl-protocol-USER@archlinux.org="-ALL,+TLSv1.2"
+set ssl-protocol=-ALL,+TLSv1.2
+
+# Explicitly define the list of ciphers, which may improve security,
+# especially with protocols older than TLS v1.2.  See ciphers(1).
+# This is an example: in reality it is possibly best to only use
+# ssl-cipher-list-HOST (or -USER@HOST), as necessary, again..
+set ssl-cipher-list=TLSv1.2:!aNULL:!eNULL:@STRENGTH
+#set ssl-cipher-list="ALL:!aNULL:!eNULL:!MEDIUM:!LOW:!MD5:!RC4:!EXPORT"
+
+# Request strict transport security checks
+set ssl-verify=strict
+
+# Essential setting: select allowed character sets
+# (Have a look at the "Character sets" manual section)
+set sendcharsets=utf-8,iso-8859-1
+
+# A very kind option: when replying to a message, first try to
+# use the same encoding that the original poster used herself!
+set reply-in-same-charset
+# When replying to or forwarding a message the comment and name
+# parts of email addresses are removed unless this variable is set
+set fullnames
+
+# When sending messages, wait until the Mail-Transfer-Agent finishs.
+set sendwait
+
+# Only use builtin MIME types, no mime.types(5) files.
+# That set is often sufficient, but look at the output of the
+# `mimetype' command to ensure this is true for you, too
+set mimetypes-load-control
+
+# Default directory where we act in (relative to $HOME if not absolute)
+set folder={{ s_nail_default_maildir | default("/var/mail") }}
+# A leading "+" (often) means: under folder
+# record is used to save copies of sent messages, $DEAD is error storage
+# inbox: system mailbox, by default /var/mail/$USER: file %
+# $MBOX: secondary mailbox: file &
+set MBOX=+mbox.mbox record=+sent.mbox DEAD=+dead.mbox
+set inbox=+system.mbox
+
+# Define some shortcuts; now one may say, e.g., file mymbo
+shortcut mymbo %:+mbox.mbox \
+         myrec +sent.mbox
+
+# This is optional, but you should get the big picture
+# by reading the manual before you leave that off
+set from="{{ s_nail_default_from | default('root <root@localdomain>') }}"

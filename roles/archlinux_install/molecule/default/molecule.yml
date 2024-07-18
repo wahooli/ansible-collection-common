@@ -22,6 +22,7 @@ provisioner:
     group_vars:
       all:
         ansible_user: root
+        archlinux_install_grub_cmdline: "loglevel=3 quiet testing"
         archlinux_install_uefi: false
         # archlinux_install_kernel: linux-cachyos-lto
         archlinux_install_enable_cachyos_repositories: true

@@ -1,3 +1,13 @@
+- name: Apply custom grub cmdline
+  become: true
+  when: archlinux_install_grub_cmdline is defined
+  ansible.builtin.lineinfile:
+    path: "/mnt/etc/default/grub"
+    state: "present"
+    regexp: '^GRUB_CMDLINE_LINUX_DEFAULT=*.'
+    mode: "0644"
+    line: "GRUB_CMDLINE_LINUX_DEFAULT=\"{{ archlinux_install_grub_cmdline }}\""
+
 - name: Install GRUB
   ansible.builtin.command:
     cmd: arch-chroot /mnt grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=GRUB-ARCH

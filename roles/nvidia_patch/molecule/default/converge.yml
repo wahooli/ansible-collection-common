@@ -1,0 +1,7 @@
+---
+- name: Converge
+  hosts: all
+  tasks:
+  - name: "Include nvidia_patch role"
+    ansible.builtin.include_role:
+      name: "nvidia_patch"

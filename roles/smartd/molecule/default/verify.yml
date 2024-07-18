@@ -1,0 +1,78 @@
+---
+# This is an example playbook to execute Ansible tests.
+- name: Verify hosts
+  hosts: all
+  gather_facts: false
+  tasks:
+  - name: Verify config line exists in /etc/conf.d/smartd
+    become: true
+    ansible.builtin.lineinfile:
+      path: "/etc/conf.d/smartd"
+      state: "present"
+      regexp: '^SMARTD_ARGS=*.'
+      mode: "0644"
+      create: true
+      line: 'SMARTD_ARGS="-i 1800"'
+    register: smartd_env_1
+
+  - name: Verify config line exists in /etc/conf.d/smartd
+    become: true
+    ansible.builtin.lineinfile:
+      path: "/etc/conf.d/smartd"
+      state: "present"
+      regexp: '^example line=*.'
+      mode: "0644"
+      create: true
+      line: 'example line="abc"'
+    register: smartd_env_2
+
+  - name: Verify config line exists in /etc/conf.d/smartd
+    become: true
+    ansible.builtin.lineinfile:
+      path: "/etc/conf.d/smartd"
+      state: "present"
+      regexp: '^integer_value=*.'
+      mode: "0644"
+      create: true
+      line: 'integer_value=3'
+    register: smartd_env_3
+
+  # - name: Verify smartd is running
+  #   become: true
+  #   ansible.builtin.systemd_service:
+  #     name: smartd
+  #     state: started
+  #     enabled: true
+  #   register: smartd_systemd
+
+  - name: Verify config line exists in /etc/conf.d/smartd
+    become: true
+    ansible.builtin.lineinfile:
+      path: "/etc/smartd.conf"
+      state: "present"
+      regexp: '^DEVICESCAN *.'
+      mode: "0644"
+      create: true
+      line: 'DEVICESCAN -a -o on -S on -n standby,q -s (S/../../6/02|L/../21/./04) -m root -M test -M exec /usr/share/smartmontools/smartd-runner'
+    register: smartd_conf_line
+
+  - name: Stat smartd-runner script
+    ansible.builtin.stat:
+      path: "/usr/share/smartmontools/smartd-runner"
+    register: smartd_runner_script
+
+  - name: Stat mail send script
+    ansible.builtin.stat:
+      path: "/etc/smartmontools/run.d/10mail"
+    register: mail_send_script
+
+  - name: Run assertions
+    ansible.builtin.assert:
+      that:
+      - not smartd_env_1.changed
+      - not smartd_env_2.changed
+      - not smartd_env_3.changed
+      - not smartd_conf_line.changed
+      # - not smartd_systemd.changed
+      - smartd_runner_script.stat.exists
+      - mail_send_script.stat.exists

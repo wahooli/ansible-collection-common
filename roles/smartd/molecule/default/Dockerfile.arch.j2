@@ -5,30 +5,13 @@ ENV container=docker \
     DEPLOY_GROUP=deployer \
     SUDO_GROUP={{'sudo' if 'debian' in item.image else 'wheel' }}
 
-RUN pacman -Sy --noconfirm \
-    && pacman-key --init \
-    && pacman --noconfirm -S \
+RUN rm -rf /usr/lib/initcpio/* \
+    && pacman --noconfirm -Sy \
     sudo \
     iproute2 \
     python \
-    openssl \
     python-packaging \
-    curl \
-    wget \
-    && pacman-key --recv-keys F3B607488DB35A47 --keyserver keyserver.ubuntu.com \
-    && pacman-key --lsign-key F3B607488DB35A47 \
-    && wget "https://mirror.cachyos.org/cachyos-mirrorlist" -O /etc/pacman.d/cachyos-mirrorlist \
-    # && pacman --noconfirm -U    'https://mirror.cachyos.org/repo/x86_64/cachyos/cachyos-keyring-20240331-1-any.pkg.tar.zst' \
-    #                             'https://mirror.cachyos.org/repo/x86_64/cachyos/cachyos-mirrorlist-18-1-any.pkg.tar.zst'    \
-    #                             'https://mirror.cachyos.org/repo/x86_64/cachyos/cachyos-v3-mirrorlist-18-1-any.pkg.tar.zst' \
-    #                             'https://mirror.cachyos.org/repo/x86_64/cachyos/cachyos-v4-mirrorlist-6-1-any.pkg.tar.zst'  \
-    #                             'https://mirror.cachyos.org/repo/x86_64/cachyos/pacman-6.1.0-5-x86_64.pkg.tar.zst' \
-    && echo "[cachyos]" >> /etc/pacman.conf \
-    && echo "Include = /etc/pacman.d/cachyos-mirrorlist" >> /etc/pacman.conf \
-    && pacman -Sy --noconfirm \
-    cachyos-keyring \
-    cachyos-mirrorlist \
-    cachyos/pacman \
+    which \
     && pacman -Syu --noconfirm \
     && rm -rf /var/lib/pacman/sync/* \
     && rm -Rf /usr/share/doc && rm -Rf /usr/share/man \
@@ -42,7 +25,7 @@ RUN pacman -Sy --noconfirm \
     && pacman-key --init
 
 STOPSIGNAL SIGRTMIN+3
-VOLUME [ "/tmp", "/run", "/run/lock" ]
+VOLUME [ "/tmp", "/run", "/run/lock", "/sys/fs/cgroup"  ]
 WORKDIR /
 
 RUN mkdir -p /etc/modules-load.d/ ; \
@@ -55,12 +38,18 @@ RUN mkdir -p /etc/modules-load.d/ ; \
     rm -f /lib/systemd/system/basic.target.wants/*; \
     rm -f /usr/lib/systemd/system/systemd-machine-id-commit.service; \
     rm -f /usr/lib/systemd/system/systemd-resolved.service; \
-    chmod a+rwx /tmp/;
+    chmod a+rwx /tmp/; \
+    sed -ri 's/MemoryDenyWriteExecute/#MemoryDenyWriteExecute/g' /usr/lib/systemd/system/systemd-journald.service; \
+    sed -ri 's/SystemCallFilter/#SystemCallFilter/g' /usr/lib/systemd/system/systemd-journald.service; \
+    touch /dev/kmsg ;
 
 RUN touch /docker-entrypoint.sh && chmod a+x /docker-entrypoint.sh && \
 echo -e '#!/bin/bash\n\
-mount -t proc proc /proc\n\
+mkdir -p /sys/fs/cgroup\n\
+mount -t cgroup2 none /sys/fs/cgroup\n\
+mount --make-shared /sys/fs/cgroup\n\
+touch /dev/kmsg\n\
 exec "$@"'\
 >> /docker-entrypoint.sh
 
-ENTRYPOINT [ "/docker-entrypoint.sh" ]
+ENTRYPOINT [ "/docker-entrypoint.sh", "/lib/systemd/systemd", "log-level=info", "unit=sysinit.target" ]

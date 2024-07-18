@@ -55,6 +55,7 @@ archlinux_install_additional_packages:
 - vim
 - os-prober
 # archlinux_install_hostname: hostname
+# archlinux_install_grub_cmdline: "loglevel=3 quiet"
 archlinux_install_gen_locales:
 - en_US.UTF-8
 # archlinux_install_locale_conf: |

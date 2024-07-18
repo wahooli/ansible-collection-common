@@ -1,0 +1,36 @@
+---
+dependency:
+  name: galaxy
+driver:
+  name: docker
+platforms:
+- name: s-nail-arch
+  image: archlinux:base
+  tmpfs:
+  - /run
+  - /tmp
+  dockerfile: Dockerfile.arch.j2
+  pre_build_image: false
+  tty: true
+- name: s-nail-debian
+  image: debian:12
+  tmpfs:
+  - /run
+  - /tmp
+  dockerfile: Dockerfile.debian.j2
+  pre_build_image: false
+  tty: true
+provisioner:
+  name: ansible
+  inventory:
+    host_vars:
+      s-nail-arch:
+        s_nail_configure_gmail: true
+        s_nail_gmail_user: username
+        s_nail_gmail_password: passwd
+        s_nail_gmail_from: username <username@gmail.com>
+    group_vars:
+      all:
+        s_nail_configure_user: root
+verifier:
+  name: ansible

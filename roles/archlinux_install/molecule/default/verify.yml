@@ -25,6 +25,18 @@
       path: "/mnt/var"
     register: verify_var
 
+  - name: Verify custom cmdline
+    become: true
+    when: archlinux_install_grub_cmdline is defined
+    ansible.builtin.lineinfile:
+      path: "/mnt/etc/default/grub"
+      state: "present"
+      regexp: '^GRUB_CMDLINE_LINUX_DEFAULT=*.'
+      mode: "0644"
+      create: true
+      line: 'GRUB_CMDLINE_LINUX_DEFAULT="loglevel=3 quiet testing"'
+    register: grub_cmdline
+
   - name: Run assertions
     ansible.builtin.assert:
       that:
@@ -32,3 +44,4 @@
       - verify_mkinitcpio_conf.stat.exists
       - verify_home.stat.exists
       - verify_var.stat.exists
+      - not grub_cmdline.changed
