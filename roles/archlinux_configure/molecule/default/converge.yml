@@ -1,0 +1,7 @@
+---
+- name: Converge
+  hosts: all
+  tasks:
+  - name: "Include archlinux_configure role"
+    ansible.builtin.include_role:
+      name: "archlinux_configure"

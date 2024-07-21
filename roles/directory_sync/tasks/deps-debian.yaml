@@ -1,0 +1,9 @@
+- name: Install debian deps for directory_sync
+  become: true
+  ansible.builtin.apt:
+    pkg:
+    - inotify-tools
+    update_cache: true
+    cache_valid_time: 3600
+  tags:
+  - molecule-idempotence-notest

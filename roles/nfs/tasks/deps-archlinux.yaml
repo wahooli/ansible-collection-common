@@ -1,0 +1,10 @@
+- name: Install Arch linux deps for nfs
+  become: true
+  community.general.pacman:
+    name:
+    - nfs-utils
+    - rpcbind
+    state: present
+    update_cache: true
+  tags:
+  - molecule-idempotence-notest

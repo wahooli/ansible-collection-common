@@ -1,0 +1,32 @@
+- name: "Create user {{ user.name }}"
+  become: true
+  ansible.builtin.user:
+    append: "{{ user.append | default(true) }}"
+    name: "{{ user.name }}"
+    password: "{{ password_hash | default(omit, true) }}"
+    shell: "{{ user.shell | default(omit) }}"
+    create_home: "{{ user.create_home | default(true) }}"
+    group: "{{ user.group | default(omit) }}"
+    groups: "{{ user.groups | default(omit) }}"
+    uid: "{{ user.uid | default(omit) }}"
+    system: "{{ user.system | default(false) }}"
+    update_password: on_create
+  vars:
+    password_hash: "{{ user.password | password_hash if user.password is defined and user.password != '' else '' }}"
+  register: user_creation
+  tags:
+  - create-users
+
+- name: "Create samba user for {{ user.name }}"
+  become: true
+  # no_log: true
+  when: user.samba | default(false) and user.password is defined
+  ansible.builtin.shell:
+    executable: /bin/bash
+    cmd: >
+      set -o pipefail
+      && (pdbedit --user={{ user.name }} 2>&1 > /dev/null)
+      || (echo '{{ user.password }}'; echo '{{ user.password }}')
+      | smbpasswd -s -a {{ user.name }}
+  register: smbpasswd
+  changed_when: "'Added user' in smbpasswd.stdout"

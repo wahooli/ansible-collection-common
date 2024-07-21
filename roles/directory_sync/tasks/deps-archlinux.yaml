@@ -1,0 +1,9 @@
+- name: Install Arch linux deps for directory_sync
+  become: true
+  community.general.pacman:
+    name:
+    - inotify-tools
+    state: present
+    update_cache: true
+  tags:
+  - molecule-idempotence-notest

@@ -1,0 +1,26 @@
+---
+- name: Install deps for yay
+  become: true
+  community.general.pacman:
+    name:
+    - base-devel
+    - git
+    state: present
+    update_cache: true
+
+- name: Git clone yay repo # noqa: latest
+  ansible.builtin.git:
+    repo: 'https://aur.archlinux.org/yay-bin.git'
+    dest: /tmp/yay-git
+
+- name: Build and install yay
+  ansible.builtin.command:
+    chdir: "/tmp/yay-git"
+    cmd: "makepkg -sfi --noconfirm"
+    creates: /usr/bin/yay
+
+- name: Remove temp yay repo
+  become: true
+  ansible.builtin.file:
+    path: "/tmp/yay-git"
+    state: absent

@@ -135,7 +135,7 @@
 
 # https://wiki.archlinux.org/title/samba#Enable_access_for_old_clients/devices
 - name: "Config preset: Enable access for old clients/devices"
-  when: samba_preset.improve_throughput | default(false)
+  when: samba_preset.enable_access_for_old_clients | default(false)
   ansible.builtin.set_fact:
     samba_config: |-
       {%- set _config = {

@@ -1,0 +1,9 @@
+---
+# handlers file for nfs
+- name: Restart nfs
+  become: true
+  ansible.builtin.systemd_service:
+    name: nfs-server
+    state: restarted
+  when:
+  - "'nfs-server.service' in services"
