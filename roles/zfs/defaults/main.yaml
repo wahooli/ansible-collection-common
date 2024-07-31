@@ -1,6 +1,8 @@
 ---
 # defaults file for zfs
 # zfs_create_trim_timer: true
+zfs_systemd_dir: /etc/systemd/system
+zfs_archiso: false
 zfs_zpool_create_default_props:
   ashift: 12
   autotrim: "off"
@@ -19,7 +21,7 @@ zfs_zpool_create_default_fs_props:
   sharesmb: "off"
 
 zfs_zed_rc_file: /etc/zfs/zed.d/zed.rc
-zfs_zed_enable: true
+# zfs_zed_enable: true
 # zfs_smartd_enable: false
 # zfs_zed_config:
 #   "export MAILRC":

@@ -58,6 +58,9 @@
         {%- if zpool.force | default(false) -%}
           {{ _commandline.append("-f") }}
         {%- endif -%}
+        {%- if zpool.mountpoint is defined and zpool.mountpoint != "" -%}
+          {{ _commandline.append("-R " + zpool.mountpoint) }}
+        {%- endif -%}
         {%- if zpool_args != "" -%}
           {{ _commandline.append(zpool_args) }}
         {%- endif -%}
@@ -127,7 +130,9 @@
 
   - name: Enable a timer unit for zfs scrub
     become: true
-    when: zpool.scrub | default("none") in ["weekly", "monthly"]
+    when:
+    - zpool.scrub | default("none") in ["weekly", "monthly"]
+    - not zfs_archiso | default(false)
     ansible.builtin.systemd_service:
       name: "zfs-scrub-{{- zpool.scrub -}}@{{- zpool.name -}}.timer"
       state: started
@@ -146,7 +151,9 @@
 
   - name: "Set timer unit for zfs trim {{ 'enabled' if zpool.enable_trim | default(false) else 'disabled' }}"
     become: true
-    when: zpool.enable_trim | default(false)
+    when:
+    - zpool.enable_trim | default(false)
+    - not zfs_archiso | default(false)
     ansible.builtin.systemd_service:
       name: "zfs-trim@{{- zpool.name -}}.timer"
       state: "{{ 'started' if zpool.enable_trim | default(false) else 'stopped' }}"

@@ -8,13 +8,16 @@
     bootstrap_param_components_extra: "{{ '--components-extra=' + fluxcd_bootstrap_components_extra | join(',') if fluxcd_bootstrap_components_extra is defined and fluxcd_bootstrap_components_extra | length > 0 }}"
     bootstrap_param_cluster_domain: "{{ '--cluster-domain=' + fluxcd_bootstrap_cluster_domain if fluxcd_bootstrap_cluster_domain is defined }}"
     bootstrap_param_network_policy: "{{ '--network-policy=' + fluxcd_bootstrap_network_policy | string | lower  if fluxcd_bootstrap_network_policy is defined }}"
-    bootstrap_param_git_url: "{{ '--url=' + fluxcd_bootstrap_git_url if fluxcd_bootstrap_git_url is defined }}"
+    bootstrap_param_git_url: "{{ '--url=' + git_url if git_url != '' and git_url is defined }}"
     bootstrap_param_git_branch: "{{ '--branch=' + fluxcd_bootstrap_git_branch if fluxcd_bootstrap_git_branch is defined }}"
     bootstrap_param_git_path: "{{ '--path=' + fluxcd_bootstrap_git_path if fluxcd_bootstrap_git_path is defined }}"
     bootstrap_param_key_passphrase: "{{ '--password=' + fluxcd_bootstrap_ssh_key_passphrase if fluxcd_bootstrap_ssh_key_passphrase is defined }}"
     bootstrap_param_namespace: "{{ '--namespace=' + fluxcd_bootstrap_namespace if fluxcd_bootstrap_namespace is defined }}"
     bootstrap_param_version: "{{ '--version=' + fluxcd_bootstrap_version if fluxcd_bootstrap_version is defined }}"
     bootstrap_param_force: "{{ '--force' if fluxcd_bootstrap_force | default(false) else '' }}"
+  vars:
+    bootstrap_git_url: "{{ fluxcd_bootstrap_git_url | default('') }}"
+    git_url: "{{ 'ssh://' + bootstrap_git_url | regex_replace(':', '/') if bootstrap_git_url is regex('^.*@.*') else bootstrap_git_url }}"
 
 - name: Create directory for ssh keys
   ansible.builtin.file:
@@ -213,7 +216,7 @@
   - fluxcd_bootstrap_git_url is defined
   block:
   - name: Run ssh-keyscan for git host
-    ansible.builtin.command: ssh-keyscan -T 10 {{ fluxcd_bootstrap_git_url | urlsplit('hostname') }}
+    ansible.builtin.command: "ssh-keyscan -T 10 {{ fluxcd_bootstrap_git_url | regex_replace('^.*@(.*):.*$', '\\1') if fluxcd_bootstrap_git_url is regex('^.*@.*') else fluxcd_bootstrap_git_url | urlsplit('hostname') }}"
     register: keyscan
     failed_when: keyscan.rc != 0
     changed_when: false

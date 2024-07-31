@@ -8,8 +8,11 @@ archlinux_install_wipe_drive: false # this option is not idempotent
 # archlinux_install_root_partition: /dev/sda2
 # archlinux_install_swapfile: /swap/swapfile
 # archlinux_install_swapfile_size: 4G
+archlinux_install_dependencies: [] # optionally install other dependencies into archiso
 archlinux_install_root_fstype: btrfs
 archlinux_install_btrfs_subvolumes: []
+# archlinux_install_zfs_root_volume: zroot/ROOT/default
+archlinux_install_archiso_zfs_script_url: https://raw.githubusercontent.com/eoli3n/archiso-zfs/master/init
 # archlinux_install_vconsole_keymap: fi
 archlinux_install_enable_cachyos_repositories: false
 archlinux_install_cachyos_key_id: 882DCFE48E2051D48E2562ABF3B607488DB35A47

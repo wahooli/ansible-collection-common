@@ -93,6 +93,28 @@
     mkinitcpio_command: "arch-chroot /mnt mkinitcpio -P"
   when: archlinux_install_root_fstype == 'btrfs'
 
+- name: "Add zfs to ramdisk"
+  ansible.builtin.include_role:
+    name: "mkinitcpio"
+  vars:
+    mkinitcpio_modules: [zfs]
+    mkinitcpio_hooks:
+    - base
+    - udev
+    - autodetect
+    - microcode
+    - modconf
+    - kms
+    - keyboard
+    - keymap
+    - consolefont
+    - block
+    - zfs
+    - filesystems
+    mkinitcpio_conf_path: "{{ mnt_dir | default('/mnt') }}/etc/mkinitcpio.conf"
+    mkinitcpio_command: "arch-chroot {{ mnt_dir | default('/mnt') }} mkinitcpio -P"
+  when: archlinux_install_root_fstype == 'zfs'
+
 - name: Flush handlers
   ansible.builtin.meta: flush_handlers
 

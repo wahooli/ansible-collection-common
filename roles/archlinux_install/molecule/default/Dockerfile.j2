@@ -13,6 +13,7 @@ RUN pacman -Sy --noconfirm \
     btrfs-progs \
     glibc \
     iproute2 \
+    parted \
     python3 \
     && pacman -Syu --noconfirm \
     && rm -rf /var/lib/pacman/sync/* \

@@ -47,7 +47,7 @@
     device: '{{ archlinux_install_drive }}'
     label: gpt
     number: 1
-    part_end: 512MB
+    part_end: "{{ archlinux_install_boot_partition_size | default('512MB') }}"
     name: boot
     flags: [boot, esp]
     state: present
@@ -57,7 +57,7 @@
     device: '{{ archlinux_install_drive }}'
     label: gpt
     number: 2
-    part_start: 512MB
+    part_start: "{{ archlinux_install_boot_partition_size | default('512MB') }}"
     part_end: 100%
     name: root
     state: present

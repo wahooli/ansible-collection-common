@@ -8,6 +8,7 @@ archlinux_configure_rtc_local_tz: true
 archlinux_configure_samba: false # see samba role for variables
 # archlinux_configure_directory_sync: false
 # archlinux_configure_nfs: false
+# archlinux_configure_helm: false
 archlinux_configure_systemd_dir: /etc/systemd/system
 # archlinux_configure_superfans_install: false
 # archlinux_configure_nvidia_patch_install: false

@@ -36,23 +36,16 @@
     msg: Target system is not UEFI-capabile. Aborting.
   when: archlinux_install_uefi and not efivars.stat.exists
 
-- name: Install package python-passlib and parted
-  community.general.pacman:
-    name: |-
-      {{
-        ["parted"]
-        + (["python-passlib"] if archlinux_install_users is defined else [])
-        + (["pacman-contrib"] if archlinux_install_rankmirrors is defined else [])
-      }}
-    state: present
-    update_cache: true
-
 - name: Update the system clock
   ansible.builtin.command:
     cmd: timedatectl set-ntp true
   failed_when: timedatectl_ntp.rc != 0
   changed_when: false
   register: timedatectl_ntp
+
+- name: Add CachyOS repositories
+  ansible.builtin.include_tasks: add-cachyos-repos.yaml
+  when: archlinux_install_enable_cachyos_repositories or archlinux_install_root_fstype == 'zfs'
 
 - name: Set up partitions
   ansible.builtin.include_tasks: partitioning.yaml
@@ -73,6 +66,24 @@
   - archlinux_install_btrfs_subvolumes | length > 0
   ansible.builtin.include_tasks: btrfs-subvolumes.yaml
 
+- name: Create zfs rootfs and volumes
+  when:
+  - archlinux_install_root_fstype == 'zfs'
+  - zfs_zpools is defined
+  - zfs_zpools | length > 0
+  ansible.builtin.include_tasks: zfs-install.yaml
+
+- name: Install package python-passlib, pacman-contrib and other installation dependencies
+  community.general.pacman:
+    name: |-
+      {{
+        (["python-passlib"] if archlinux_install_users is defined else [])
+        + (["pacman-contrib"] if archlinux_install_rankmirrors is defined else [])
+        + (archlinux_install_dependencies | default([]))
+      }}
+    state: present
+    update_cache: true
+
 - name: "Create mountpoint boot volume in {{ '/mnt/boot/efi' if archlinux_install_uefi else '/mnt/boot' }}"
   ansible.builtin.file:
     path: "{{ '/mnt/boot/efi' if archlinux_install_uefi else '/mnt/boot' }}"
@@ -92,17 +103,21 @@
   - archlinux_install_swapfile | length > 0
   - archlinux_install_swapfile_size is defined
   - archlinux_install_swapfile_size | length > 0
+  - archlinux_install_root_fstype != 'zfs'
   ansible.builtin.include_tasks: swapfile.yaml
-
-- name: Add CachyOS repositories
-  ansible.builtin.include_tasks: add-cachyos-repos.yaml
-  when: archlinux_install_enable_cachyos_repositories
 
 - name: Install base system
   ansible.builtin.include_tasks: pacstrap.yaml
 
 - name: Configure install
   ansible.builtin.include_tasks: configure.yaml
+
+- name: Configure zfs
+  ansible.builtin.include_tasks: configure-zfs.yaml
+  when:
+  - archlinux_install_root_fstype == 'zfs'
+  - zfs_zpools is defined
+  - zfs_zpools | length > 0
 
 - name: Setup GRUB
   ansible.builtin.include_tasks: grub.yaml
@@ -125,3 +140,10 @@
   when:
   - archlinux_install_root_password is defined
   - archlinux_install_root_password | length > 1
+
+- name: Zfs post install
+  ansible.builtin.include_tasks: export-zfs.yaml
+  when:
+  - archlinux_install_root_fstype == 'zfs'
+  - zfs_zpools is defined
+  - zfs_zpools | length > 0

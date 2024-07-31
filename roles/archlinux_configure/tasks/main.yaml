@@ -137,6 +137,16 @@
   tags:
   - nvidia_patch
 
+- name: "Install helm"
+  when: archlinux_configure_helm | default(false)
+  ansible.builtin.include_role:
+    name: "helm"
+    apply:
+      tags:
+        - helm
+  tags:
+  - helm
+
 - name: "Configure samba"
   when: archlinux_configure_samba | default(false)
   ansible.builtin.include_role:
@@ -168,7 +178,7 @@
   - directory_sync
 
 - name: "Configure nfs"
-  when: archlinux_configure_nfs| default(false)
+  when: archlinux_configure_nfs | default(false)
   ansible.builtin.include_role:
     name: "nfs"
     apply:

@@ -38,7 +38,12 @@
         Include = /etc/pacman.d/cachyos-mirrorlist
     tags:
     - molecule-idempotence-notest
+  - name: Check cachyos-mirrorlist file exists
+    ansible.builtin.stat:
+      path: /etc/pacman.d/cachyos-mirrorlist
+    register: mirrorlist
   - name: "Download CachyOS base mirrorlist"
+    when: not mirrorlist.stat.exists
     ansible.builtin.get_url:
       url: "https://mirror.cachyos.org/cachyos-mirrorlist"
       dest: "/etc/pacman.d/cachyos-mirrorlist"
@@ -48,11 +53,17 @@
     register: cachyos_mirrorlist_dl
     retries: 10
     until: cachyos_mirrorlist_dl is success
+  - name: Comment out nl.cachyos.org mirror
+    ansible.builtin.lineinfile:
+      dest: /etc/pacman.d/cachyos-mirrorlist
+      regexp: '(?i)^(Server = .*//nl.cachyos.org.*)'
+      line: '# \1'
+      backrefs: true
+      state: present
   - name: Install CachyOS mirror lists
     community.general.pacman:
       update_cache: true
       name: "{{ archlinux_install_cachyos_install_packages }}"
-
 - name: Insert CachyOS mirrors into pacman.conf
   ansible.builtin.blockinfile:
     path: "{{ pacman_conf | default('/etc/pacman.conf') }}"
@@ -86,14 +97,14 @@
     cmd: "arch-chroot /mnt pacman-key --recv-keys {{ archlinux_install_cachyos_key_id }} --keyserver {{ archlinux_install_cachyos_key_server }}"
   failed_when: false
   changed_when: false
-  when: "pacman_conf | default('/etc/pacman.conf') == '/mnt/etc/pacman.conf'"
+  when: "pacman_conf | default('/etc/pacman.conf') != '/etc/pacman.conf'"
 
 - name: Sign CachyOS keyring
   ansible.builtin.command:
     cmd: arch-chroot /mnt pacman-key --lsign-key {{ archlinux_install_cachyos_key_id }}
   failed_when: false
   changed_when: false
-  when: "pacman_conf | default('/etc/pacman.conf') == '/mnt/etc/pacman.conf'"
+  when: "pacman_conf | default('/etc/pacman.conf') != '/etc/pacman.conf'"
 
 - name: Refresh package cache
   when: "pacman_conf | default('/etc/pacman.conf') == '/etc/pacman.conf'"
@@ -113,3 +124,11 @@
   when:
   - "pacman_conf | default('/etc/pacman.conf') == '/etc/pacman.conf'"
   - archlinux_install_packages is undefined or archlinux_install_packages | length < 1
+
+- name: Add cachyos-zfs and other zfs utils into additional packages
+  ansible.builtin.set_fact:
+    # archlinux_install_dependencies: "{{ (archlinux_install_dependencies | default([])) + ['zfs-utils'] }}"
+    archlinux_install_additional_packages: "{{ (archlinux_install_additional_packages | default([])) + ['cachyos-zfs', archlinux_install_kernel + '-zfs', 'zfs-utils'] }}"
+  when:
+  - "pacman_conf | default('/etc/pacman.conf') == '/etc/pacman.conf'"
+  - archlinux_install_root_fstype == 'zfs'

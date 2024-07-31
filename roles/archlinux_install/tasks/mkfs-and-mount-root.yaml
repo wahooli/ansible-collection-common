@@ -5,6 +5,8 @@
     opts: -F32
 
 - name: Create filesystem in root volume
+  when:
+  - archlinux_install_root_fstype != 'zfs'
   community.general.filesystem:
     dev: '{{ archlinux_install_root_partition }}'
     fstype: '{{ archlinux_install_root_fstype if archlinux_install_root_fstype else "ext4" }}'

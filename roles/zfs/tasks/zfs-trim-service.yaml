@@ -1,7 +1,7 @@
 - name: Create systemd zfs trim timer
   become: true
   ansible.builtin.copy:
-    dest: /etc/systemd/system/zfs-trim@.timer
+    dest: "{{ zfs_systemd_dir }}/zfs-trim@.timer"
     owner: root
     group: root
     mode: "0644"
@@ -21,7 +21,7 @@
 - name: Create systemd zfs trim service
   become: true
   ansible.builtin.copy:
-    dest: /etc/systemd/system/zfs-trim@.service
+    dest: "{{ zfs_systemd_dir }}/zfs-trim@.service"
     owner: root
     group: root
     mode: "0644"
@@ -50,6 +50,8 @@
 
 - name: Run systemd daemon-reload
   become: true
-  when: zfs_trim_systemd_service.changed or zfs_trim_systemd_timer.changed  # noqa: no-handler
+  when:
+  - zfs_trim_systemd_service.changed or zfs_trim_systemd_timer.changed  # noqa: no-handler
+  - not zfs_archiso | default(false)
   ansible.builtin.systemd_service:
     daemon_reload: true
