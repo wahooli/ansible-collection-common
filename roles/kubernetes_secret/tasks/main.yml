@@ -43,6 +43,7 @@
       loop: "{{ kubernetes_secret_data | default(omit) }}"
       loop_control:
         loop_var: secret
+        label: "{{ secret.namespace | default(kubernetes_secret_namespace | default('default')) }}.{{ secret.name }}"
 
   # end block Run commands in venv
 # end block Create venv and install kubernetes pip module

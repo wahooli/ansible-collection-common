@@ -58,6 +58,20 @@
     label: gpt
     number: 2
     part_start: "{{ archlinux_install_boot_partition_size | default('512MB') }}"
-    part_end: 100%
+    part_end: "{{ '-' + archlinux_install_swap_size if archlinux_install_swap_partition | default(false) and archlinux_install_swap_size | length > 1 else '100%' }}"
     name: root
+    state: present
+
+- name: Create swap partition
+  when:
+  - archlinux_install_swap_partition | default(false)
+  - archlinux_install_swap_size is defined
+  - archlinux_install_swap_size | length > 1
+  community.general.parted:
+    device: '{{ archlinux_install_drive }}'
+    label: gpt
+    name: swap
+    fs_type: linux-swap
+    number: 3
+    part_start: "-{{ archlinux_install_swap_size }}"
     state: present

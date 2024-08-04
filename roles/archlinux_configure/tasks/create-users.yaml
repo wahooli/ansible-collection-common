@@ -1,5 +1,6 @@
 - name: "Create user {{ user.name }}"
   become: true
+  when: create_user | default(true)
   ansible.builtin.user:
     append: "{{ user.append | default(true) }}"
     name: "{{ user.name }}"
@@ -20,7 +21,9 @@
 - name: "Create samba user for {{ user.name }}"
   become: true
   # no_log: true
-  when: user.samba | default(false) and user.password is defined
+  when:
+  - create_samba_user | default(true)
+  - user.samba | default(false) and user.password is defined
   ansible.builtin.shell:
     executable: /bin/bash
     cmd: >

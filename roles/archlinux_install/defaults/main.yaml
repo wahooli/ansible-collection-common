@@ -6,8 +6,9 @@ archlinux_install_wipe_drive: false # this option is not idempotent
 # archlinux_install_drive: /dev/sda
 # archlinux_install_boot_partition: /dev/sda1
 # archlinux_install_root_partition: /dev/sda2
+# archlinux_install_swap_partition: false
 # archlinux_install_swapfile: /swap/swapfile
-# archlinux_install_swapfile_size: 4G
+# archlinux_install_swap_size: 4GiB
 archlinux_install_dependencies: [] # optionally install other dependencies into archiso
 archlinux_install_root_fstype: btrfs
 archlinux_install_btrfs_subvolumes: []

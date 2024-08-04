@@ -100,11 +100,18 @@
 - name: Create swapfile
   when:
   - archlinux_install_swapfile is defined
-  - archlinux_install_swapfile | length > 0
-  - archlinux_install_swapfile_size is defined
-  - archlinux_install_swapfile_size | length > 0
+  - archlinux_install_swapfile | length > 1
+  - archlinux_install_swap_size is defined
+  - archlinux_install_swap_size | length > 1
   - archlinux_install_root_fstype != 'zfs'
   ansible.builtin.include_tasks: swapfile.yaml
+
+- name: Create swap partition
+  when:
+  - archlinux_install_swap_size is defined
+  - archlinux_install_swap_size | length > 1
+  - archlinux_install_swap_partition | default(false)
+  ansible.builtin.include_tasks: swap-partition.yaml
 
 - name: Install base system
   ansible.builtin.include_tasks: pacstrap.yaml

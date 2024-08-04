@@ -56,6 +56,7 @@
     destination: "{{ item.destination | join(',') if item.destination is not string else item.destination }}"
     copy_args: "{{ item.copy_args | default('') }}"
     inotify_args: "{{ item.inotify_args | default('') }}"
+    delete_original: "{{ item.delete_original | default(false) }}"
     allow_delete: "{{ item.allow_delete | default(false) }}"
     allow_hardlinks: "{{ item.allow_hardlinks | default(false) }}"
     copy_directories: "{{ item.copy_directories | default(false) }}"

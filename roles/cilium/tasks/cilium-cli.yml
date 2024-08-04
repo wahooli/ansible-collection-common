@@ -66,7 +66,7 @@
       remote_src: true
     when: cilium_cli_dl is success
 
-  - name: Copy helm binary to install path
+  - name: Copy cilium binary to install path
     become: true
     ansible.builtin.copy:
       src: "{{ cilium_cli_temp.path }}/cilium"

@@ -47,6 +47,14 @@
   - set-sysctls
   - sysctls
 
+- name: Set limits
+  when:
+  - archlinux_configure_nofile_limit is defined or archlinux_configure_nproc_limit is defined
+  ansible.builtin.include_tasks: "set-limits.yaml"
+  tags:
+  - set-limits
+  - limits
+
 - name: Install yay
   ansible.builtin.include_tasks: "install-yay.yaml"
   when:
@@ -81,6 +89,8 @@
   loop_control:
     loop_var: user
     label: "{{ user.name }}"
+  vars:
+    create_samba_user: false
   tags:
   - create-users
 
@@ -156,6 +166,20 @@
         - samba
   tags:
   - samba
+
+- name: Create samba users
+  when:
+  - archlinux_configure_users is defined
+  - archlinux_configure_users | length > 0
+  ansible.builtin.include_tasks: create-users.yaml
+  with_items: "{{ archlinux_configure_users }}"
+  loop_control:
+    loop_var: user
+    label: "{{ user.name }}"
+  vars:
+    create_user: false
+  tags:
+  - create-users
 
 - name: "Configure cockpit"
   when: archlinux_configure_cockpit | default(false)

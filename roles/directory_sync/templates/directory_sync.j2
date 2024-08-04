@@ -53,6 +53,10 @@ function copy() {
         msg "cd ${SOURCE_PATH} && cp --parents $cp_args ${relative_source} ${destination}"
         (cd "${SOURCE_PATH}" && cp --parents $cp_args "${relative_source}" "${destination}")
     done
+    if [[ -f $source && "$DELETE_ORIGINAL" == "1" ]]; then
+        msg "rm $source"
+        rm $source
+    fi
 }
 
 

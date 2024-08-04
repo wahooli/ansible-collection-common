@@ -72,17 +72,11 @@
         {%- endif -%}
         {{- _output_command_name | join(" ") -}}
     block:
-    - name: "Debug: {{ zfs_command_name | capitalize }}"
-      when: zfs_debug | default(false)
-      ansible.builtin.debug:
-        msg: "{{ 'cmd: ' + zfs_command if zfs_command != 'true' else 'no command executed' }}"
-    - name: "{{ zfs_command_name | capitalize }}"
-      become: true
-      ansible.builtin.command:
-        cmd: "{{ zfs_command }}"
-      failed_when: zfs_command_exec.rc != 0
-      changed_when: "zfs_command != 'true'"
-      register: zfs_command_exec
+    - name: Run dataset tasks
       when: not zfs_debug | default(false)
+      ansible.builtin.include_tasks: "dataset_tasks.yaml"
+    - name: Run debug dataset tasks
+      when: zfs_debug | default(false)
+      ansible.builtin.include_tasks: "dataset_debug_tasks.yaml"
   # end block Run zfs command
 # end block Handle dataset

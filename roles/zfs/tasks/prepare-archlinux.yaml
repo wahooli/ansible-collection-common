@@ -10,3 +10,5 @@
   community.general.modprobe:
     name: zfs
     state: present
+    params: "{{ zfs_module_params | join(' ') if zfs_module_params is defined else omit }}"
+    persistent: "present"

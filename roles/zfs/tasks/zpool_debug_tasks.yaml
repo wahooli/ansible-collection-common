@@ -1,0 +1,23 @@
+- name: "Debug: {{ zpool_command_name | capitalize }}"
+  when: zfs_debug | default(false)
+  ansible.builtin.debug:
+    msg: "{{ 'cmd: ' + zpool_command if zpool_command != 'true' else 'no command executed' }}"
+
+- name: Gather zpool facts from pool
+  community.general.zfs_facts:
+    name: "{{ zpool.name }}"
+    recurse: true
+    parsable: true
+  when:
+  - zpool.name in active_zpools.stdout_lines
+
+- name: "Debug: Handle datasets in {{ zpool.name }}"
+  ansible.builtin.include_tasks: datasets.yaml
+  when:
+  - zpool.datasets is defined
+  - zpool.datasets | length > 0
+  - zpool_action not in ["destroy", "export"]
+  loop: "{{ zpool.datasets }}"
+  loop_control:
+    loop_var: dataset
+    label: "{{ dataset.name }}"

@@ -1,6 +1,7 @@
 ---
 # defaults file for zfs
 # zfs_create_trim_timer: true
+# zfs_module_params: [] # module parameters to define
 zfs_systemd_dir: /etc/systemd/system
 zfs_archiso: false
 zfs_zpool_create_default_props:

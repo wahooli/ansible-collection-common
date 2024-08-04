@@ -46,6 +46,7 @@
   loop: "{{ zfs_zpools }}"
   loop_control:
     loop_var: zpool
+    label: "{{ zpool.name }}"
 
 - name: Configure zed
   ansible.builtin.include_tasks: zed-configure.yaml
