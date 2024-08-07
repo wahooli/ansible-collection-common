@@ -1,0 +1,51 @@
+- name: "Create mountpoint btrfs root"
+  ansible.builtin.file:
+    path: "/btrfs-root"
+    mode: "0755"
+    state: directory
+
+- name: Mount btrfs root to other mountpoint
+  ansible.posix.mount:
+    path: /btrfs-root
+    src: "{{ archlinux_install_root_partition }}"
+    fstype: "{{ archlinux_install_root_fstype }}"
+    state: mounted
+
+- name: Create a @root subvolume under the root subvolume
+  community.general.btrfs_subvolume:
+    name: "@root"
+    filesystem_device: "{{ archlinux_install_root_partition }}"
+  notify:
+  - Remount to root subvolume
+
+- name: Flush handlers
+  ansible.builtin.meta: flush_handlers
+
+- name: "Create other subvolumes"
+  community.general.btrfs_subvolume:
+    name: "@{{ item.name }}"
+    filesystem_device: "{{ archlinux_install_root_partition }}"
+  loop: "{{ archlinux_install_btrfs_subvolumes }}"
+
+- name: "Create mountpoint for other subvolumes"
+  ansible.builtin.file:
+    path: "/mnt/{{ item.path }}"
+    mode: "0755"
+    state: directory
+  loop: "{{ archlinux_install_btrfs_subvolumes }}"
+
+- name: "Mount other btrfs subvolumes"
+  ansible.posix.mount:
+    path: "/mnt/{{ item.path }}"
+    src: '{{ archlinux_install_root_partition }}'
+    fstype: btrfs
+    opts: "compress=zstd,space_cache,subvol=@{{ item.name }}"
+    state: mounted
+  loop: "{{ archlinux_install_btrfs_subvolumes }}"
+
+- name: Disable CoW for subvols with disable_cow = true
+  ansible.builtin.file:
+    path: /mnt/{{ item.path }}
+    attributes: C
+  loop: "{{ archlinux_install_btrfs_subvolumes }}"
+  when: item.disable_cow | default(false)

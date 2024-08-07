@@ -1,0 +1,9 @@
+---
+# defaults file for directory_sync
+directory_sync_systemd_dir: /etc/systemd/system
+directory_sync_env_dir: /etc/conf.d/directory_sync
+directory_sync_script: /usr/local/bin/directory_sync
+# directory_sync_service_dependencies:
+# - zfs-import.target
+# - zfs.target
+directory_sync_instances: []

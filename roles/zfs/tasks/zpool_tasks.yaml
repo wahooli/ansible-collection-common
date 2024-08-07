@@ -1,0 +1,58 @@
+- name: "{{ zpool_command_name | capitalize }}"
+  become: true
+  ansible.builtin.command:
+    cmd: "{{ zpool_command }}"
+  failed_when: zpool_command_exec.rc != 0
+  changed_when: "zpool_command != 'true'"
+  register: zpool_command_exec
+  when: not zfs_debug | default(false)
+
+- name: Gather zpool facts from pool
+  community.general.zfs_facts:
+    name: "{{ zpool.name }}"
+    recurse: true
+    parsable: true
+  when:
+  - zpool_action not in ["create", "destroy", "export"]
+
+- name: "Handle datasets in {{ zpool.name }}"
+  ansible.builtin.include_tasks: datasets.yaml
+  when:
+  - zpool.datasets is defined
+  - zpool.datasets | length > 0
+  - zpool_action not in ["destroy", "export"]
+  loop: "{{ zpool.datasets }}"
+  loop_control:
+    loop_var: dataset
+    label: "{{ dataset.name }}"
+
+- name: Enable a timer unit for zfs scrub
+  become: true
+  when:
+  - zpool.scrub | default("none") in ["weekly", "monthly"]
+  - not zfs_archiso | default(false)
+  ansible.builtin.systemd_service:
+    name: "zfs-scrub-{{- zpool.scrub -}}@{{- zpool.name -}}.timer"
+    state: started
+    enabled: true
+
+- name: Disable a timer unit for zfs scrub
+  become: true
+  when: zpool.scrub | default("none") not in ["weekly", "monthly"]
+  ansible.builtin.systemd_service:
+    name: "zfs-scrub-{{- item -}}@{{- zpool.name -}}.timer"
+    state: stopped
+    enabled: false
+  with_items:
+  - weekly
+  - monthly
+
+- name: "Set timer unit for zfs trim {{ 'enabled' if zpool.enable_trim | default(false) else 'disabled' }}"
+  become: true
+  when:
+  - zpool.enable_trim | default(false)
+  - not zfs_archiso | default(false)
+  ansible.builtin.systemd_service:
+    name: "zfs-trim@{{- zpool.name -}}.timer"
+    state: "{{ 'started' if zpool.enable_trim | default(false) else 'stopped' }}"
+    enabled: "{{ zpool.enable_trim | default(false) }}"

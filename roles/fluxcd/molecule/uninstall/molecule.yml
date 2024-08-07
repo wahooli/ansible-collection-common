@@ -5,39 +5,60 @@ dependency:
 driver:
   name: docker
 platforms:
-- name: fluxcd-uninstall-server
-  image: "debian:12"
+- name: fluxcd-uninstall-server-debian
+  image: debian:12
+  dockerfile: Dockerfile.debian.j2
   tmpfs:
   - /run
   - /tmp
-  volumes:
-  - /lib/modules:/lib/modules:ro
   privileged: true
   pre_build_image: false
   tty: true
+  groups:
+  - server
   networks:
   - name: fluxcd-uninstall
   docker_networks:
   - name: fluxcd-uninstall
-- name: fluxcd-uninstall-agent
-  image: "debian:12"
+- name: fluxcd-uninstall-agent-debian
+  image: debian:12
+  dockerfile: Dockerfile.debian.j2
   tmpfs:
   - /run
   - /tmp
-  volumes:
-  - /lib/modules:/lib/modules:ro
   privileged: true
   pre_build_image: false
   tty: true
+  groups:
+  - agent
   networks:
   - name: fluxcd-uninstall
   docker_networks:
   - name: fluxcd-uninstall
+- name: fluxcd-uninstall-server-arch
+  image: archlinux:base
+  dockerfile: Dockerfile.arch.j2
+  tmpfs:
+  - /run
+  - /tmp
+  privileged: true
+  pre_build_image: false
+  tty: true
+  groups:
+  - server
 provisioner:
   name: ansible
   inventory:
     host_vars:
-      fluxcd-uninstall-server:
+      fluxcd-uninstall-agent-debian:
+        k3s_role: agent
+        k3s_config:
+          server: https://fluxcd-uninstall-server-debian:6443
+          snapshotter: native
+          kube-proxy-arg:
+          - metrics-bind-address=0.0.0.0
+    group_vars:
+      server:
         k3s_role: server
         k3s_config:
           disable:
@@ -58,17 +79,10 @@ provisioner:
           - metrics-bind-address=0.0.0.0
           kube-scheduler-arg:
           - bind-address=0.0.0.0
-      fluxcd-uninstall-agent:
-        k3s_role: agent
-        k3s_config:
-          server: https://fluxcd-uninstall-server:6443
-          snapshotter: native
-          kube-proxy-arg:
-          - metrics-bind-address=0.0.0.0
-    group_vars:
       all:
         # run as root to test role works with that also
         # ansible_user: molecule
+        k3s_allow_cluster_init: false
         fluxcd_bootstrap_install_only: true
         fluxcd_bootstrap_allow: true
         k3s_allow_swap: true

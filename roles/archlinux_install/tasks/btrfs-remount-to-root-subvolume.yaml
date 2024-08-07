@@ -1,0 +1,12 @@
+- name: "Unmount /mnt"
+  ansible.posix.mount:
+    path: /mnt
+    state: unmounted
+
+- name: "Mount btrfs root subvolume"
+  ansible.posix.mount:
+    path: /mnt
+    src: '{{ archlinux_install_root_partition }}'
+    fstype: btrfs
+    opts: "compress=zstd,space_cache,subvol=@root"
+    state: mounted

@@ -1,0 +1,40 @@
+---
+dependency:
+  name: galaxy
+driver:
+  name: docker
+platforms:
+- name: superfans-arch
+  image: archlinux:base
+  tmpfs:
+  - /run
+  - /tmp
+  dockerfile: Dockerfile.arch.j2
+  pre_build_image: false
+  privileged: true
+  # privileged: false
+  # capabilities:
+  # - SYS_ADMIN
+  tty: true
+- name: superfans-debian
+  image: debian:12
+  tmpfs:
+  - /run
+  - /tmp
+  dockerfile: Dockerfile.debian.j2
+  pre_build_image: false
+  privileged: true
+  # privileged: false
+  # capabilities:
+  # - SYS_ADMIN
+  tty: true
+provisioner:
+  name: ansible
+  inventory:
+    host_vars:
+      superfans-arch:
+        superfans_default_args: "set 30"
+      superfans-debian:
+        superfans_default_args: "preset optimal"
+verifier:
+  name: ansible

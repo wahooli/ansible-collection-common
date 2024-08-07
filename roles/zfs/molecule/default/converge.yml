@@ -1,0 +1,24 @@
+---
+- name: Converge
+  hosts: all
+  tasks:
+    # - name: Read loop device from disk
+    #   ansible.builtin.slurp:
+    #     src: /loopback-devicename.txt
+    #   register: loopback_devicename
+
+    # - name: Set zfs_drive fact
+    #   ansible.builtin.set_fact:
+    #     zfs_drive: "{{ loopback_devicename.content | b64decode }}"
+
+    # - name: Set zfs_boot_partition fact
+    #   ansible.builtin.set_fact:
+    #     zfs_boot_partition: "{{ loopback_devicename.content | b64decode }}p1"
+
+    # - name: Set zfs_root_partition fact
+    #   ansible.builtin.set_fact:
+    #     zfs_root_partition: "{{ loopback_devicename.content | b64decode }}p2"
+
+    - name: "Include zfs role"
+      ansible.builtin.include_role:
+        name: "zfs"

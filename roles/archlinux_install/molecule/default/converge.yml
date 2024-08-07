@@ -1,0 +1,24 @@
+---
+- name: Converge
+  hosts: all
+  tasks:
+    - name: Read loop device from disk
+      ansible.builtin.slurp:
+        src: /loopback-devicename.txt
+      register: loopback_devicename
+
+    - name: Set archlinux_install_drive fact
+      ansible.builtin.set_fact:
+        archlinux_install_drive: "{{ loopback_devicename.content | b64decode }}"
+
+    - name: Set archlinux_install_boot_partition fact
+      ansible.builtin.set_fact:
+        archlinux_install_boot_partition: "{{ loopback_devicename.content | b64decode }}p1"
+
+    - name: Set archlinux_install_root_partition fact
+      ansible.builtin.set_fact:
+        archlinux_install_root_partition: "{{ loopback_devicename.content | b64decode }}p2"
+
+    - name: "Include archlinux_install role"
+      ansible.builtin.include_role:
+        name: "archlinux_install"

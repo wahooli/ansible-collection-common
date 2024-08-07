@@ -1,0 +1,4 @@
+{{ ansible_managed | comment }}
+[Time]
+NTP={{ archlinux_install_ntp_servers | default([]) | join(" ")}}
+FallbackNTP={{ archlinux_install_ntp_fallback_servers | default([]) | join(" ")}}

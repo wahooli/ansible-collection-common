@@ -5,21 +5,29 @@ dependency:
 driver:
   name: docker
 platforms:
-- name: k3s-server-upgrade
+- name: k3s-server-upgrade-debian
   image: "debian:12"
+  dockerfile: Dockerfile.debian.j2
   tmpfs:
   - /run
   - /tmp
-  volumes:
-    - /lib/modules:/lib/modules:ro
+  privileged: true
+  pre_build_image: false
+  tty: true
+- name: k3s-server-arch
+  image: archlinux:base
+  dockerfile: Dockerfile.arch.j2
+  tmpfs:
+  - /run
+  - /tmp
   privileged: true
   pre_build_image: false
   tty: true
 provisioner:
   name: ansible
   inventory:
-    host_vars:
-      k3s-server-upgrade:
+    group_vars:
+      all:
         ansible_user: molecule
         k3s_skip_prepare: true
         k3s_role: server

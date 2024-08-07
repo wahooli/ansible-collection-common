@@ -1,0 +1,92 @@
+# tasks file for smartd
+- name: Populate service facts
+  become: true
+  when: services is not defined
+  ansible.builtin.service_facts:
+
+- name: Install deps
+  ansible.builtin.include_tasks: "prepare-{{ ansible_os_family | lower }}.yaml"
+
+- name: Apply smartd-runner script
+  become: true
+  ansible.builtin.template:
+    src: "smartd-runner.j2"
+    dest: "{{ smartd_runner_path }}"
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Ensure /etc/conf.d exists
+  become: true
+  ansible.builtin.file:
+    path: /etc/conf.d
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+    modification_time: preserve
+    access_time: preserve
+
+- name: Apply /etc/conf.d/smartd config
+  become: true
+  ansible.builtin.template:
+    src: "confd-smartd.j2"
+    dest: "{{ smartd_args_file }}"
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Restart smartd
+
+- name: Ensure /etc/smartmontools/run.d exists
+  become: true
+  ansible.builtin.file:
+    path: "{{ smartd_rund_dir }}"
+    recurse: true
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+    modification_time: preserve
+    access_time: preserve
+
+- name: Apply smartmontools run.d 10mail script
+  become: true
+  ansible.builtin.template:
+    src: "10mail.j2"
+    dest: "{{ smartd_rund_dir }}/10mail"
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Apply /etc/smartd.conf file
+  become: true
+  ansible.builtin.template:
+    src: "smartd.conf.j2"
+    dest: "{{ smartd_config_file }}"
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Restart smartd
+
+- name: Apply smartd.service file
+  become: true
+  ansible.builtin.template:
+    src: "smartd.service.j2"
+    dest: "{{ smartd_systemd_file }}"
+    owner: root
+    group: root
+    mode: "0644"
+  notify:
+  - Systemd daemon reload
+  - Restart smartd
+
+- name: Start smartd
+  become: true
+  ansible.builtin.systemd_service:
+    name: smartd
+    state: started
+    daemon_reload: true
+    enabled: true
+  when:
+  - smartd_start_service | default(true)
+  - "'smartd.service' not in services"

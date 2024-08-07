@@ -1,0 +1,10 @@
+- name: Install debian deps for nfs
+  become: true
+  ansible.builtin.apt:
+    pkg:
+    - nfs-kernel-server
+    - rpcbind
+    update_cache: true
+    cache_valid_time: 3600
+  tags:
+  - molecule-idempotence-notest

@@ -1,0 +1,78 @@
+---
+# defaults file for archlinux_install
+archlinux_install_uefi: true
+archlinux_install_timezone: UTC
+archlinux_install_wipe_drive: false # this option is not idempotent
+# archlinux_install_drive: /dev/sda
+# archlinux_install_boot_partition: /dev/sda1
+# archlinux_install_root_partition: /dev/sda2
+# archlinux_install_swap_partition: false
+# archlinux_install_swapfile: /swap/swapfile
+# archlinux_install_swap_size: 4GiB
+archlinux_install_dependencies: [] # optionally install other dependencies into archiso
+archlinux_install_root_fstype: btrfs
+archlinux_install_btrfs_subvolumes: []
+# archlinux_install_zfs_root_volume: zroot/ROOT/default
+archlinux_install_archiso_zfs_script_url: https://raw.githubusercontent.com/eoli3n/archiso-zfs/master/init
+# archlinux_install_vconsole_keymap: fi
+archlinux_install_enable_cachyos_repositories: false
+archlinux_install_cachyos_key_id: 882DCFE48E2051D48E2562ABF3B607488DB35A47
+archlinux_install_cachyos_key_server: keyserver.ubuntu.com
+archlinux_install_ntp_servers:
+- 0.arch.pool.ntp.org
+- 1.arch.pool.ntp.org
+- 2.arch.pool.ntp.org
+- 3.arch.pool.ntp.org
+archlinux_install_ntp_fallback_servers:
+- 0.pool.ntp.org
+- 1.pool.ntp.org
+- 2.pool.ntp.org
+- 3.pool.ntp.org
+archlinux_install_cachyos_install_packages:
+- cachyos-keyring
+- cachyos-mirrorlist
+- cachyos-v3-mirrorlist
+- cachyos-v4-mirrorlist
+- cachyos/pacman
+archlinux_install_rankmirrors: true
+archlinux_install_rankmirrors_count: 5
+# archlinux_install_rankmirrors_countries: [] # https://archlinux.org/mirrorlist/
+archlinux_install_rankmirrors_protocols:
+- https
+- http
+# archlinux_install_rankmirros_ip_version:
+# - 4
+# - 6
+archlinux_install_kernel: linux
+archlinux_install_ucode: true # this will be appended into archlinux_install_packages
+archlinux_install_additional_packages:
+- base-devel
+- grub
+- sudo
+- efibootmgr
+- grub-btrfs
+- btrfs-progs
+- man-db
+- openssh
+- networkmanager
+- pacman-contrib
+- vim
+- os-prober
+# archlinux_install_hostname: hostname
+# archlinux_install_grub_cmdline: "loglevel=3 quiet"
+archlinux_install_gen_locales:
+- en_US.UTF-8
+# archlinux_install_locale_conf: |
+#   LANG=en_US.UTF-8
+# archlinux_install_packages: [] # setting this value overrides all packages
+archlinux_install_blacklist_modules: []
+# - modname
+# - modprefix*
+archlinux_install_users: []
+# - name: wahooli
+#   password:
+#   groups:
+#   - wheel
+#   - network
+#   shell: /bin/bash
+# archlinux_install_root_password:

@@ -12,7 +12,13 @@
     changed_when: false
     register: helm_upgrade_version
 
-  - name: Verify helm version is identical with converge playbook value
+  - name: Get installed pip packages on system
+    community.general.pip_package_info:
+    register: pip_facts
+    failed_when: false
+
+  - name: Run assertions
     ansible.builtin.assert:
       that:
       - "helm_upgrade_version.stdout == 'v3.12.1'"
+      - "pip_facts.packages is not defined or 'kubernetes' not in pip_facts.packages.pip" # should be installed in venv instead of system

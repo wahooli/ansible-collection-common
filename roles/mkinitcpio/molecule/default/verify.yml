@@ -1,0 +1,71 @@
+---
+# This is an example playbook to execute Ansible tests.
+- name: Verify normal_install hosts
+  hosts: normal_install
+  gather_facts: false
+  tasks:
+  - name: Stat file /boot/initramfs-linux-fallback.img
+    ansible.builtin.stat:
+      path: "/boot/initramfs-linux-fallback.img"
+    register: verify_initramfs_fallback
+
+  - name: Stat file /boot/initramfs-linux.img
+    ansible.builtin.stat:
+      path: "/boot/initramfs-linux.img"
+    register: verify_initramfs
+
+  - name: Stat file mkinitcpio.conf
+    ansible.builtin.stat:
+      path: "/etc/mkinitcpio.conf"
+    register: verify_mkinitcpio_conf
+
+  - name: Run assertions
+    ansible.builtin.assert:
+      that:
+      - verify_initramfs.stat.exists
+      - verify_initramfs_fallback.stat.exists
+      - verify_mkinitcpio_conf.stat.exists
+
+- name: Verify archiso hosts
+  hosts: archiso
+  gather_facts: false
+  tasks:
+  - name: Stat file /boot/initramfs-linux-fallback.img
+    ansible.builtin.stat:
+      path: "/mnt/boot/initramfs-linux-fallback.img"
+    register: verify_mnt_initramfs_fallback
+
+  - name: Stat file /boot/initramfs-linux.img
+    ansible.builtin.stat:
+      path: "/mnt/boot/initramfs-linux.img"
+    register: verify_mnt_initramfs
+
+  - name: Stat file /boot/initramfs-linux-fallback.img
+    ansible.builtin.stat:
+      path: "/boot/initramfs-linux-fallback.img"
+    register: verify_initramfs_fallback
+
+  - name: Stat file /boot/initramfs-linux.img
+    ansible.builtin.stat:
+      path: "/boot/initramfs-linux.img"
+    register: verify_initramfs
+
+  - name: Stat file /mnt/etc/mkinitcpio.conf
+    ansible.builtin.stat:
+      path: "/mnt/etc/mkinitcpio.conf"
+    register: verify_mnt_mkinitcpio_conf
+
+  - name: Stat file /etc/mkinitcpio.conf
+    ansible.builtin.stat:
+      path: "/etc/mkinitcpio.conf"
+    register: verify_mkinitcpio_conf
+
+  - name: Run assertions
+    ansible.builtin.assert:
+      that:
+      - verify_mnt_initramfs.stat.exists
+      - verify_mnt_initramfs_fallback.stat.exists
+      - verify_mnt_mkinitcpio_conf.stat.exists
+      - not verify_initramfs_fallback.stat.exists
+      - not verify_initramfs.stat.exists
+      - not verify_mkinitcpio_conf.stat.exists

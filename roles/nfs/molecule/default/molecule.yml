@@ -1,0 +1,65 @@
+---
+dependency:
+  name: galaxy
+driver:
+  name: docker
+platforms:
+- name: nfs-arch
+  image: archlinux:base
+  tmpfs:
+  - /run
+  - /tmp
+  dockerfile: Dockerfile.arch.j2
+  pre_build_image: false
+  privileged: true
+  # privileged: false
+  # capabilities:
+  # - SYS_ADMIN
+  tty: true
+- name: nfs-debian
+  image: debian:testing
+  tmpfs:
+  - /run
+  - /tmp
+  dockerfile: Dockerfile.debian.j2
+  pre_build_image: false
+  privileged: true
+  # privileged: false
+  # capabilities:
+  # - SYS_ADMIN
+  tty: true
+provisioner:
+  name: ansible
+  inventory:
+    host_vars:
+      nfs-arch:
+        nfs_conf:
+          nfsd:
+            threads: 15
+          exports:
+            rootdir: /custom/root
+    group_vars:
+      all:
+        nfs_conf:
+          nfsd:
+            threads: 16
+        nfs_exports:
+          /srv/nfs/not_home:
+          - host: 192.168.1.0/24
+            opts:
+            - rw
+            - sync
+          - host: 192.168.2.0/24
+            opts:
+            - rw
+            - no_subtree_check
+            - async
+          /srv/nfs/home:
+          - host: desktop
+            opts:
+            - rw
+            - anonuid=99
+            - anongid=99
+
+verifier:
+  name: ansible

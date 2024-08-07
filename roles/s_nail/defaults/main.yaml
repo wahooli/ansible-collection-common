@@ -1,0 +1,10 @@
+---
+# defaults file for s_nail
+s_nail_config: /etc/mail.rc
+s_nail_default_maildir: mailbox
+s_nail_default_from: root <root@localdomain>
+# s_nail_configure_user: molecule
+# s_nail_configure_gmail: false
+# s_nail_gmail_user: abcde
+# s_nail_gmail_password: fgh
+# s_nail_gmail_from: "yourname <yourname@gmail.com>""

@@ -73,7 +73,7 @@
       state: absent
 
   - name: Extract zst images
-    when: k3s_image_dl is success
+    when: k3s_image_dl is success and k3s_image_dl is not skipped
     register: unzstd_output # <- Registers the command output.
     changed_when: unzstd_output.rc != 0
     ansible.builtin.command:

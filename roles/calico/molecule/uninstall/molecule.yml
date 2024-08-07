@@ -5,21 +5,29 @@ dependency:
 driver:
   name: docker
 platforms:
-- name: k3s-calico-uninstall
-  image: "debian:12"
+- name: k3s-calico-uninstall-debian
+  dockerfile: Dockerfile.debian.j2
+  image: debian:12
   tmpfs:
   - /run
   - /tmp
-  volumes:
-  - /lib/modules:/lib/modules:ro
+  privileged: true
+  pre_build_image: false
+  tty: true
+- name: k3s-calico-uninstall-arch
+  dockerfile: Dockerfile.arch.j2
+  image: archlinux:base
+  tmpfs:
+  - /run
+  - /tmp
   privileged: true
   pre_build_image: false
   tty: true
 provisioner:
   name: ansible
   inventory:
-    host_vars:
-      k3s-calico-uninstall:
+    group_vars:
+      all:
         calico_iptables_backend: Legacy
         ansible_user: molecule
         k3s_kubelet_config:

@@ -1,0 +1,45 @@
+---
+- name: Prepare
+  hosts: all
+  tasks:
+  - name: Unmount /mnt/boot
+    ansible.posix.mount:
+      path: /mnt/boot
+      state: absent
+
+  - name: Unmount /mnt
+    ansible.posix.mount:
+      path: /mnt
+      state: absent
+
+  - name: Remove all loop devices
+    ansible.builtin.command:
+      cmd: losetup -D
+    changed_when: true
+
+  - name: Create a 4GB file
+    community.general.filesize:
+      path: /fakedisk.img
+      size: 4G
+      owner: root
+      group: root
+      mode: "0644"
+
+  - name: Find first unused loop device
+    ansible.builtin.command:
+      cmd: losetup -f
+    register: loop_device
+    changed_when: false
+
+  - name: Store loop device on disk
+    ansible.builtin.copy:
+      content: "{{ loop_device.stdout }}"
+      dest: /loopback-devicename.txt
+      owner: root
+      group: root
+      mode: "0644"
+
+  - name: Create loop device
+    ansible.builtin.command:
+      cmd: losetup {{ loop_device.stdout }} /fakedisk.img
+    changed_when: true

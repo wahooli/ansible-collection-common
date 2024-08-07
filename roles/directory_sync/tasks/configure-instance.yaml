@@ -1,0 +1,30 @@
+- name: "Create env file for instance {{ instance }}"
+  become: true
+  ansible.builtin.template:
+    src: "directory_sync.env.j2"
+    dest: "{{ directory_sync_env_dir }}/{{ instance }}"
+    owner: root
+    group: root
+    mode: "0644"
+  register: env_file
+
+- name: "Start directory_sync instance {{ instance }}"
+  become: true
+  ansible.builtin.systemd_service:
+    name: "{{ service_name }}"
+    state: started
+    enabled: "{{ enabled }}"
+  when:
+  - service_name not in services
+  - enabled
+
+- name: "{{ task_name }}"
+  become: true
+  ansible.builtin.systemd_service:
+    name: "{{ service_name }}"
+    state: "{{ 'restarted' if enabled else 'stopped' }}"
+  when:
+  - service_name in services
+  - env_file.changed or not enabled or restart_instance
+  vars:
+    task_name: "{{ 'Restart' if enabled else 'Stop' }} directory_sync instance {{ instance }}"

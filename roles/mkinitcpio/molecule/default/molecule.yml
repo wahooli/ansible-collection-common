@@ -1,0 +1,52 @@
+---
+dependency:
+  name: galaxy
+driver:
+  name: docker
+platforms:
+- name: mkinitcpio-arch
+  image: archlinux:base
+  tmpfs:
+  - /run
+  - /tmp
+  dockerfile: Dockerfile.arch.j2
+  pre_build_image: false
+  groups:
+  - normal_install
+  # privileged: true
+  tty: true
+- name: mkinitcpio-archiso
+  image: archlinux:base
+  tmpfs:
+  - /run
+  - /tmp
+  dockerfile: Dockerfile.arch.j2
+  pre_build_image: false
+  privileged: true
+  tty: true
+  groups:
+  - archiso
+provisioner:
+  name: ansible
+  inventory:
+    group_vars:
+      all:
+        ansible_user: molecule
+        mkinitcpio_hooks:
+        - base
+        # - udev
+        - autodetect
+        - microcode
+        - modconf
+        - kms
+        - keyboard
+        - keymap
+        - consolefont
+        - block
+        - filesystems
+        - fsck
+      archiso:
+        mkinitcpio_conf_path: "/mnt/etc/mkinitcpio.conf"
+        mkinitcpio_command: "arch-chroot /mnt mkinitcpio -P"
+verifier:
+  name: ansible

@@ -1,0 +1,11 @@
+---
+# handlers file for archlinux_configure
+- name: Systemd daemon reload
+  become: true
+  ansible.builtin.systemd_service:
+    daemon_reload: true
+
+- name: Systemd daemon-reexec
+  become: true
+  ansible.builtin.systemd_service:
+    daemon_reexec: true

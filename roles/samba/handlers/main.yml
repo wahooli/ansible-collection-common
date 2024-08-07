@@ -1,0 +1,41 @@
+---
+# handlers file for samba
+- name: Restart samba
+  become: true
+  ansible.builtin.systemd_service:
+    name: smb
+    state: restarted
+  when:
+  - "'smb.service' in services"
+
+- name: Restart avahi
+  become: true
+  ansible.builtin.systemd_service:
+    name: avahi-daemon
+    state: restarted
+  when:
+  - "'avahi-daemon.service' in services"
+
+- name: Restart nmbd
+  become: true
+  ansible.builtin.systemd_service:
+    name: nmb
+    state: restarted
+  when:
+  - "'nmb.service' in services"
+
+- name: Restart wsdd
+  become: true
+  ansible.builtin.systemd_service:
+    name: wsdd
+    state: restarted
+  when:
+  - "'wsdd.service' in services"
+
+- name: Restart wsdd2
+  become: true
+  ansible.builtin.systemd_service:
+    name: wsdd2
+    state: restarted
+  when:
+  - "'wsdd2.service' in services"

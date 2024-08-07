@@ -1,0 +1,26 @@
+---
+- name: Converge
+  hosts: all
+  tasks:
+  - name: Ensure test directories exist
+    become: true
+    ansible.builtin.file:
+      path: "{{ item }}"
+      recurse: true
+      state: directory
+      owner: root
+      group: root
+      mode: "ugo=rw,a+X"
+      modification_time: preserve
+      access_time: preserve
+    with_items:
+    - /mnt/data/
+    - /srv/data
+    - /mnt/files
+    - /mnt/file_backup
+    - /mnt/recursion/
+    - /srv/recursion/
+
+  - name: "Include directory_sync role"
+    ansible.builtin.include_role:
+      name: "directory_sync"

@@ -1,0 +1,11 @@
+{% macro render_config_block(config) %}
+{%- for valuepair in config.items() %}
+    {{ valuepair | join(" = ") }}
+{% endfor -%}
+{% endmacro %}
+{{- ansible_managed | comment }}
+
+{% for blockname in samba_config.keys() %}
+[{{ blockname }}]
+{{ render_config_block(samba_config[blockname]) }}
+{%- endfor -%}

@@ -1,0 +1,17 @@
+- name: Install debian packages for samba
+  become: true
+  ansible.builtin.apt:
+    pkg: |-
+      {{
+        ["samba"]
+        + (["avahi-daemon"] if samba_enable_avahi_discovery | default(false) else [])
+        + (["wsdd"] if samba_enable_wsdd_discovery | default(false) else [])
+        + (["wsdd2"] if samba_enable_wsdd2_discovery | default(false) else [])
+      }}
+    update_cache: true
+    cache_valid_time: 3600
+  notify:
+  - Restart samba
+  - Restart avahi
+  - Restart wsdd
+  - Restart wsdd2

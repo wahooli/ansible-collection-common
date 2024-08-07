@@ -1,0 +1,25 @@
+---
+dependency:
+  name: galaxy
+driver:
+  name: docker
+platforms:
+- name: nvidia_patch-arch
+  image: archlinux:base
+  tmpfs:
+  - /run
+  - /tmp
+  dockerfile: Dockerfile.arch.j2
+  pre_build_image: false
+  tty: true
+provisioner:
+  name: ansible
+  inventory:
+    group_vars:
+      all:
+        nvidia_patch_driver_version: "555.58.02"
+        # lists supported versions only, doesn't actually run the patch in unprivileged container
+        nvidia_patch_default_args: "-l"
+        nvidia_patch_fbc_default_args: "-l"
+verifier:
+  name: ansible

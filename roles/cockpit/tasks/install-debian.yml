@@ -1,0 +1,18 @@
+- name: Install debian packages for cockpit
+  become: true
+  ansible.builtin.apt:
+    pkg: |-
+      {{
+        ["cockpit", "sscg"]
+        + (["cockpit-storaged", "udisks2"] if "storage" in cockpit_addons | default([]) else [])
+        + (["cockpit-packagekit"] if "packagekit" in cockpit_addons | default([]) else [])
+        + (["cockpit-pcp"] if "pcp" in cockpit_addons | default([]) else [])
+        + (["cockpit-machines", "libvirt-daemon"] if "machines" in cockpit_addons | default([]) else [])
+        + (["cockpit-networkmanager", "network-manager"] if "networkmanager" in cockpit_addons | default([]) else [])
+        + (["cockpit-podman", "podman"] if "podman" in cockpit_addons | default([]) else [])
+        + (["firewalld"] if "firewall" in cockpit_addons | default([]) else [])
+      }}
+    update_cache: true
+    cache_valid_time: 3600
+  notify:
+  - Restart cockpit

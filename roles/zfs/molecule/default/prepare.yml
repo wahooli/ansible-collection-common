@@ -1,0 +1,22 @@
+---
+- name: Prepare
+  hosts: all
+  tasks:
+  - name: Create /scratch directory
+    become: true
+    ansible.builtin.file:
+      path: /scratch
+      state: directory
+      owner: root
+      group: root
+      mode: "0755"
+
+  - name: Create a 200MB file
+    become: true
+    community.general.filesize:
+      path: "{{ item }}"
+      size: 200M
+      owner: root
+      group: root
+      mode: "0644"
+    with_items: "{{ zfs_zpools | json_query('[].vdevs[].disks[]') }}"

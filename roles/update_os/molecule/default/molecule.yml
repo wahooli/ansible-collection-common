@@ -4,9 +4,16 @@ dependency:
 driver:
   name: docker
 platforms:
-- name: centos-stream-update-os
-  dockerfile: Dockerfile.centos.j2
-  image: quay.io/centos/centos:stream8
+- name: rockylinux-minimal-9-update-os
+  dockerfile: Dockerfile.rocky.j2
+  image: rockylinux:9-minimal
+  pre_build_image: false
+  tmpfs:
+  - /run
+  - /tmp
+- name: rockylinux-9-update-os
+  dockerfile: Dockerfile.rocky.j2
+  image: rockylinux:9
   pre_build_image: false
   tmpfs:
   - /run
@@ -22,6 +29,13 @@ platforms:
   dockerfile: Dockerfile.debian.j2
   pre_build_image: false
   image: debian:12
+  tmpfs:
+  - /run
+  - /tmp
+- name: arch-update-os
+  dockerfile: Dockerfile.arch.j2
+  pre_build_image: false
+  image: archlinux:base
   tmpfs:
   - /run
   - /tmp

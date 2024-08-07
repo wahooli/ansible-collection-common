@@ -1,0 +1,10 @@
+- name: Install debian deps for s-nail
+  become: true
+  ansible.builtin.apt:
+    pkg:
+    - s-nail
+    - ca-certificates
+    update_cache: true
+    cache_valid_time: 3600
+  tags:
+  - molecule-idempotence-notest

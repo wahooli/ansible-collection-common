@@ -1,0 +1,21 @@
+[Unit]
+Description=k3s-cleanup
+StartLimitInterval=200
+StartLimitBurst=5
+Wants=network-online.target k3s.service
+After=k3s.service
+Requires=k3s.service
+
+[Service]
+Type=oneshot
+Environment="KUBECONFIG={{ k3s_config_path }}/k3s.yaml"
+ExecStartPre=/bin/sleep 30
+ExecStart=kubectl delete pods --field-selector status.phase=Failed -A --ignore-not-found=true
+RemainAfterExit=true
+User=root
+StandardOutput=journal
+Restart=on-failure
+RestartSec=30
+
+[Install]
+WantedBy=multi-user.target

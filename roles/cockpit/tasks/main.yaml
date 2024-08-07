@@ -1,0 +1,52 @@
+---
+# tasks file for cockpit
+- name: Populate service facts
+  become: true
+  when: services is not defined
+  ansible.builtin.service_facts:
+
+- name: Install dependencies
+  ansible.builtin.include_tasks: "install-{{ ansible_os_family | lower }}.yml"
+
+- name: Ensure systemd dir exists for cockpit.socket
+  become: true
+  ansible.builtin.file:
+    path: "/etc/systemd/system/cockpit.socket.d/"
+    state: directory
+    mode: "0755"
+
+- name: Add cockpit listen config to systemd
+  become: true
+  ansible.builtin.copy:
+    dest: "/etc/systemd/system/cockpit.socket.d/listen.conf"
+    mode: "0644"
+    content: |
+      [Socket]
+      ListenStream=
+      {% for address in listen_addresses %}
+      ListenStream={{ address.address + ":" if address.address is defined else '' }}{{ address.port }}
+      {% endfor %}
+      FreeBind=yes
+  vars:
+    listen_addresses: "{{ cockpit_listen_addresses if (cockpit_listen_addresses is defined) and (cockpit_listen_addresses | type_debug == 'list') and cockpit_listen_addresses | length > 0 else [{'port': '9090'}] }}"
+  notify:
+  - Systemd daemon reload
+  - Restart cockpit
+
+- name: Allow root login
+  become: true
+  ansible.builtin.lineinfile:
+    dest: /etc/cockpit/disallowed-users
+    line: "root"
+    mode: "0644"
+    state: "{{ 'absent' if cockpit_allow_root_login | default(false) else 'present' }}"
+  notify:
+  - Restart cockpit
+
+- name: Start and enable cockpit.socket
+  become: true
+  ansible.builtin.systemd_service:
+    name: cockpit.socket
+    state: started
+    daemon_reload: true
+    enabled: true

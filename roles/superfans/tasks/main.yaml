@@ -1,0 +1,89 @@
+---
+# tasks file for superfans
+- name: Populate service facts
+  become: true
+  when: services is not defined
+  ansible.builtin.service_facts:
+
+- name: Install deps
+  ansible.builtin.include_tasks: "deps-{{ ansible_os_family | lower }}.yml"
+
+- name: Ensure /etc/conf.d exists
+  become: true
+  ansible.builtin.file:
+    path: /etc/conf.d
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+    modification_time: preserve
+    access_time: preserve
+
+- name: Create superfans directory
+  become: true
+  ansible.builtin.file:
+    path: "{{ superfans_path }}"
+    state: directory
+    mode: '0755'
+
+- name: Checkout superfans repo # noqa: latest
+  become: true
+  ansible.builtin.git:
+    repo: "{{ superfans_repo }}"
+    dest: "{{ superfans_path }}/git"
+    update: false
+
+- name: Create venv for running superfans
+  become: true
+  ansible.builtin.pip:
+    name: click
+    virtualenv: "{{ superfans_path }}"
+    virtualenv_command: "{{ virtualenv_command }}"
+  vars:
+    virtualenv_command: "{{ 'python -m venv' if ansible_facts['os_family'] == 'Archlinux' else 'virtualenv' }}"
+
+- name: Create superfans bash wrapper
+  become: true
+  ansible.builtin.template:
+    src: "superfans.j2"
+    dest: "{{ superfans_wrapper }}"
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Create superfans service file
+  become: true
+  ansible.builtin.template:
+    src: "superfans.service.j2"
+    dest: "{{ superfans_systemd_dir }}/superfans.service"
+    owner: root
+    group: root
+    mode: "0644"
+  notify:
+  - Systemd daemon reload
+  - Restart superfans
+
+- name: Modify superfans default args file
+  become: true
+  ansible.builtin.lineinfile:
+    path: "{{ superfans_env_file }}"
+    state: "{{ 'present' if superfans_default_args is defined and superfans_default_args | length > 0 else 'absent' }}"
+    regexp: '^SUPERFANS_ARGS=*.'
+    mode: "0644"
+    create: true
+    line: "{{ env_content | default(omit, true) }}"
+  vars:
+    env_content: |-
+      {{ 'SUPERFANS_ARGS="' + superfans_default_args + '"' if superfans_default_args is defined and superfans_default_args | length > 0 else None }}
+  notify:
+  - Restart superfans
+
+- name: Start superfans
+  become: true
+  ansible.builtin.systemd_service:
+    name: superfans
+    state: started
+    daemon_reload: true
+    enabled: true
+  when:
+  - "'superfans.service' not in services"

@@ -1,0 +1,30 @@
+- name: Uninstall cilium
+  environment:
+    K8S_AUTH_KUBECONFIG: "{{ cilium_kubeconfig }}"
+  block:
+  - name: Increment the retry count
+    ansible.builtin.set_fact:
+      retry_count: "{{ 0 if retry_count is undefined else retry_count | int + 1 }}"
+  - name: "Helm uninstall cilium"
+    failed_when: false
+    kubernetes.core.helm:
+      name: cilium
+      chart_ref: cilium/cilium
+      release_namespace: kube-system
+      release_state: absent
+      # wait: true
+      wait_timeout: "{{ cilium_uninstall_wait_timeout }}"
+    register: helm_uninstall_cilium
+
+  always:
+  - name: Check if need to retry
+    when: helm_uninstall_cilium.stderr != ""
+    block:
+    - name: Fail if uninstall retries has been reached
+      ansible.builtin.fail:
+        msg: Maximum retries uninstall has reached
+      when: retry_count | int == cilium_uninstall_retries
+
+    - name: Retry cilium helm chart uninstall
+      ansible.builtin.include_tasks: helm-uninstall.yml
+# end block Uninstall cilium

@@ -1,0 +1,13 @@
+---
+- name: Converge
+  hosts: all
+  tasks:
+  - name: "Include s_nail role"
+    ansible.builtin.include_role:
+      name: "s_nail"
+    vars:
+      s_nail_configure_user: root
+
+  - name: "Include smartd role"
+    ansible.builtin.include_role:
+      name: "smartd"

@@ -116,7 +116,7 @@
   - name: List server nodes
     run_once: true
     ansible.builtin.set_fact:
-      k3s_server_hosts: "{{ (dict((hostvars | dict2items | map(attribute='key')) | zip(ansible_play_hosts_all | map('extract', hostvars, 'k3s_role'))) | dict2items | rejectattr('value', '==', 'agent') | items2dict).keys() }}"
+      k3s_server_hosts: "{{ (dict((hostvars | dict2items | map(attribute='key')) | zip(ansible_play_hosts | map('extract', hostvars, 'k3s_role'))) | dict2items | rejectattr('value', '==', 'agent') | items2dict).keys() }}"
   - name: Determine if using embedded_etcd
     when: k3s_allow_cluster_init
     run_once: true
@@ -151,7 +151,7 @@
   - name: Set k3s_cluster_init_host for all hosts
     run_once: true
     ansible.builtin.set_fact:
-      k3s_cluster_init_host: "{{ (dict((hostvars | dict2items | map(attribute='key')) | zip(ansible_play_hosts_all | map('extract', hostvars, 'k3s_cluster_init_host'))) | dict2items | rejectattr('value', '==', '_remove_') | items2dict).keys() | first | default(k3s_server_hosts | first) }}"
+      k3s_cluster_init_host: "{{ (dict((hostvars | dict2items | map(attribute='key')) | zip(ansible_play_hosts | map('extract', hostvars, 'k3s_cluster_init_host'))) | dict2items | rejectattr('value', '==', '_remove_') | items2dict).keys() | first | default(k3s_server_hosts | first) }}"
 # end block Check if host has cluster-init configuration value
 
 - name: Remove cluster-init from config

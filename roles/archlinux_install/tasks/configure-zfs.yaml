@@ -1,0 +1,94 @@
+- name: "Create zfs-trim service"
+  ansible.builtin.include_role:
+    name: "zfs"
+    tasks_from: zfs-trim-service.yaml
+  vars:
+    zfs_archiso: true
+    zfs_systemd_dir: /mnt/etc/systemd/system
+    zfs_zed_enable: false
+    zfs_smartd_enable: false
+    zfs_create_trim_timer: true
+
+- name: Comment out zfs entries in fstab
+  ansible.builtin.replace:
+    dest: /mnt/etc/fstab
+    regexp: '^({{ zfs_zpools[0].name }}.*)$'
+    replace: '# \1'
+
+- name: Set cachefile in chroot
+  ansible.builtin.command:
+    cmd: "arch-chroot /mnt zpool set cachefile=/etc/zfs/zpool.cache {{ zfs_zpools[0].name }}"
+  failed_when: zfs_configure_enable_cachefile.rc != 0
+  changed_when: false
+  register: zfs_configure_enable_cachefile
+
+- name: Generate hostid
+  ansible.builtin.command:
+    cmd: "hostid"
+  failed_when: hostid_cmd.rc != 0
+  changed_when: false
+  register: hostid_cmd
+
+- name: Generate zfs hostid
+  ansible.builtin.command:
+    cmd: "arch-chroot /mnt zgenhostid {{ hostid_cmd.stdout }}"
+  failed_when: zfs_configure_enable_cachefile.rc != 0
+  changed_when: false
+  register: zfs_configure_enable_cachefile
+
+- name: Enable zfs cache import service
+  ansible.builtin.command:
+    cmd: arch-chroot /mnt systemctl enable zfs-import-cache.service
+  failed_when: zfs_configure_enable_cache_import.rc != 0
+  changed_when: false
+  register: zfs_configure_enable_cache_import
+
+- name: Enable zfs mount service
+  ansible.builtin.command:
+    cmd: arch-chroot /mnt systemctl enable zfs-mount.service
+  failed_when: zfs_configure_enable_zfs_mount.rc != 0
+  changed_when: false
+  register: zfs_configure_enable_zfs_mount
+
+- name: Enable zfs import target
+  ansible.builtin.command:
+    cmd: arch-chroot /mnt systemctl enable zfs-import.target
+  failed_when: zfs_configure_enable_zfs_import_target.rc != 0
+  changed_when: false
+  register: zfs_configure_enable_zfs_import_target
+
+- name: Enable zfs target
+  ansible.builtin.command:
+    cmd: arch-chroot /mnt systemctl enable zfs.target
+  failed_when: zfs_configure_enable_zfs_target.rc != 0
+  changed_when: false
+  register: zfs_configure_enable_zfs_target
+
+- name: Enable zfs trim for datasets
+  when: zpool.enable_trim | default(false)
+  ansible.builtin.command:
+    cmd: arch-chroot /mnt systemctl enable zfs-trim@{{- zpool.name -}}.timer
+  failed_when: zfs_configure_enable_zfs_trim.rc != 0
+  changed_when: false
+  register: zfs_configure_enable_zfs_trim
+  loop: "{{ zfs_zpools }}"
+  loop_control:
+    loop_var: zpool
+
+- name: Enable zfs scrub for datasets
+  when: zpool.scrub | default("none") in ["weekly", "monthly"]
+  ansible.builtin.command:
+    cmd: arch-chroot /mnt systemctl enable zfs-scrub-{{- zpool.scrub -}}@{{- zpool.name -}}.timer
+  failed_when: zfs_configure_enable_zfs_scrub.rc != 0
+  changed_when: false
+  register: zfs_configure_enable_zfs_scrub
+  loop: "{{ zfs_zpools }}"
+  loop_control:
+    loop_var: zpool
+
+- name: Regenerate initramfs
+  ansible.builtin.command:
+    cmd: "arch-chroot /mnt mkinitcpio -P"
+  failed_when: zfs_configure_initramfs.rc != 0
+  changed_when: false
+  register: zfs_configure_initramfs

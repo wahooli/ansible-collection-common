@@ -1,0 +1,21 @@
+---
+# This is an example playbook to execute Ansible tests.
+- name: Verify hosts
+  hosts: all
+  gather_facts: false
+  tasks:
+  - name: Stat mailbox path
+    ansible.builtin.stat:
+      path: "/root/mailbox"
+    register: mailbox_path
+
+  - name: Stat .mailrc
+    ansible.builtin.stat:
+      path: "/root/.mailrc"
+    register: mailrc
+
+  - name: Run assertions
+    ansible.builtin.assert:
+      that:
+      - mailbox_path.stat.exists
+      - mailrc.stat.exists

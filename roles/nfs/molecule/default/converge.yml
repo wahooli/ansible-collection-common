@@ -1,0 +1,23 @@
+---
+- name: Converge
+  hosts: all
+  tasks:
+  - name: Ensure test directories exist
+    become: true
+    ansible.builtin.file:
+      path: "{{ item }}"
+      recurse: true
+      state: directory
+      owner: root
+      group: root
+      mode: "ugo=rw,a+X"
+      modification_time: preserve
+      access_time: preserve
+    with_items:
+    - /custom/root/srv/nfs/not_home
+    - /custom/root/srv/nfs/home
+    - /srv/nfs/home
+    - /srv/nfs/not_home
+  - name: "Include nfs role"
+    ansible.builtin.include_role:
+      name: "nfs"

@@ -6,15 +6,14 @@ driver:
   name: docker
 platforms:
 - name: multi-server-cluster-server-01
-  image: "debian:12"
+  image: debian:12
+  dockerfile: Dockerfile.debian.j2
   groups:
   - k3s_servers
   - k3s_hosts
   tmpfs:
   - /run
   - /tmp
-  volumes:
-    - /lib/modules:/lib/modules:ro
   privileged: true
   pre_build_image: false
   tty: true
@@ -24,15 +23,14 @@ platforms:
   - name: molecule-multi-server-cluster
 
 - name: multi-server-cluster-server-02
-  image: "debian:12"
+  image: debian:12
+  dockerfile: Dockerfile.debian.j2
   groups:
   - k3s_servers
   - k3s_hosts
   tmpfs:
   - /run
   - /tmp
-  volumes:
-    - /lib/modules:/lib/modules:ro
   privileged: true
   pre_build_image: false
   tty: true
@@ -42,15 +40,14 @@ platforms:
   - name: molecule-multi-server-cluster
 
 - name: multi-server-cluster-server-03
-  image: "debian:12"
+  image: archlinux:base
+  dockerfile: Dockerfile.arch.j2
   groups:
   - k3s_servers
   - k3s_hosts
   tmpfs:
   - /run
   - /tmp
-  volumes:
-  - /lib/modules:/lib/modules:ro
   privileged: true
   pre_build_image: false
   tty: true
@@ -60,15 +57,14 @@ platforms:
   - name: molecule-multi-server-cluster
 
 - name: multi-server-cluster-agent-01
-  image: "debian:12"
+  image: debian:12
+  dockerfile: Dockerfile.debian.j2
   groups:
   - k3s_agents
   - k3s_hosts
   tmpfs:
   - /run
   - /tmp
-  volumes:
-    - /lib/modules:/lib/modules:ro
   privileged: true
   pre_build_image: false
   tty: true
@@ -86,13 +82,13 @@ provisioner:
   #   tags:
   #     run: install,prepare,k3s_server,k3s_agent
   inventory:
-    host_vars:
-      multi-server-cluster-server-01:
-        k3s_role: server
-      multi-server-cluster-server-02:
-        k3s_role: server
-      multi-server-cluster-server-03:
-        k3s_role: server
+    # host_vars:
+    #   multi-server-cluster-server-01:
+    #     k3s_role: server
+    #   multi-server-cluster-server-02:
+    #     k3s_role: server
+    #   multi-server-cluster-server-03:
+    #     k3s_role: server
     group_vars:
       k3s_hosts:
         ansible_user: molecule
@@ -102,6 +98,7 @@ provisioner:
           shutdownGracePeriod: 30s
           shutdownGracePeriodCriticalPods: 10s
       k3s_servers:
+        k3s_role: server
         k3s_config:
           snapshotter: native
           write-kubeconfig-mode: 644

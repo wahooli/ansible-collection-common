@@ -5,39 +5,98 @@ dependency:
 driver:
   name: docker
 platforms:
-- name: fluxcd-cluster-server
-  image: "debian:12"
+- name: fluxcd-cluster-server-debian
+  image: debian:12
+  dockerfile: Dockerfile.debian.j2
   tmpfs:
   - /run
   - /tmp
-  volumes:
-  - /lib/modules:/lib/modules:ro
   privileged: true
   pre_build_image: false
   tty: true
+  groups:
+  - server
   networks:
-  - name: fluxcd-cluster
+  - name: fluxcd-cluster-debian
   docker_networks:
-  - name: fluxcd-cluster
-- name: fluxcd-cluster-agent
-  image: "debian:12"
+  - name: fluxcd-cluster-debian
+- name: fluxcd-cluster-agent-debian
+  image: debian:12
+  dockerfile: Dockerfile.debian.j2
   tmpfs:
   - /run
   - /tmp
-  volumes:
-  - /lib/modules:/lib/modules:ro
   privileged: true
   pre_build_image: false
   tty: true
+  groups:
+  - agent
   networks:
-  - name: fluxcd-cluster
+  - name: fluxcd-cluster-debian
   docker_networks:
-  - name: fluxcd-cluster
+  - name: fluxcd-cluster-debian
+- name: fluxcd-cluster-server-arch
+  image: archlinux:base
+  dockerfile: Dockerfile.arch.j2
+  tmpfs:
+  - /run
+  - /tmp
+  privileged: true
+  pre_build_image: false
+  tty: true
+  groups:
+  - server
+  - arch
+  networks:
+  - name: fluxcd-cluster-arch
+  docker_networks:
+  - name: fluxcd-cluster-arch
+- name: fluxcd-cluster-agent-arch
+  image: archlinux:base
+  dockerfile: Dockerfile.arch.j2
+  tmpfs:
+  - /run
+  - /tmp
+  privileged: true
+  pre_build_image: false
+  tty: true
+  groups:
+  - agent
+  - arch
+  networks:
+  - name: fluxcd-cluster-arch
+  docker_networks:
+  - name: fluxcd-cluster-arch
 provisioner:
   name: ansible
   inventory:
     host_vars:
-      fluxcd-cluster-server:
+      fluxcd-cluster-agent-arch:
+        k3s_config:
+          server: https://fluxcd-cluster-server-arch:6443
+          snapshotter: native
+          kube-proxy-arg:
+          - metrics-bind-address=0.0.0.0
+      fluxcd-cluster-agent-debian:
+        k3s_config:
+          server: https://fluxcd-cluster-server-debian:6443
+          snapshotter: native
+          kube-proxy-arg:
+          - metrics-bind-address=0.0.0.0
+    group_vars:
+      arch:
+        k3s_containerd_use_crun: true
+      all:
+        # run as root to test role works with that also
+        # ansible_user: molecule
+        fluxcd_bootstrap_install_only: true
+        fluxcd_bootstrap_allow: true
+        k3s_allow_swap: true
+        k3s_kubelet_config:
+          maxPods: 250
+          shutdownGracePeriod: 30s
+          shutdownGracePeriodCriticalPods: 10s
+      server:
         k3s_role: server
         k3s_config:
           disable:
@@ -58,23 +117,8 @@ provisioner:
           - metrics-bind-address=0.0.0.0
           kube-scheduler-arg:
           - bind-address=0.0.0.0
-      fluxcd-cluster-agent:
+      agent:
         k3s_role: agent
-        k3s_config:
-          server: https://fluxcd-cluster-server:6443
-          snapshotter: native
-          kube-proxy-arg:
-          - metrics-bind-address=0.0.0.0
-    group_vars:
-      all:
-        # run as root to test role works with that also
-        # ansible_user: molecule
-        fluxcd_bootstrap_install_only: true
-        fluxcd_bootstrap_allow: true
-        k3s_allow_swap: true
-        k3s_kubelet_config:
-          maxPods: 250
-          shutdownGracePeriod: 30s
-          shutdownGracePeriodCriticalPods: 10s
+
 verifier:
   name: ansible

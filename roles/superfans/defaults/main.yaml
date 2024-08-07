@@ -1,0 +1,9 @@
+---
+# defaults file for superfans
+superfans_systemd_dir: /etc/systemd/system
+superfans_env_file: /etc/conf.d/superfans
+superfans_path: /usr/local/lib/superfans
+superfans_repo: https://github.com/putnam/superfans.git
+superfans_wrapper: /usr/local/bin/superfans
+superfans_service_install: true
+# superfans_default_args: "set 30"

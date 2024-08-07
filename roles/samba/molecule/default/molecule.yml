@@ -1,0 +1,74 @@
+---
+dependency:
+  name: galaxy
+driver:
+  name: docker
+platforms:
+- name: samba-arch
+  image: archlinux:base
+  tmpfs:
+  - /run
+  - /tmp
+  dockerfile: Dockerfile.arch.j2
+  pre_build_image: false
+  privileged: true
+  # privileged: false
+  # capabilities:
+  # - SYS_ADMIN
+  tty: true
+- name: samba-debian
+  image: debian:12
+  tmpfs:
+  - /run
+  - /tmp
+  dockerfile: Dockerfile.debian.j2
+  pre_build_image: false
+  privileged: true
+  # privileged: false
+  # capabilities:
+  # - SYS_ADMIN
+  tty: true
+provisioner:
+  name: ansible
+  inventory:
+    host_vars:
+      samba-arch:
+        samba_enable_wsdd_discovery: true
+      samba-debian:
+        samba_enable_wsdd2_discovery: true
+    group_vars:
+      all:
+        samba_enable_avahi_discovery: true
+        samba_netbios_name: "samba"
+        samba_workgroup: "gets_overridden"
+        samba_shares:
+          guest_share:
+            comment: guest share
+            path: /tmp/
+            public: "yes"
+            only guest: "yes"
+            writable: "yes"
+            printable: "no"
+        samba_config:
+          global:
+            create mask: "0664"
+            directory mask: "2755"
+            force create mode: "0644"
+            force directory mode: "2755"
+            workgroup: testwg
+            vfs object: fruit streams_xattr
+
+        samba_enable_presets: true
+        samba_preset:
+          enable_guest_access: true
+          # follow_symlinks: false
+          macos_server_side_copy: true
+          enable_usershares: true
+          # disable_printer_sharing: false
+          min_protocol: SMB3
+          # https://wiki.archlinux.org/title/samba#Improve_throughput
+          # improve_throughput: false
+          # enable_access_for_old_clients: false
+          transport_encryption: desired # enabled, off, desired, required
+verifier:
+  name: ansible

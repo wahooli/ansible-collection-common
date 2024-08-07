@@ -1,0 +1,46 @@
+---
+# tasks file for nvidia_patch
+- name: Install deps
+  ansible.builtin.include_tasks: "deps-{{ ansible_os_family | lower }}.yaml"
+
+- name: Create nvidia_patch directory
+  become: true
+  ansible.builtin.file:
+    path: "{{ nvidia_patch_path }}"
+    state: directory
+    mode: '0755'
+
+- name: Checkout nvidia_patch repo # noqa: latest
+  become: true
+  ansible.builtin.git:
+    repo: "{{ nvidia_patch_repo }}"
+    dest: "{{ nvidia_patch_path }}"
+    update: false
+
+- name: Get nvidia driver version
+  when: nvidia_patch_driver_version is undefined or nvidia_patch_driver_version == ""
+  ansible.builtin.shell:
+    executable: /bin/bash
+    cmd: |-
+      set -o pipefail
+      nvidia-smi --version | grep -i "driver version" | awk '{print $4;}'
+  failed_when: nvidia_smi.rc != 0
+  changed_when: false
+  register: nvidia_smi
+
+- name: Run patch
+  ansible.builtin.include_tasks: "run-patch.yaml"
+  vars:
+    verify_supported: "{{ nvidia_patch_verify_supported | default(true) }}"
+    driver_version: "{{ nvidia_patch_driver_version | default(nvidia_smi.stdout) }}"
+    patch_script: "patch.sh"
+    patch_args: "{{ nvidia_patch_default_args | default(omit) }}"
+
+- name: Run fbc patch
+  when: nvidia_patch_fbc | default(true)
+  ansible.builtin.include_tasks: "run-patch.yaml"
+  vars:
+    verify_supported: "{{ nvidia_patch_fbc_verify_supported | default(true) }}"
+    driver_version: "{{ nvidia_patch_driver_version | default(nvidia_smi.stdout) }}"
+    patch_script: "patch-fbc.sh"
+    patch_args: "{{ nvidia_patch_fbc_default_args | default(omit) }}"

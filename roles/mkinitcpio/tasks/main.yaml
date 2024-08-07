@@ -1,0 +1,12 @@
+---
+# tasks file for mkinitcpio
+- name: Modify mkinitcpio.conf
+  become: true
+  ansible.builtin.template:
+    src: "mkinitcpio.conf.j2"
+    dest: "{{ mkinitcpio_conf_path }}"
+    owner: root
+    group: root
+    mode: "0644"
+  notify:
+  - Recreate ramdisk

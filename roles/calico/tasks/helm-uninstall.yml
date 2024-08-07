@@ -6,7 +6,6 @@
     ansible.builtin.set_fact:
       retry_count: "{{ 0 if retry_count is undefined else retry_count | int + 1 }}"
   - name: "Helm uninstall calico"
-    run_once: true
     failed_when: false
     kubernetes.core.helm:
       name: calico
@@ -30,7 +29,6 @@
       when: retry_count | int == calico_uninstall_retries
 
     - name: Remove failed uninstall job
-      run_once: true
       kubernetes.core.k8s:
         api_version: batch/v1
         kind: Job

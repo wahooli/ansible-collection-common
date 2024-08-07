@@ -1,0 +1,21 @@
+---
+# This is an example playbook to execute Ansible tests.
+- name: Verify hosts
+  hosts: all
+  gather_facts: false
+  tasks:
+  - name: Stat nvidia_patch script
+    ansible.builtin.stat:
+      path: "/usr/local/lib/nvidia_patch/patch.sh"
+    register: script_nvidia_patch
+
+  - name: Stat nvidia_patch fbc script
+    ansible.builtin.stat:
+      path: "/usr/local/lib/nvidia_patch/patch-fbc.sh"
+    register: script_fbc_nvidia_patch
+
+  - name: Run assertions
+    ansible.builtin.assert:
+      that:
+      - script_nvidia_patch.stat.exists
+      - script_fbc_nvidia_patch.stat.exists

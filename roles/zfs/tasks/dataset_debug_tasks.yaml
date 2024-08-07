@@ -1,0 +1,4 @@
+- name: "Debug: {{ zfs_command_name | capitalize }}"
+  when: zfs_debug | default(false)
+  ansible.builtin.debug:
+    msg: "{{ 'cmd: ' + zfs_command if zfs_command != 'true' else 'no command executed' }}"

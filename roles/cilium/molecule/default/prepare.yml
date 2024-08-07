@@ -1,0 +1,62 @@
+---
+- name: Prepare
+  hosts: all
+  tasks:
+  - name: Check /sys/fs/bpf exists
+    become: true
+    ansible.builtin.stat:
+      path: /sys/fs/bpf
+    register: sys_fs_bpf
+
+  - name: Creates directory
+    when: not sys_fs_bpf.stat.exists
+    become: true
+    ansible.builtin.file:
+      path: /sys/fs/bpf
+      state: directory
+      recurse: true
+      mode: "0755"
+
+  - name: Mount bpffs
+    become: true
+    ansible.posix.mount:
+      path: /sys/fs/bpf
+      src: bpffs
+      fstype: bpf
+      state: ephemeral
+
+  - name: Make shared bpffs # noqa: command-instead-of-module
+    become: true
+    ansible.builtin.command: mount --make-shared /sys/fs/bpf
+    register: mount_shared_bpffs
+    changed_when: false
+    failed_when: mount_shared_bpffs.rc != 0
+
+  - name: Make cilium cgroupv2 dir
+    become: true
+    ansible.builtin.file:
+      path: /run/cilium/cgroupv2
+      state: directory
+      recurse: true
+      mode: "0755"
+
+  - name: Mount cilium cgroupv2 dir
+    become: true
+    ansible.posix.mount:
+      path: /run/cilium/cgroupv2
+      src: none
+      fstype: cgroup2
+      state: ephemeral
+
+  - name: Mount shared cilium cgroupv2 dir # noqa: command-instead-of-module
+    become: true
+    ansible.builtin.command: mount --make-shared /run/cilium/cgroupv2
+    changed_when: false
+    failed_when: false
+
+  - name: "Install helm"
+    ansible.builtin.include_role:
+      name: "helm"
+  - name: "Install k3s"
+    ansible.builtin.include_role:
+      name: "k3s"

@@ -1,0 +1,63 @@
+---
+dependency:
+  name: galaxy
+driver:
+  name: docker
+platforms:
+- name: zfs-arch
+  image: archlinux:base
+  tmpfs:
+  - /run
+  - /tmp
+  volumes:
+  - /dev/zfs:/dev/zfs
+  - /lib/modules:/lib/modules:ro
+  # - /proc/self/mounts:/proc/self/mounts
+  dockerfile: Dockerfile.arch.j2
+  pre_build_image: false
+  privileged: false
+  capabilities:
+  - SYS_ADMIN
+  tty: true
+provisioner:
+  name: ansible
+  inventory:
+    group_vars:
+      all:
+        ansible_user: molecule
+        zfs_zpool_import_default_args:
+        - -d /scratch
+        zfs_zpools:
+        - name: fastpool
+          vdevs:
+          - disks:
+            - /scratch/raid0-0.img
+            - /scratch/raid0-1.img
+          datasets:
+          - name: scratch
+            properties:
+              canmount: "off"
+              mountpoint: none
+          - name: scratch/data
+            properties:
+              mountpoint: /mnt/scratchdata
+        - name: slowpool
+          vdevs:
+          - mode: raidz2
+            disks:
+            - /scratch/raidz2-0.img
+            - /scratch/raidz2-1.img
+            - /scratch/raidz2-2.img
+            - /scratch/raidz2-3.img
+          - name: tank
+            properties:
+              canmount: "off"
+              mountpoint: none
+          - name: tank/media
+            properties:
+              mountpoint: /mnt/media
+          - name: tank/media/videos
+          - name: tank/media/photos
+          - name: tank/media/documents
+verifier:
+  name: ansible

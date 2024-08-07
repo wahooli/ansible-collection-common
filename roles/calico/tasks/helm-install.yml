@@ -1,5 +1,4 @@
 - name: Ensure the tigera-operator Namespace exists.
-  run_once: true
   kubernetes.core.k8s:
     definition:
       apiVersion: v1
@@ -28,7 +27,6 @@
       field_manager: ansible
 
 - name: Get current calico helm version
-  run_once: true
   when: not tigera_operator_ns.changed
   block:
   - name: Get calico helmrelease information
@@ -59,7 +57,6 @@
   when: not calico_repo_add.changed
 
 - name: "Helm deploy calico {{ calico_version }}"
-  run_once: true
   kubernetes.core.helm:
     name: calico
     chart_ref: projectcalico/tigera-operator
@@ -67,16 +64,31 @@
     chart_version: "{{ calico_version }}"
     values: "{{ calico_helm_values | default({}) }}"
     wait: true
-  notify:
-  - Patch tigera-operator ClusterRole
   when:
     calico_version != (calico_installed_version | default ("default_value"))
     or
     calico_helm_upgrade | default(false)
+  register: helm_install_calico
 
+- name: Patch tigera-operator ClusterRole
+  when: helm_install_calico is changed # noqa: no-handler
+  kubernetes.core.k8s_json_patch:
+    api_version: rbac.authorization.k8s.io/v1
+    kind: ClusterRole
+    name: tigera-operator
+    patch:
+    - op: add
+      path: /rules/-
+      value:
+        apiGroups:
+          - operator.tigera.io
+        resources:
+          - installations
+          - apiservers
+        verbs:
+          - delete
 
 - name: Wait until default FelixConfiguration has manifested
-  run_once: true
   kubernetes.core.k8s_info:
     api_version: "{{ calico_felix_configuration_apiversion }}"
     kind: FelixConfiguration
@@ -87,7 +99,6 @@
   delay: 1
 
 - name: Patch FelixConfiguration
-  run_once: true
   kubernetes.core.k8s_json_patch:
     api: "{{ calico_felix_configuration_apiversion }}"
     kind: FelixConfiguration
@@ -107,7 +118,6 @@
       value: "{{ calico_enable_ipv6 | default(false) }}"
 
 - name: Wait until calico-system namespace has manifested
-  run_once: true
   kubernetes.core.k8s_info:
     api_version: v1
     kind: Namespace
@@ -118,7 +128,6 @@
   delay: 1
 
 - name: Patch calico-system namespace
-  run_once: true
   kubernetes.core.k8s_json_patch:
     api_version: v1
     kind: Namespace
@@ -129,7 +138,6 @@
       value: "ignore"
 
 - name: Wait until calico-apiserver namespace has manifested
-  run_once: true
   kubernetes.core.k8s_info:
     api_version: v1
     kind: Namespace
@@ -141,7 +149,6 @@
   delay: 2
 
 - name: Patch calico-apiserver namespace
-  run_once: true
   when: calico_apiserver_ns.resources != []
   kubernetes.core.k8s_json_patch:
     api_version: v1

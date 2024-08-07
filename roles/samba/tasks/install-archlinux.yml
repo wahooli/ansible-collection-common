@@ -1,0 +1,29 @@
+- name: Install arch linux packages for samba
+  become: true
+  community.general.pacman:
+    name: |-
+      {{
+        ["samba"]
+        + (["avahi"] if samba_enable_avahi_discovery | default(false) else [])
+        + (["wsdd"] if samba_enable_wsdd_discovery | default(false) else [])
+      }}
+    state: present
+    update_cache: true
+  notify:
+  - Restart samba
+  - Restart avahi
+  - Restart wsdd
+  tags:
+  - molecule-idempotence-notest
+
+- name: "Install wsdd2 with yay"
+  become: false
+  ansible.builtin.command: "yay --noconfirm -dd --noprogressbar --needed --sync {{ item }}"
+  changed_when: "'installing '+item in yay_install_wsdd2.stdout"
+  register: yay_install_wsdd2
+  failed_when: yay_install_wsdd2.rc != 0
+  with_items:
+  - wsdd2
+  when: samba_enable_wsdd2_discovery | default(false)
+  notify:
+  - Restart wsdd2

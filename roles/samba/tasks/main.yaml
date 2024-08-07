@@ -1,0 +1,118 @@
+---
+# tasks file for samba
+- name: Populate service facts
+  become: true
+  when: services is not defined
+  ansible.builtin.service_facts:
+
+- name: Fail if wsdd and wsdd2 is enabled
+  when:
+  - samba_enable_wsdd_discovery | default(false)
+  - samba_enable_wsdd2_discovery | default(false)
+  ansible.builtin.fail:
+    msg: "wsdd and wsdd2 are mutually exclusive!"
+
+- name: Install packages
+  ansible.builtin.include_tasks: "install-{{ ansible_os_family | lower }}.yml"
+
+- name: Include preset configurations
+  ansible.builtin.include_tasks: "preset-config.yaml"
+  when:
+  - samba_enable_presets | default(true)
+  - samba_preset is defined
+  - samba_preset is mapping
+  - samba_preset | length > 0
+
+- name: "Merge samba_shares into samba_config"
+  when:
+  - samba_shares is defined
+  - samba_shares is mapping
+  - samba_shares | length > 0
+  ansible.builtin.set_fact:
+    samba_config: "{{ samba_shares | combine(samba_config | default({'global': {}}), recursive=true, list_merge='prepend_rp') }}"
+
+# defaults to workgroup "WORKGROUP" unless defined
+- name: "Merge netbios name into samba_config"
+  when:
+  - samba_netbios_name is defined
+  - samba_netbios_name is string
+  - samba_netbios_name | length > 0
+  ansible.builtin.set_fact:
+    samba_config: |-
+      {%- set _config = {
+        "global": {
+          "netbios name": samba_netbios_name,
+          "workgroup": samba_workgroup | default("WORKGROUP", true)
+        }
+      }
+      -%}
+      {{ _config | combine(samba_config | default({"global": {}}), recursive=true, list_merge='prepend_rp') }}
+
+- name: Modify samba.conf
+  become: true
+  ansible.builtin.template:
+    src: "smb.conf.j2"
+    dest: "{{ samba_conf_path }}"
+    owner: root
+    group: root
+    mode: "0644"
+  notify:
+  - Restart samba
+  - Restart nmbd
+  - Restart wsdd2
+
+- name: Modify /etc/conf.d/wsdd
+  become: true
+  when:
+  - samba_enable_wsdd_discovery | default(false)
+  - ansible_facts['os_family'] == "Archlinux" # directory not found on debian docker image
+  ansible.builtin.template:
+    src: "conf.d.wsdd.j2"
+    dest: "{{ samba_wsdd_conf_path }}"
+    owner: root
+    group: root
+    mode: "0644"
+  notify:
+  - Restart wsdd
+
+- name: Enable and start samba
+  become: true
+  ansible.builtin.systemd_service:
+    name: smb
+    state: started
+    enabled: true
+
+- name: Enable and start nmbd
+  become: true
+  when:
+  - samba_config['global']['netbios name'] is defined
+  - samba_config['global']['netbios name'] is string
+  - samba_config['global']['netbios name'] | length > 0
+  ansible.builtin.systemd_service:
+    name: nmb
+    state: started
+    enabled: true
+
+- name: Enable and start avahi-daemon
+  become: true
+  when: samba_enable_avahi_discovery | default(false)
+  ansible.builtin.systemd_service:
+    name: avahi-daemon
+    state: started
+    enabled: true
+
+- name: Enable and start wsdd
+  become: true
+  when: samba_enable_wsdd_discovery | default(false)
+  ansible.builtin.systemd_service:
+    name: wsdd
+    state: started
+    enabled: true
+
+- name: Enable and start wsdd2
+  become: true
+  when: samba_enable_wsdd2_discovery | default(false)
+  ansible.builtin.systemd_service:
+    name: wsdd2
+    state: started
+    enabled: true

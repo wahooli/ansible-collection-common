@@ -1,0 +1,59 @@
+---
+dependency:
+  name: galaxy
+driver:
+  name: docker
+platforms:
+- name: cockpit-arch
+  image: archlinux:base
+  tmpfs:
+  - /run
+  - /tmp
+  volumes:
+  - /dev:/dev
+  dockerfile: Dockerfile.arch.j2
+  pre_build_image: false
+  privileged: true
+  tty: true
+  published_ports:
+  - 127.0.0.1:8088:80
+- name: cockpit-debian
+  image: debian:12
+  tmpfs:
+  - /run
+  - /tmp
+  volumes:
+  - /dev:/dev
+  dockerfile: Dockerfile.debian.j2
+  pre_build_image: false
+  privileged: true
+  tty: true
+  published_ports:
+  - 127.0.0.1:8089:80
+provisioner:
+  name: ansible
+  inventory:
+    group_vars:
+      all:
+        ansible_user: molecule
+        cockpit_addons:
+        - storage
+        - packagekit
+        - podman
+        - machines
+        - networkmanager
+        - pcp
+        - files
+        - firewall
+        - zfs-manager
+        - file-sharing
+        - docker
+        cockpit_listen_addresses:
+        - port: 443
+        - address: 0.0.0.0
+          port: 80
+        - address: 127.0.0.1
+          port: 9090
+        cockpit_allow_root_login: true
+verifier:
+  name: ansible

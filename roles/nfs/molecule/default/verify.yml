@@ -1,0 +1,26 @@
+---
+# This is an example playbook to execute Ansible tests.
+- name: Verify hosts
+  hosts: all
+  gather_facts: true
+  tasks:
+  - name: Populate service facts
+    become: true
+    ansible.builtin.service_facts:
+
+  - name: Stat file /etc/nfs.conf
+    ansible.builtin.stat:
+      path: "/etc/nfs.conf"
+    register: verify_nfs_conf
+
+  - name: Stat file /etc/exports.d/10ansible.exports
+    ansible.builtin.stat:
+      path: "/etc/exports.d/10ansible.exports"
+    register: verify_exports
+
+  - name: Run assertions
+    ansible.builtin.assert:
+      that:
+      - "'nfs-server.service' in services"
+      - verify_nfs_conf.stat.exists
+      - verify_exports.stat.exists

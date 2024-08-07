@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+{{ ansible_managed | comment }}
+
+SUPERFANS_ARGS="${SUPERFANS_ARGS:-$@}"
+
+source {{ superfans_path }}/bin/activate
+exec {{ superfans_path }}/git/superfans $SUPERFANS_ARGS

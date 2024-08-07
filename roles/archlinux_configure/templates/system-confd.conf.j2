@@ -1,0 +1,3 @@
+{{ ansible_managed | comment }}
+[{{ block_name | default('Manager') }}]
+{{ config_key }}={{ config_value }}

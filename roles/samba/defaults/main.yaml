@@ -1,0 +1,42 @@
+---
+# defaults file for samba
+samba_conf_path: "/etc/samba/smb.conf"
+samba_wsdd_conf_path: "/etc/conf.d/wsdd"
+samba_usershares_group: sambashare
+samba_guest_account: guest
+# samba_wsdd_params: ""
+# samba_enable_avahi_discovery: true
+# samba_enable_wsdd_discovery: true
+# samba_enable_wsdd2_discovery: true
+samba_enable_presets: true
+# samba_netbios_name: ""
+# samba_workgroup: ""
+samba_preset: {}
+  # enable_guest_access: false
+  # follow_symlinks: false
+  # macos_server_side_copy: false
+  # enable_usershares: false
+  # disable_printer_sharing: false
+  # min_protocol: SMB2_10
+  # # https://wiki.archlinux.org/title/samba#Improve_throughput
+  # improve_throughput: false
+  # enable_access_for_old_clients: false
+  # transport_encryption: desired # enabled, off, desired, required
+samba_shares: {} # this can be overridden with samba_config values too, where these values are merged into
+  # guest_share:
+  #   comment: guest share
+  #   path: /tmp/
+  #   public: "yes"
+  #   only guest: "yes"
+  #   writable: "yes"
+  #   printable: "no"
+
+samba_config: {}
+  # global:
+  #   server string: server
+  #   server role: standalone server
+  #   hosts allow: 192.168.0. 192.168.1. 127.
+  #   security: user
+  #   map to guest: bad user
+  #   guest account: guest
+  #   vfs object: fruit streams_xattr

@@ -6,7 +6,8 @@ driver:
   name: docker
 platforms:
 - name: end-to-end-server
-  image: "debian:12"
+  image: archlinux:base
+  dockerfile: Dockerfile.arch.j2
   groups:
   - k3s_servers
   - helm_hosts
@@ -27,7 +28,8 @@ platforms:
   - name: end-to-end-cluster
 
 - name: end-to-end-agent
-  image: "debian:12"
+  image: debian:12
+  dockerfile: Dockerfile.debian.j2
   groups:
   - k3s_agents
   - k3s_hosts

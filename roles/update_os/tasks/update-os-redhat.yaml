@@ -1,0 +1,10 @@
+- name: Update and upgrade dnf packages
+  become: true
+  ansible.builtin.dnf:
+    name: "*"
+    state: latest
+    update_only: true
+  notify:
+  - Reboot
+  tags:
+  - molecule-idempotence-notest

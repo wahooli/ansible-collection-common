@@ -1,0 +1,31 @@
+---
+# defaults file for nfs
+nfs_exports_file: /etc/exports.d/10ansible.exports
+
+# nfs_conf: {} # contents of nfs.conf
+# https://man7.org/linux/man-pages/man5/nfs.conf.5.html
+nfs_conf:
+  nfsd:
+    threads: 16
+    host: 192.168.1.1 # or hostname alternatively
+  exports:
+    rootdir: /custom/root
+
+nfs_exports: {}
+# https://man7.org/linux/man-pages/man5/exports.5.html
+# nfs_exports:
+#   /srv/nfs:
+#   - host: 192.168.1.0/24
+#     opts:
+#     - rw
+#     - sync
+#   - host: 192.168.2.0/24
+#     opts:
+#     - rw
+#     - no_subtree_check
+#   /srv/nfs/home:
+#   - host: desktop
+#     opts:
+#     - rw
+#     - anonuid=99
+#     - anongid=99

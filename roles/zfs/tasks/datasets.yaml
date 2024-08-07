@@ -1,0 +1,82 @@
+- name: Handle dataset
+  when:
+  - dataset.name is defined
+  - dataset.name | length > 0
+  vars:
+    zfs_datasets: "{{ ansible_zfs_datasets | default([]) | selectattr('name','defined') | map(attribute='name') }}"
+    zfs_name: "{{ zpool.name }}/{{ dataset.name | regex_replace('^[\\/]+', '') }}"
+    zfs_action: |-
+      {%- set dataset_exists = zfs_name in zfs_datasets -%}
+      {%- set dataset_state = dataset.state | default("present") -%}
+      {%- if dataset_state in ["absent", "destroyed"] and dataset_exists -%}
+        destroy
+      {%- elif dataset_state == "present" and not dataset_exists and dataset.new_name is undefined  -%}
+        create
+      {%- elif dataset_state in ["present", "renamed"] and dataset_exists and dataset.new_name is defined and dataset.new_name | length > 0 -%}
+        rename
+      {%- elif dataset_state == "present" and dataset_exists and (dataset.properties is defined and dataset.properties | length > 0) -%}
+        set
+      {%- endif -%}
+  block:
+  - name: Run zfs command
+    vars:
+       # noqa: jinja[spacing]
+      zfs_props: |-
+        {%- if zfs_action in ["create", "set"] and dataset.properties is defined and dataset.properties is mapping -%}
+          {%- set _output_props = [] -%}
+          {%- set _existing_values = ansible_zfs_datasets | default([]) | selectattr('name', 'match', zfs_name) | list | first | default(dataset.properties) -%}
+          {%- for key in dataset.properties.keys() -%}
+            {%- set prop_val = key + "=" + dataset.properties[key]  -%}
+            {%- if zfs_action == "create" -%}
+              {{- _output_props.append("-o " + prop_val) -}}
+            {%- elif _existing_values[key] != dataset.properties[key] -%}
+              {{- _output_props.append(prop_val) -}}
+            {%- endif -%}
+          {%- endfor -%}
+          {{- _output_props | join(" ") -}}
+        {%- endif -%}
+      zfs_target_dataset: |-
+        {%- if zfs_action == "rename" -%}
+          {{ zfs_name }} {{ zpool.name }}/{{ dataset.new_name | regex_replace('^[\\/]+', '') }}
+        {%- else -%}
+          {{ zfs_name }}
+        {%- endif -%}
+      zfs_command: |-
+        {%- if zfs_action != "" and not (zfs_action == "set" and zfs_props == "") -%}
+          {%- set _commandline = ["zfs", zfs_action] -%}
+          {%- if dataset.additional_args is defined and dataset.additional_args | length > 0 -%}
+            {{ _commandline.append(dataset.additional_args | join(" ")) }}
+          {%- endif -%}
+          {%- if zfs_props != "" -%}
+            {{ _commandline.append(zfs_props) }}
+          {%- endif -%}
+          {{ _commandline.append(zfs_target_dataset) }}
+          {{- _commandline | join(" ") -}}
+        {%- else -%}
+          true
+        {%- endif -%}
+      zfs_command_name: |-
+        {%- set _output_command_name = [] -%}
+        {%- set _zfs_template_name = '"' + zfs_name + '"' -%}
+        {%- if zfs_command == "true" -%}
+          {{ _output_command_name.append("skip") }}
+        {%- endif -%}
+        {%- if dataset.new_name is defined and dataset.new_name | length > 0 -%}
+          {{ _output_command_name.extend(["rename dataset", _zfs_template_name, "to", '"' + dataset.new_name + '"']) }}
+        {%- elif zfs_action == "create" -%}
+          {{ _output_command_name.extend(["create dataset", _zfs_template_name]) }}
+        {%- elif dataset.state | default("present") in ["absent", "destroyed"] -%}
+          {{ _output_command_name.extend(["destroy dataset", _zfs_template_name]) }}
+        {%- else -%}
+          {{ _output_command_name.extend(["modify dataset", _zfs_template_name]) }}
+        {%- endif -%}
+        {{- _output_command_name | join(" ") -}}
+    block:
+    - name: Run dataset tasks
+      when: not zfs_debug | default(false)
+      ansible.builtin.include_tasks: "dataset_tasks.yaml"
+    - name: Run debug dataset tasks
+      when: zfs_debug | default(false)
+      ansible.builtin.include_tasks: "dataset_debug_tasks.yaml"
+  # end block Run zfs command
+# end block Handle dataset

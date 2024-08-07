@@ -1,0 +1,56 @@
+---
+- name: Cleanup
+  hosts: all
+  gather_facts: false
+  tasks:
+  - name: Wait for docker instances to be created
+    ansible.builtin.wait_for_connection:
+      delay: 1
+      timeout: 2
+    register: wait_for_instances
+    failed_when: false
+    changed_when:
+    - wait_for_instances.msg is defined
+    - '"timed out waiting" in wait_for_instances.msg'
+
+  - name: Cleanup archlinux_install
+    when:
+    - wait_for_instances is not changed
+    block:
+    - name: Unmount /mnt/boot/efi
+      ansible.posix.mount:
+        path: /mnt/boot/efi
+        state: absent
+      failed_when: false
+
+    - name: Unmount /mnt/boot
+      ansible.posix.mount:
+        path: /mnt/boot
+        state: absent
+      failed_when: false
+
+    - name: Unmount /mnt
+      ansible.posix.mount:
+        path: /mnt
+        state: absent
+      failed_when: false
+
+    - name: Unmount /btrfs-root
+      ansible.posix.mount:
+        path: /btrfs-root
+        state: absent
+      failed_when: false
+
+    - name: "Run swapoff /mnt{{ archlinux_install_swapfile }}"
+      ansible.builtin.command:
+        cmd: "swapoff /mnt{{ archlinux_install_swapfile }}"
+      failed_when: false
+      changed_when: false
+      register: cleanup_swapoff
+      when: cleanup_swapoff is defined
+
+    - name: Remove all loop devices
+      ansible.builtin.command:
+        cmd: losetup -D
+      changed_when: true
+      failed_when: false

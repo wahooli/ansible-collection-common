@@ -1,0 +1,66 @@
+# tasks file for s_nail
+- name: Install deps
+  ansible.builtin.include_tasks: "deps-{{ ansible_os_family | lower }}.yaml"
+
+- name: Apply global s-nail configuration
+  become: true
+  when:
+  - s_nail_config is defined
+  - s_nail_config != ""
+  ansible.builtin.template:
+    src: "mail.rc.j2"
+    dest: "{{ s_nail_config }}"
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Create global maildir if path is absolute
+  become: true
+  when: (s_nail_default_maildir | default("/var/mail")) is regex('^/.*')
+  ansible.builtin.file:
+    path: "{{ s_nail_default_maildir | default('/var/mail') }}"
+    state: directory
+    owner: "root"
+    group: "root"
+    mode: "0777"
+
+- name: Create user specific mailrc config
+  when: s_nail_configure_user is defined
+  vars:
+    maildir: "{{ s_nail_default_maildir | default('/var/mail') }}"
+    maildir_is_absolute: "{{ maildir is regex('^/.*') }}"
+  block:
+  - name: Get user home path
+    ansible.builtin.shell:
+      executable: /bin/bash
+      cmd: |-
+        set -o pipefail
+        grep -E {{ s_nail_configure_user | default('root') }}: /etc/passwd | awk -F: '{ print $6 }'
+    failed_when: user_home_path.rc != 0
+    changed_when: false
+    register: user_home_path
+
+  - name: Apply global s-nail configuration
+    become: true
+    become_user: "{{ s_nail_configure_user }}"
+    when:
+    - user_home_path.stdout is defined
+    ansible.builtin.template:
+      src: ".mailrc.j2"
+      dest: "{{ user_home_path.stdout }}/.mailrc"
+      owner: "{{ s_nail_configure_user }}"
+      group: "{{ s_nail_configure_user }}"
+      mode: "0600"
+
+  - name: Create mail directory if it does not exist
+    become: true
+    become_user: "{{ s_nail_configure_user }}"
+    ansible.builtin.file:
+      path: "{{ mailbox_path }}"
+      state: directory
+      owner: "{{ s_nail_configure_user }}"
+      group: "{{ s_nail_configure_user }}"
+      mode: "0711"
+    vars:
+      mailbox_path: "{{ maildir + '/' + s_nail_configure_user if maildir_is_absolute else user_home_path.stdout + '/' + maildir }}"
+# end block Create user specific mailrc config

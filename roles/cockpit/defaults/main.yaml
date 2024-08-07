@@ -1,0 +1,19 @@
+---
+# defaults file for cockpit
+cockpit_addons: []
+# - storage
+# - packagekit # for managing system packages
+# - podman # for managing podman
+# - machines # for managing virtual machines
+# - networkmanager
+# - pcp
+# - files # not supported on debian 12
+# - firewall
+# - zfs-manager # only for arch, downloaded from aur
+# - file-sharing # only for arch, downloaded from aur
+# - docker # only for arch, downloaded from aur
+cockpit_listen_addresses: [] # defaults to port 9090
+# - address: 0.0.0.0
+#   port: 80
+# - port: 443
+cockpit_allow_root_login: false
