@@ -53,5 +53,5 @@ touch /dev/kmsg\n\
 exec "$@"'\
 >> /docker-entrypoint.sh
 # ENTRYPOINT [ "/lib/systemd/systemd", "log-level=info", "unit=sysinit.target" ]
-ENTRYPOINT [ "/docker-entrypoint.sh", "/lib/systemd/systemd", "log-level=info", "unit=sysinit.target" ]
+ENTRYPOINT [ "/lib/systemd/systemd", "log-level=info", "unit=sysinit.target" ]
 # ENTRYPOINT [ "/lib/systemd/systemd", "log-level=info", "unit=sysinit.target" ]
