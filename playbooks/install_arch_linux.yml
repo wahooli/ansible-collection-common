@@ -1,0 +1,8 @@
+- name: Install Arch linux
+  hosts: arch_linux_install_hosts
+  roles:
+  - role: "archlinux_install"
+  vars:
+    ansible_become_password: root # changed with passwd command
+    ansible_user: root # changed with passwd command
+    ansible_password: root # changed with passwd command

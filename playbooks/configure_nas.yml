@@ -1,0 +1,88 @@
+- name: Setup zfs pools
+  hosts: zfs_hosts
+  tasks:
+  - name: Include zfs role
+    ansible.builtin.include_role:
+      name: "zfs"
+  tags:
+  - zfs
+
+- name: Disable sudo password temporarily for ansible user
+  hosts: arch_linux_hosts
+  tasks:
+  - name: Get remote user
+    ansible.builtin.command:
+      cmd: whoami
+    register: whoami_command
+    changed_when: false
+    when: ansible_user is undefined
+
+  - name: Set ansible_user fact
+    ansible.builtin.set_fact:
+      ansible_user: "{{ whoami_command.stdout }}"
+
+  - name: Edit sudoers file
+    become: true
+    ansible.builtin.lineinfile:
+      dest: /etc/sudoers
+      line: "{{ ansible_user }} ALL=(ALL:ALL) NOPASSWD: ALL"
+      mode: "0440"
+      backup: true
+      state: present
+    when: ansible_user != "root"
+  tags:
+  - archlinux_configure
+
+- name: Install other applications
+  hosts: arch_linux_hosts
+  roles:
+  - role: "archlinux_configure"
+  tags:
+  - archlinux_configure
+
+- name: Enable root password for ansible user
+  hosts: arch_linux_hosts
+  tasks:
+  - name: Restore sudoers file
+    become: true
+    ansible.builtin.lineinfile:
+      dest: /etc/sudoers
+      line: "{{ ansible_user }} ALL=(ALL:ALL) NOPASSWD: ALL"
+      mode: "0440"
+      state: absent
+  tags:
+  - archlinux_configure
+
+- name: Set up k3s
+  hosts: k3s_hosts
+  gather_facts: true
+  any_errors_fatal: true
+  roles:
+  - role: "k3s"
+  tags:
+  - k3s
+
+- name: Set up cilium
+  hosts: cilium_hosts
+  roles:
+  - role: "cilium"
+  tags:
+  - cilium
+
+- name: Create cluster secrets
+  hosts: kubectl_hosts
+  gather_facts: true
+  any_errors_fatal: true
+  roles:
+  - role: "kubernetes_secret"
+  tags:
+  - kube-secrets
+
+- name: Bootstrap FluxCD repository
+  hosts: fluxcd_hosts
+  gather_facts: true
+  any_errors_fatal: true
+  roles:
+  - role: "fluxcd"
+  tags:
+  - fluxcd
