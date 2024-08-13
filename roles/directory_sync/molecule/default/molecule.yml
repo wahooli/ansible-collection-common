@@ -43,10 +43,16 @@ provisioner:
           - --exclude
           - '.*(/\.|~)'
           copy_directories: true
+          verbosity: 10
           allow_delete: true
           destination: /srv/data
+          chown_user: molecule
+          chown_group: deployer
+          dir_chmod: 2775
+          file_chmod: 664
         - name: file_sync
           source: /mnt/files/
+          verbosity: 10
           copy_args: -v -p
           inotify_args:
           - --exclude
@@ -56,6 +62,7 @@ provisioner:
           - /mnt/file_backup/
         - name: recursion_test
           source: /mnt/recursion/
+          verbosity: 10
           copy_args: -v -p
           inotify_args:
           - -r

@@ -29,6 +29,12 @@ provisioner:
     group_vars:
       all:
         cilium_helm_values:
+          hubble:
+            enabled: false
+          envoy:
+            enabled: false
+          cni:
+            logFile: /dev/null
           operator:
             replicas: 1
         ansible_user: molecule

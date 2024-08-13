@@ -13,6 +13,30 @@
   #     path: /mnt/data/directory_test
   #     state: absent
   #   changed_when: false
+  - name: Test apostrophes in names
+    block:
+    - name: Create directory with apostrophe in name
+      ansible.builtin.file:
+        path: "/mnt/data/space's spaces/1's & 2's"
+        recurse: true
+        state: directory
+        owner: root
+        group: root
+        mode: "ugo=rw,a+X"
+        modification_time: preserve
+        access_time: preserve
+    - name: "Create file /mnt/data/space's spaces/1's & 2's/complicated names'.txt"
+      ansible.builtin.copy:
+        dest: "/mnt/data/space's spaces/1's & 2's/complicated names'.txt"
+        mode: "0644"
+        content: |
+          dsadsadsasda
+          fghjasddsadasi
+    - name: "Stat file /srv/data/space's spaces/1's & 2's/complicated names'.txt"
+      ansible.builtin.stat:
+        path: "/srv/data/space's spaces/1's & 2's/complicated names'.txt"
+      register: verify_apostrophes_in_name
+
   - name: Test spaces in names
     block:
     - name: Create directory with spaces in name
@@ -339,6 +363,7 @@
     ansible.builtin.assert:
       that:
       - verify_spaces_in_name.stat.exists
+      - verify_apostrophes_in_name.stat.exists
       - "'directory-sync@file_sync.service' in services"
       - "'directory-sync@data_sync.service' in services"
       - verify_datatest.stat.exists

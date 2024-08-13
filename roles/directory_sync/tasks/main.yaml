@@ -64,4 +64,8 @@
     inotify_events: "{{ item.inotify_events | default('') }}"
     restart_instance: "{{ sync_script.changed }}"
     verbosity: "{{ item.verbosity | default(0) }}"
+    chown_user: "{{ item.chown_user | default('') }}"
+    chown_group: "{{ item.chown_group | default('') }}"
+    file_chmod: "{{ item.file_chmod | default('') }}"
+    dir_chmod: "{{ item.dir_chmod | default('') }}"
   with_items: "{{ directory_sync_instances }}"
