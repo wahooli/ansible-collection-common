@@ -7,6 +7,8 @@
     - git
     state: present
     update_cache: true
+  tags:
+  - molecule-idempotence-notest
 
 - name: Git clone yay repo # noqa: latest
   ansible.builtin.git:

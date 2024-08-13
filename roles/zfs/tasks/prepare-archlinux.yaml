@@ -4,6 +4,9 @@
     name: zfs-utils
     state: present
     update_cache: true
+  tags:
+  - molecule-idempotence-notest
+
 
 - name: Add zfs kernel module
   become: true

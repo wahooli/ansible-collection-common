@@ -17,6 +17,8 @@
   when:
   - "'crun' not in ansible_facts.packages"
   - ansible_facts['os_family'] == "Archlinux"
+  tags:
+  - molecule-idempotence-notest
 
 - name: Enable and start dbus
   when:

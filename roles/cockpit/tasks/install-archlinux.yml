@@ -19,6 +19,8 @@
     update_cache: true
   notify:
   - Restart cockpit
+  tags:
+  - molecule-idempotence-notest
 
 - name: Check installed packages
   become: true

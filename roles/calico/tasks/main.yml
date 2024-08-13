@@ -29,6 +29,8 @@
     update_cache: true
   when:
   - ansible_facts['os_family'] == "Archlinux"
+  tags:
+  - molecule-idempotence-notest
 
 - name: Set calico version
   when: calico_version | default("latest") == "latest"

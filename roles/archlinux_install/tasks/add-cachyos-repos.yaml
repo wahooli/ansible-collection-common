@@ -64,6 +64,8 @@
     community.general.pacman:
       update_cache: true
       name: "{{ archlinux_install_cachyos_install_packages }}"
+    tags:
+    - molecule-idempotence-notest
 - name: Insert CachyOS mirrors into pacman.conf
   ansible.builtin.blockinfile:
     path: "{{ pacman_conf | default('/etc/pacman.conf') }}"

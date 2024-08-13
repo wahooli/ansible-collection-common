@@ -120,6 +120,8 @@
       update_cache: true
     when:
     - ansible_facts['os_family'] == "Archlinux"
+    tags:
+    - molecule-idempotence-notest
 
   - name: Get user home path
     ansible.builtin.shell:

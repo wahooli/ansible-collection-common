@@ -83,6 +83,8 @@
       }}
     state: present
     update_cache: true
+  tags:
+  - molecule-idempotence-notest
 
 - name: "Create mountpoint boot volume in {{ '/mnt/boot/efi' if archlinux_install_uefi else '/mnt/boot' }}"
   ansible.builtin.file:

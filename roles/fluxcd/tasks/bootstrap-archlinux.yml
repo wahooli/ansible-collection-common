@@ -11,3 +11,5 @@
       }}
     update_cache: true
     state: present
+  tags:
+  - molecule-idempotence-notest

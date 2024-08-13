@@ -12,6 +12,8 @@
       update_cache: true
     when:
     - ansible_facts['os_family'] == "Archlinux"
+    tags:
+    - molecule-idempotence-notest
 
 - name: Prepare archiso hosts
   hosts: archiso
@@ -22,6 +24,8 @@
       name: "arch-install-scripts"
       state: present
       update_cache: true
+    tags:
+    - molecule-idempotence-notest
 
   - name: Create base installation dir
     become: true
