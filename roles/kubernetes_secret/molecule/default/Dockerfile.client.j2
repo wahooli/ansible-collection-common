@@ -10,7 +10,7 @@ RUN apt-get update \
     sudo \
     procps \
     iproute2 \
-    python3 ca-certificates python3-pip \
+    python3 ca-certificates python3-pip python3-virtualenv \
     && rm -rf /var/lib/apt/lists/* \
     && rm -Rf /usr/share/doc && rm -Rf /usr/share/man \
     && apt-get clean \

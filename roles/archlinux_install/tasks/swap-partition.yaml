@@ -1,0 +1,14 @@
+- name: "Run mkswap on {{ archlinux_install_drive + '3' }}"
+  ansible.builtin.command:
+    cmd: "mkswap {{ archlinux_install_drive + '3' }}"
+  failed_when: swap_mkswap.rc != 0
+  changed_when: false
+  register: swap_mkswap
+
+- name: "Run swapon {{ archlinux_install_drive + '3' }}"
+  ansible.builtin.command:
+    cmd: "swapon {{ archlinux_install_drive + '3' }}"
+  failed_when: swap_swapon.rc != 0
+  changed_when: false
+  register: swap_swapon
+  when: swap_mkswap is not skipped

@@ -1,0 +1,74 @@
+---
+dependency:
+  name: galaxy
+driver:
+  name: docker
+platforms:
+- name: archlinux_install-install
+  hostname: archiso
+  image: archlinux:base
+  tmpfs:
+  - /run
+  - /tmp
+  volumes:
+  - /dev:/dev
+  dockerfile: Dockerfile.j2
+  pre_build_image: false
+  privileged: true
+  tty: true
+provisioner:
+  name: ansible
+  inventory:
+    group_vars:
+      all:
+        ansible_user: root
+        archlinux_install_grub_cmdline: "loglevel=3 quiet testing"
+        archlinux_install_uefi: false
+        # archlinux_install_kernel: linux-cachyos-lto
+        archlinux_install_enable_cachyos_repositories: true
+        archlinux_install_rankmirrors_countries:
+        - DE
+        - FI
+        - EE
+        - BE
+        - "NO"
+        - SE
+        - US
+        archlinux_install_ntp_servers:
+        - 0.fi.pool.ntp.org
+        - 1.fi.pool.ntp.org
+        - 2.fi.pool.ntp.org
+        - 3.fi.pool.ntp.org
+        archlinux_install_ntp_fallback_servers:
+        - 0.arch.pool.ntp.org
+        - 1.arch.pool.ntp.org
+        - 2.arch.pool.ntp.org
+        - 3.arch.pool.ntp.org
+        archlinux_install_rankmirrors_count: 2
+        # archlinux_install_swapfile: /swap/swapfile
+        # archlinux_install_swapfile_size: 1G
+        archlinux_install_blacklist_modules:
+        - nouveau
+        # archlinux_install_locale_conf: |
+        #   LANG=en_US.UTF-8
+        #   LC_TIME=fi_FI.UTF-8
+        archlinux_install_vconsole_keymap: fi
+        archlinux_install_gen_locales:
+        - en_US.UTF-8
+        # - fi_FI.UTF-8 doesn't work in docker :)
+        archlinux_install_btrfs_subvolumes:
+        - name: snapshots
+          path: .snapshots
+        - name: home
+          path: home
+        - name: log
+          path: var/log
+        - name: cache
+          path: var/cache
+        # - name: tmp
+        #   path: var/tmp
+        # - name: swap
+        #   path: swap
+        #   disable_cow: true
+verifier:
+  name: ansible

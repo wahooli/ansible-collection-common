@@ -1,0 +1,46 @@
+---
+dependency:
+  name: galaxy
+driver:
+  name: docker
+platforms:
+- name: smartd-arch
+  image: archlinux:base
+  tmpfs:
+  - /run
+  - /tmp
+  dockerfile: Dockerfile.arch.j2
+  pre_build_image: false
+  tty: true
+  privileged: true
+- name: smartd-debian
+  image: debian:12
+  tmpfs:
+  - /run
+  - /tmp
+  dockerfile: Dockerfile.debian.j2
+  pre_build_image: false
+  tty: true
+  privileged: true
+provisioner:
+  name: ansible
+  inventory:
+    group_vars:
+      all:
+        smartd_start_service: false # disabled due service failing in vms
+        smartd_env:
+          SMARTD_ARGS: "-i 1800"
+          "example line": "abc"
+          integer_value: 3
+        smartd_conf:
+          args:
+          - -a # monitor all attributes
+          - -o on # enable automatic offline data collection
+          - -S on # enable automatic attribute autosave
+          - -n standby,q # do not check if disk is in standby, and suppress log message to that effect so as not to cause a write to disk
+          - -s (S/../../6/02|L/../21/./04) # schedule short and long tests, short test every saturday at 02:00 and long test every 21st day of month at 04:00
+          - -m root
+          - -M test # send single test email during startup
+          - -M exec /usr/share/smartmontools/smartd-runner # runs executable
+verifier:
+  name: ansible

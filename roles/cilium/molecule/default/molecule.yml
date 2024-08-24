@@ -1,0 +1,79 @@
+---
+dependency:
+  name: shell
+  command: "COLLECTION_INSTALL=false ${GITHUB_WORKSPACE:-..}/${GITHUB_REPOSITORY:-..}/tools/install-deps.sh"
+driver:
+  name: docker
+platforms:
+- name: k3s-cilium-debian
+  image: debian:12
+  dockerfile: Dockerfile.debian.j2
+  tmpfs:
+  - /run
+  - /tmp
+  privileged: true
+  tty: true
+- name: k3s-cilium-arch
+  image: archlinux:base
+  dockerfile: Dockerfile.arch.j2
+  tmpfs:
+  - /run
+  - /tmp
+  privileged: true
+  pre_build_image: false
+  tty: true
+provisioner:
+  name: ansible
+  inventory:
+    host_vars:
+      k3s-cilium-arch:
+        k3s_containerd_use_crun: true
+    group_vars:
+      all:
+        cilium_helm_values:
+          hubble:
+            enabled: false
+          envoy:
+            enabled: false
+          cni:
+            logFile: /dev/null
+          operator:
+            replicas: 1
+        # run as root to test role works with that also
+        # ansible_user: molecule
+        k3s_allow_swap: true
+        k3s_kubelet_config:
+          maxPods: 250
+          shutdownGracePeriod: 30s
+          shutdownGracePeriodCriticalPods: 10s
+          feature-gates:
+            GracefulNodeShutdown: true
+          node-status-update-frequency: 5s
+        k3s_role: server
+        k3s_config:
+          # rootless: true
+          disable:
+          - servicelb
+          - traefik
+          cluster-cidr: 10.42.0.0/16
+          service-cidr: 10.43.0.0/16
+          cluster-dns: 10.43.0.10
+          flannel-backend: none
+          disable-cloud-controller: true
+          disable-network-policy: true
+          kube-apiserver-arg:
+          - default-not-ready-toleration-seconds=10
+          - default-unreachable-toleration-seconds=10
+          # snapshotter: fuse-overlayfs
+          snapshotter: native
+          write-kubeconfig-mode: 644
+          kube-controller-manager-arg:
+          - bind-address=0.0.0.0
+          - terminated-pod-gc-threshold=10
+          kube-proxy-arg:
+          - metrics-bind-address=0.0.0.0
+          kube-scheduler-arg:
+          - bind-address=0.0.0.0
+
+verifier:
+  name: ansible

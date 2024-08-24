@@ -1,0 +1,9 @@
+[Unit]
+Description=Superfans
+
+[Service]
+EnvironmentFile=-{{ superfans_env_file }}
+ExecStart={{ superfans_wrapper }}
+
+[Install]
+WantedBy=multi.user.target

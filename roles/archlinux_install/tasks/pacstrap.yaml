@@ -1,0 +1,67 @@
+- name: Read mirrorlist file contents
+  ansible.builtin.slurp:
+    src: /etc/pacman.d/mirrorlist
+  register: mirrorlist_contents
+
+- name: Rank pacman mirrors
+  when:
+  - archlinux_install_rankmirrors
+  - (mirrorlist_contents.content | b64decode).splitlines() | length > (archlinux_install_rankmirrors_count | default(5) | int)
+  ansible.builtin.shell:
+    executable: /bin/bash
+    cmd: |
+      set -o pipefail
+      curl -s "https://archlinux.org/mirrorlist/?{%- for country in (archlinux_install_rankmirrors_countries | default(['all'])) -%}
+        country={{ country }}&
+      {%- endfor -%}
+      {%- for protocol in (archlinux_install_rankmirrors_protocols | default(['https'])) -%}
+        protocol={{ protocol }}&
+      {%- endfor -%}
+      {%- for ip_version in (archlinux_install_rankmirros_ip_version | default(['4'])) -%}
+        ip_version={{ ip_version }}&
+      {%- endfor -%}
+      use_mirror_status=on" | sed -e 's/^#Server/Server/' -e '/^#/d' | rankmirrors -n {{ archlinux_install_rankmirrors_count | default('5') }} - > /etc/pacman.d/mirrorlist
+  failed_when: rankmirrors.rc != 0
+  changed_when: false
+  register: rankmirrors
+
+- name: Use default package list for pacstrap
+  when:
+  - archlinux_install_packages is undefined or archlinux_install_packages | length < 1
+  ansible.builtin.set_fact:
+    archlinux_install_packages: "{{ ['base', 'linux-firmware'] + [archlinux_install_kernel | default('linux')] + (archlinux_install_additional_packages | default([])) }}"
+
+- name: Install base system
+  ansible.builtin.command:
+    argv: "{{ ['pacstrap', '-K', '/mnt'] + archlinux_install_packages + [('intel-ucode' if ansible_processor[1].find('Intel') != -1 else ('amd-ucode' if ansible_processor[1].find('AMD') != -1 else '')) if archlinux_install_ucode else ''] }}"
+  args:
+    creates: /mnt/bin
+  register: pacstrap_command
+
+- name: Run genfstab
+  ansible.builtin.shell:
+    executable: /bin/bash
+    cmd: |
+      set -o pipefail
+      genfstab -U /mnt > /mnt/etc/fstab
+  failed_when: archlinux_install_root_fstype | default('btrfs') != 'zfs' and pacstrap_genfstab.rc != 0
+  changed_when: false
+  register: pacstrap_genfstab
+
+- name: Docker specific hacks
+  ansible.builtin.include_tasks: pacstrap-docker-hacks.yaml
+  when: ansible_connection in [ "container", "docker", "community.docker.docker" ]
+
+- name: Check if /mnt/etc/pacman.conf exists
+  ansible.builtin.stat:
+    path: "/mnt/etc/pacman.conf"
+  register: pacstrap_pacman_conf
+  failed_when: not pacstrap_pacman_conf.stat.exists
+
+- name: Add CachyOS repositories to installation
+  ansible.builtin.include_tasks: add-cachyos-repos.yaml
+  when:
+  - archlinux_install_enable_cachyos_repositories
+  - pacstrap_command.changed # noqa: no-handler
+  vars:
+    pacman_conf: /mnt/etc/pacman.conf

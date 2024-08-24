@@ -1,0 +1,10 @@
+{{ ansible_managed | comment }}
+
+{% for path in nfs_exports.keys() %}
+"{{ path }}"\
+{% for share in nfs_exports[path] %}
+    {{ share.host }}({{ share.opts | join(',') }}){% if not loop.last %} \
+{% endif %}
+{% endfor %}
+
+{% endfor %}

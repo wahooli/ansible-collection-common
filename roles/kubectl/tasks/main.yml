@@ -44,13 +44,18 @@
   - name: Detect CPU arch
     when: not kubectl_arch | default(false)
     ansible.builtin.set_fact:
-      kubectl_arch: '{%- if (ansible_facts.architecture is search("arm") and ansible_facts.userspace_bits == "64") or ansible_facts.architecture is search("aarch64") -%}
-      arm64{%- elif ansible_facts.architecture is search("arm") and ansible_facts.userspace_bits == "32" -%}
-      arm{%- elif ansible_facts.architecture == "x86_64" -%}
-      amd64{%- elif ansible_facts.architecture == "i386" -%}
-      i386{%- else -%}
-      {%- endif -%}'
-
+      kubectl_arch: |-
+        {%- if (ansible_facts.architecture is search("arm") and ansible_facts.userspace_bits == "64") or ansible_facts.architecture is search("aarch64") -%}
+          arm64
+        {%- elif ansible_facts.architecture is search("arm") and ansible_facts.userspace_bits == "32" -%}
+          arm
+        {%- elif ansible_facts.architecture == "x86_64" -%}
+          amd64
+        {%- elif ansible_facts.architecture == "i386" -%}
+          386
+        {%- elif ansible_facts.architecture in ["s390x", "ppc64le"] -%}
+          {{ ansible_facts.architecture }}
+        {%- endif -%}
   - name: "Download kubectl release {{ kubectl_version }}"
     ansible.builtin.get_url:
       url: https://dl.k8s.io/release/{{ kubectl_version }}/bin/{{ kubectl_os }}/{{ kubectl_arch }}/kubectl

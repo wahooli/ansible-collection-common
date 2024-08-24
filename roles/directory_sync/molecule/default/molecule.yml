@@ -1,0 +1,75 @@
+---
+dependency:
+  name: galaxy
+driver:
+  name: docker
+platforms:
+- name: directory_sync-arch
+  image: archlinux:base
+  tmpfs:
+  - /run
+  - /tmp
+  dockerfile: Dockerfile.arch.j2
+  pre_build_image: false
+  privileged: true
+  # privileged: false
+  # capabilities:
+  # - SYS_ADMIN
+  tty: true
+- name: directory_sync-debian
+  image: debian:testing
+  tmpfs:
+  - /run
+  - /tmp
+  dockerfile: Dockerfile.debian.j2
+  pre_build_image: false
+  privileged: true
+  # privileged: false
+  # capabilities:
+  # - SYS_ADMIN
+  tty: true
+provisioner:
+  name: ansible
+  inventory:
+    group_vars:
+      all:
+        directory_sync_instances:
+        - name: data_sync
+          enabled: true
+          source: /mnt/data/
+          copy_args: -v -p
+          inotify_args:
+          - -r
+          - --exclude
+          - '.*(/\.|~)'
+          copy_directories: true
+          verbosity: 10
+          allow_delete: true
+          destination: /srv/data
+          chown_user: molecule
+          chown_group: deployer
+          dir_chmod: 2775
+          file_chmod: 664
+        - name: file_sync
+          source: /mnt/files/
+          verbosity: 10
+          copy_args: -v -p
+          inotify_args:
+          - --exclude
+          - '.*(/\.|~)'
+          destination:
+          - /srv/data/
+          - /mnt/file_backup/
+        - name: recursion_test
+          source: /mnt/recursion/
+          verbosity: 10
+          copy_args: -v -p
+          inotify_args:
+          - -r
+          - --exclude
+          - '.*(/\.|~)'
+          copy_directories: true
+          destination:
+          - /srv/recursion/
+verifier:
+  name: ansible

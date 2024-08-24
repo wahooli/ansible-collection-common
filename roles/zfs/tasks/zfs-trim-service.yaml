@@ -1,0 +1,57 @@
+- name: Create systemd zfs trim timer
+  become: true
+  ansible.builtin.copy:
+    dest: "{{ zfs_systemd_dir }}/zfs-trim@.timer"
+    owner: root
+    group: root
+    mode: "0644"
+    content: |-
+      [Unit]
+      Description=Monthly zpool trim on %i
+
+      [Timer]
+      OnCalendar=monthly
+      AccuracySec=1h
+      Persistent=true
+
+      [Install]
+      WantedBy=multi-user.target
+  register: zfs_trim_systemd_timer
+
+- name: Create systemd zfs trim service
+  become: true
+  ansible.builtin.copy:
+    dest: "{{ zfs_systemd_dir }}/zfs-trim@.service"
+    owner: root
+    group: root
+    mode: "0644"
+    content: |-
+      [Unit]
+      Description=zpool trim on %i
+      Documentation=man:zpool-trim(8)
+      Requires=zfs.target
+      After=zfs.target
+      ConditionACPower=true
+      ConditionPathIsDirectory=/sys/module/zfs
+
+      [Service]
+      Nice=19
+      IOSchedulingClass=idle
+      KillSignal=SIGINT
+      ExecStart=/bin/sh -c '\
+      if /usr/bin/zpool status %i | grep "trimming"; then\
+      exec /usr/bin/zpool wait -t trim %i;\
+      else exec /usr/bin/zpool trim -w %i; fi'
+      ExecStop=-/bin/sh -c '/usr/bin/zpool trim -s %i 2>/dev/null || true'
+
+      [Install]
+      WantedBy=multi-user.target
+  register: zfs_trim_systemd_service
+
+- name: Run systemd daemon-reload
+  become: true
+  when:
+  - zfs_trim_systemd_service.changed or zfs_trim_systemd_timer.changed  # noqa: no-handler
+  - not zfs_archiso | default(false)
+  ansible.builtin.systemd_service:
+    daemon_reload: true

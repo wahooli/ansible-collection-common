@@ -1,0 +1,13 @@
+[Unit]
+Description=Directory sync
+After=local-fs.target {{- ' ' + (directory_sync_service_dependencies | join(" ")) if directory_sync_service_dependencies is defined else '' }}
+{% if directory_sync_service_dependencies | default([]) != []  %}
+Requires={{ directory_sync_service_dependencies | join(' ') }}
+{% endif %}
+
+[Service]
+EnvironmentFile=-{{ directory_sync_env_dir }}/%i
+ExecStart={{ directory_sync_script }}
+
+[Install]
+WantedBy=multi.user.target

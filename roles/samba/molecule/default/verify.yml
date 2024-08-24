@@ -1,0 +1,53 @@
+---
+# This is an example playbook to execute Ansible tests.
+- name: Verify ArchLinux
+  hosts: samba-arch
+  gather_facts: true
+  tasks:
+  - name: Populate service facts
+    become: true
+    ansible.builtin.service_facts:
+
+  - name: Stat file /etc/samba/smb.conf
+    ansible.builtin.stat:
+      path: "/etc/samba/smb.conf"
+    register: verify_samba_conf
+
+  - name: Stat file /etc/conf.d/wsdd"
+    ansible.builtin.stat:
+      path: "/etc/conf.d/wsdd"
+    register: verify_wsdd_conf
+
+  - name: Run assertions
+    ansible.builtin.assert:
+      that:
+      - verify_samba_conf.stat.exists
+      - verify_wsdd_conf.stat.exists
+      - "'smb.service' in services"
+      - "'avahi-daemon.service' in services"
+      - "'wsdd.service' in services"
+      - "'nmb.service' in services"
+      - "'wsdd2.service' not in services"
+
+- name: Verify Debian
+  hosts: samba-debian
+  gather_facts: true
+  tasks:
+  - name: Populate service facts
+    become: true
+    ansible.builtin.service_facts:
+
+  - name: Stat file /etc/samba/smb.conf
+    ansible.builtin.stat:
+      path: "/etc/samba/smb.conf"
+    register: verify_samba_conf
+
+  - name: Run assertions
+    ansible.builtin.assert:
+      that:
+      - verify_samba_conf.stat.exists
+      - "'smb.service' in services"
+      - "'avahi-daemon.service' in services"
+      - "'wsdd2.service' in services"
+      - "'wsdd.service' not in services"
+      - "'nmb.service' in services"

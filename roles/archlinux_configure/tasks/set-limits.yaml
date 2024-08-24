@@ -1,0 +1,49 @@
+- name: Ensure /etc/systemd/system.conf.d/ exists
+  become: true
+  ansible.builtin.file:
+    name: "/etc/systemd/system.conf.d/"
+    state: directory
+    owner: "root"
+    group: "root"
+    mode: "0755"
+    modification_time: preserve
+    access_time: preserve
+
+- name: Set open file limits
+  become: true
+  when:
+  - archlinux_configure_nofile_limit is defined
+  - archlinux_configure_nofile_limit != ""
+  ansible.builtin.template:
+    src: "system-confd.conf.j2"
+    dest: "/etc/systemd/system.conf.d/10-filelimit.conf"
+    owner: root
+    group: root
+    mode: "0644"
+  vars:
+    block_name: Manager
+    config_key: DefaultLimitNOFILE
+    config_value: "{{ archlinux_configure_nofile_limit }}"
+  notify:
+  - Systemd daemon-reexec
+
+- name: Set nproc limits
+  become: true
+  when:
+  - archlinux_configure_nproc_limit is defined
+  - archlinux_configure_nproc_limit != ""
+  ansible.builtin.template:
+    src: "system-confd.conf.j2"
+    dest: "/etc/systemd/system.conf.d/10-proclimit.conf"
+    owner: root
+    group: root
+    mode: "0644"
+  vars:
+    block_name: Manager
+    config_key: DefaultLimitNPROC
+    config_value: "{{ archlinux_configure_nproc_limit }}"
+  notify:
+  - Systemd daemon-reexec
+
+- name: Flush handlers
+  ansible.builtin.meta: flush_handlers

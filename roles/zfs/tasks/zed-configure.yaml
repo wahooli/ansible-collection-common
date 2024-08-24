@@ -1,0 +1,26 @@
+- name: "Install s-nail"
+  ansible.builtin.include_role:
+    name: "s_nail"
+
+- name: Modify zed.rc configuration
+  become: true
+  when: zfs_zed_config is mapping
+  ansible.builtin.lineinfile:
+    path: "{{ zfs_zed_rc_file }}"
+    regexp: "{{ regexp }}"
+    line: |-
+      {{ line }}
+    backrefs: "{{ conf_commented }}"
+    state: present
+    mode: "0600"
+  vars:
+    conf_commented: "{{ item.config.state == 'absent' if item.config is mapping else false }}"
+    regexp: "{{ '(?i)^(' + item.conf_name + '=.*)' if conf_commented else '^[# ]?' + item.conf_name + '=.*$' }}"
+    conf_value: "{{ item.config.value if item.config is mapping else item.config }}"
+    conf_value_quoted: |-
+      {{ conf_value if conf_value is regex('^[0-9]+$') else '"' + conf_value + '"' }}
+    line: |-
+      {{ '#\\1' if conf_commented else item.conf_name + '=' + conf_value_quoted }}
+  with_items: "{{ zfs_zed_config | dict2items(key_name='conf_name', value_name='config') }}"
+  notify:
+  - Restart zed

@@ -1,0 +1,13 @@
+{{ ansible_managed | comment }}
+
+# All the examples require v15-compat!
+set v15-compat
+{% if s_nail_configure_gmail | default(false) %}
+account gmail {
+   # Localize options, forget them when changing the account
+   localopts yes
+   # (The plain smtp:// proto is optional)
+   set mta=smtp://{{ s_nail_gmail_user }}:{{ s_nail_gmail_password }}@smtp.gmail.com:587 smtp-use-starttls
+   set from="{{ s_nail_gmail_from }}"
+}
+{% endif %}

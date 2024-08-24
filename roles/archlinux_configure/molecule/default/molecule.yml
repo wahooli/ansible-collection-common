@@ -1,0 +1,102 @@
+---
+dependency:
+  name: galaxy
+driver:
+  name: docker
+platforms:
+- name: archlinux_configre
+  image: archlinux:base
+  tmpfs:
+  - /run
+  - /tmp
+  dockerfile: Dockerfile.arch.j2
+  pre_build_image: false
+  privileged: true
+  published_ports:
+  - 127.0.0.1:8080:80
+  - 127.0.0.1:8081:443
+  capabilities:
+  - SYS_ADMIN
+  tty: true
+provisioner:
+  name: ansible
+  inventory:
+    group_vars:
+      all:
+        archlinux_configure_groups:
+        - name: sambashare
+          system: true
+        - name: users
+          system: true
+        archlinux_configure_users:
+        - name: molecule
+          groups:
+          - users
+          - sambashare
+        - name: system-user
+          shell: /bin/nologin
+          system: true
+          create_home: false
+          groups:
+          - sambashare
+        - name: test-user
+          shell: /bin/bash
+          password: test123
+          system: false
+          create_home: true
+          groups:
+          - users
+          - sambashare
+        archlinux_configure_directories:
+        - path: /srv
+          owner: root
+          group: root
+        - path: /mnt/data
+          owner: root
+          group: sambashare
+          mode: "2775"
+        archlinux_configure_mounts:
+        - path: /srv/share
+          src: /mnt/data
+          opts: bind
+          state: mounted
+          fstype: none
+        ansible_user: molecule
+        archlinux_configure_sysctls:
+        - name: net.core.netdev_max_backlog
+          value: 16384
+        - name: net.core.somaxconn
+          value: 8192
+        samba_enable_wsdd2_discovery: true
+        archlinux_configure_mkinitcpio: true
+        archlinux_configure_samba: true
+        archlinux_configure_cockpit: false
+        cockpit_allow_root_login: true
+        cockpit_listen_addresses:
+        - port: 443
+        - port: 80
+        cockpit_addons:
+        - file-sharing
+        samba_preset:
+          enable_guest_access: true
+        samba_shares:
+          guest_share:
+            comment: guest share
+            path: /tmp/
+            public: "yes"
+            only guest: "yes"
+            writable: "yes"
+            printable: "no"
+        mkinitcpio_hooks:
+        - base
+        - autodetect
+        - microcode
+        - modconf
+        - keyboard
+        - keymap
+        - consolefont
+        - block
+        - filesystems
+        - fsck
+verifier:
+  name: ansible

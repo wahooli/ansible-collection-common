@@ -1,0 +1,179 @@
+#!/usr/bin/env bash
+{{ ansible_managed | comment }}
+
+# excpects that SOURCE_PATH and DESTINATION_PATH variables are defined
+# DESTINATION_PATH can supply multiple values, comma separated
+
+# known issue that this script doesn't work with hardlinks
+# hardlinks emit CREATE event only
+# creating and copying files emit CLOSE_WRITE event last, which imply that contents were written to file
+# "cp --parents" command also doesn't work
+# there are also random issues copying large directories recursively. for some files events aren't produced
+# passing --exclude argument to inotifywait helps a little
+
+INSTANCE_NAME=$1
+if [[ -z "$SOURCE_PATH" || -z "$DESTINATION_PATH" ]] && [[ -n "$INSTANCE_NAME" ]]; then
+    [ -f "{{ directory_sync_env_dir }}/$INSTANCE_NAME" ] && source {{ directory_sync_env_dir }}/$INSTANCE_NAME
+    VERBOSITY="2"
+fi
+if [[ -z "$SOURCE_PATH" || -z "$SOURCE_PATH" ]]; then
+    echo "SOURCE_PATH and DESTINATION_PATH has to be defined!"
+    exit 1
+fi
+SOURCE_PATH="${SOURCE_PATH%/}" # trim trailing slash
+EVENTS=${EVENTS:-CLOSE_WRITE,CREATE,DELETE,MOVED_FROM,MOVED_TO,MOVE_SELF}
+INOTIFY_ARGS="${INOTIFY_ARGS}"
+ALLOW_DIRECTORIES=${ALLOW_DIRECTORIES:-0}
+
+function msg() {
+    [[ "$VERBOSITY" -ge "1" ]] && echo " [info] $@"
+}
+
+function debug() {
+    [[ "$VERBOSITY" -ge "2" ]] && echo "[debug] $@"
+}
+
+function copy() {
+    local source=$1
+    msg "copy: \"$source\""
+    local is_dir=$2
+    local dereference=$3
+    local relative_source=${source#"$SOURCE_PATH"}
+    relative_source="${relative_source#/}"
+    # skip if directories aren't allowed
+    [[ "$is_dir" == "1" && "$ALLOW_DIRECTORIES" == "0" ]] && return
+    local cp_args="${COPY_ARGS}"
+    [[ "$is_dir" == "1" ]] && cp_args+=" -r"
+    [[ -n "$dereference" ]] && cp_args+=" -L"
+
+    # skip if doesn't exist
+    [[ ! -e $source ]] && return
+    for destination in ${DESTINATION_PATH//,/ }
+    do
+        msg "cd ${SOURCE_PATH} && cp --parents $cp_args ${relative_source} ${destination}"
+        (cd "${SOURCE_PATH}" && cp --parents $cp_args "${relative_source}" "${destination}")
+        if [[ -n "$CHOWN_USER" || -n "$CHOWN_GROUP" ]]; then
+            msg "cd ${destination} && chown \"${CHOWN_USER}:${CHOWN_GROUP}\" ${relative_source}"
+            (cd "${destination}" && chown "${CHOWN_USER}:${CHOWN_GROUP}" "${relative_source}")
+        fi
+        if [[ -n "$FILE_CHMOD" && $(cd "${destination}" && test -f "${relative_source}") ]]; then
+            msg "cd ${destination} && chmod ${FILE_CHMOD} ${relative_source}"
+            (cd "${destination}" && chmod ${FILE_CHMOD} "${relative_source}")
+        fi
+        if [[ -n "$DIR_CHMOD" && $(cd "${destination}" && test -d "${relative_source}") ]]; then
+            msg "cd ${destination} && chmod ${DIR_CHMOD} ${relative_source}"
+            (cd "${destination}" && chmod ${DIR_CHMOD} "${relative_source}")
+        fi
+    done
+    if [[ -f $source && "$DELETE_ORIGINAL" == "1" ]]; then
+        msg "rm $source"
+        rm $source
+    fi
+}
+
+
+function delete() {
+    local source=$1
+    msg "delete: \"$source\""
+    local is_dir=$2
+    local relative_source=${source#"$SOURCE_PATH"}
+    relative_source="${relative_source#/}"
+
+    # Skip if deletion not allowed
+    [[ "$ALLOW_DELETE" == "0" ]] && return
+    local rm_args=""
+    [[ "$is_dir" == "1" ]] && rm_args+=" -r"
+    for destination in ${DESTINATION_PATH//,/ }
+    do
+        msg "cd \"${destination}\" && rm $rm_args \"${relative_source}\""
+        (cd "${destination}" && rm $rm_args "${relative_source}")
+    done
+}
+
+function create_dir() {
+    local source=$1
+    msg "create dir: \"$source\""
+    local relative_source=${source#"$SOURCE_PATH"}
+    relative_source="$(echo "${relative_source#/}" | xargs -0)"
+    [[ -z "${relative_source// }" ]] && return # cannot be empty
+    for destination in ${DESTINATION_PATH//,/ }
+    do
+        local owner=$(stat -c "%U:%G" $destination)
+        [[ -n "$CHOWN_USER" || -n "$CHOWN_GROUP" ]] && owner="${CHOWN_USER}:${CHOWN_GROUP}"
+        local mode=$(stat -c "%a" $destination)
+        [[ -n "$DIR_CHMOD" ]] && mode="${DIR_CHMOD}"
+        msg "cd $destination && mkdir -p --mode=$mode \"${relative_source}\" && chown $owner \"${relative_source}\""
+        (cd "${destination}" && mkdir -p --mode=$mode "${relative_source}" && chown $owner "${relative_source}")
+    done
+}
+
+function move() {
+    local source=$1
+    msg "move: \"$source\""
+    local dest=$2
+    local relative_source=${source#"$SOURCE_PATH"}
+    relative_source="${relative_source#/}"
+    local relative_dest=${dest#"$SOURCE_PATH"}
+    relative_dest="${relative_dest#/}"
+    
+    create_dir "$(dirname -- "${dest}")"
+    for destination in ${DESTINATION_PATH//,/ }
+    do
+        msg "cd $destination && mv $relative_source $relative_dest"
+        (cd "${destination}" && test -e "${relative_source}" && mv "${relative_source}" "${relative_dest}")
+    done
+}
+save_ifs=$IFS
+IFS=',' read -r -a inotify_cmd_params <<< "$INOTIFY_ARGS"
+IFS=$save_ifs
+
+default_params=(--format '%c|%e|%w%f' -q -e ${EVENTS} -m "${SOURCE_PATH}/")
+
+inotifywait "${inotify_cmd_params[@]}" "${default_params[@]}" |
+    while IFS='|' read -r cookie event_data file; do
+        IFS=$save_ifs
+        readarray -d $',' -t events <<< "$event_data"
+        events=(${events[*],,}) #trim newlines from array members and convert to lowercase
+        is_dir=$(! [[ ${events[@]} =~ isdir ]]; echo $?)
+        # file="${file%$'\n'*}" # for unknown reason, files have contained line breaks. this is supposed to trim that away
+        debug "${file}"
+        case "${events[0]}" in
+            create)
+                if [[ -L "${file}" && -d "${file}" ]]; then
+                    copy "${file}" 1 1 &
+                elif [[ -L "${file}" ]]; then
+                    copy "${file}" $is_dir 1 &
+                elif [[ "$is_dir" == "1" ]]; then
+                    create_dir "${file}" &
+                elif [[ "$ALLOW_HARDLINKS" == "1" && -f "${file}" && "$(stat -c '%h' -- "${file}")" -gt 1 ]]; then
+                    copy "${file}" "0" "1" &
+                fi
+                ;;
+            close_write)
+                [[ "$is_dir" == "0" ]] && \
+                    copy "${file}" $is_dir 1 &
+                ;;
+            moved_from)
+                previous_cookie="$cookie"
+                previous_file="${file}"
+                ;;
+            move_self)
+                if [[ "$previous_cookie" != "$cookie" ]]; then
+                    delete "${previous_file}" $is_dir &
+                fi
+                ;;
+            moved_to)
+                if [[ "$previous_cookie" == "$cookie" ]]; then
+                    move "${previous_file}" "${file}" &
+                else
+                    copy "${file}" $is_dir &
+                fi
+                unset previous_file previous_cookie
+                ;;
+            delete)
+                delete "${file}" $is_dir &
+                ;;
+        esac
+        previous_cookie=$cookie
+        [ "$cookie" == "0" ] && unset previous_file previous_cookie
+    done

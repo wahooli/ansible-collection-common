@@ -1,0 +1,193 @@
+# - name: Export created zpool
+#   ansible.builtin.command:
+#     cmd: "zpool export {{ zfs_zpools[0].name }}"
+#   failed_when: false
+#   changed_when: false
+#   register: zpool_export
+
+- name: Remount cowspace to 50% of ram
+  ansible.posix.mount:
+    path: /run/archiso/cowspace
+    opts: size=50%
+    state: remounted
+
+- name: Check if zfs kernel module exists
+  ansible.builtin.shell:
+    cmd: |-
+      set -o pipefail
+      lsmod | grep zfs
+  failed_when: false
+  changed_when: lsmod_zfs.rc != 0
+  register: lsmod_zfs
+
+- name: Danger zone
+  when:
+  - lsmod_zfs.rc != 0
+  block:
+  - name: Fail if ram is not greater than 6GB
+    when: ansible_memtotal_mb < 6144
+    ansible.builtin.fail:
+      msg: "You need more 6gb or more ram to continue"
+  - name: Download archiso zfs install script
+    ansible.builtin.get_url:
+      url: "{{ archlinux_install_archiso_zfs_script_url }}"
+      dest: "/tmp/archiso_zfs_init"
+      mode: "0755"
+    register: helm_dl
+  - name: Run zfs install script directly from github
+    ansible.builtin.command:
+      cmd: /tmp/archiso_zfs_init
+    failed_when: zfs_install.rc != 0
+    changed_when: false
+    register: zfs_install
+# end block Danger zone
+
+- name: Verify zfs_zpools variable
+  ansible.builtin.fail:
+    msg: "zfs_zpools can have only one zpool defined during install process!"
+  when:
+  - archlinux_install_root_fstype == 'zfs'
+  - zfs_zpools | length != 1
+
+- name: Verify archlinux_install_zfs_root_volume variable
+  ansible.builtin.fail:
+    msg: "archlinux_install_zfs_root_volume has to be defined!"
+  when:
+  - archlinux_install_zfs_root_volume is undefined
+  - archlinux_install_zfs_root_volume == ""
+
+- name: Verify install zfs pool has name
+  ansible.builtin.fail:
+    msg: "Root zfs pool has to have name!"
+  when:
+  - archlinux_install_root_fstype == 'zfs'
+  - zfs_zpools[0].name is undefined or zfs_zpools[0].name | length < 1
+
+- name: Create directory for zfs cache file
+  ansible.builtin.file:
+    path: /etc/zfs
+    state: directory
+    mode: "0755"
+    recurse: true
+
+# - name: Create directory for zfs service files
+#   ansible.builtin.file:
+#     path: /mnt/etc/systemd/system
+#     state: directory
+#     mode: "0755"
+#     recurse: true
+
+- name: Get PARTUUID of rootfs
+  ansible.builtin.shell:
+    cmd: |-
+      set -o pipefail
+      blkid -o export {{ archlinux_install_root_partition }} | grep PARTUUID | cut -d '=' -f 2
+  failed_when: root_part_uuid.rc != 0
+  changed_when: false
+  register: root_part_uuid
+
+- name: Modify root zpool parameters
+  when:
+  - archlinux_install_root_fstype == 'zfs'
+  ansible.builtin.set_fact:
+    root_zfs_zpool: "{{ [new_zpool] }}"
+  vars:
+    zpool: "{{ zfs_zpools | first }}"
+    new_zpool: |-
+      {%- set _zpool = {
+        "vdevs": [{"disks": [ "/dev/disk/by-partuuid/" + root_part_uuid.stdout ]}],
+        "scrub": "none",
+        "enable_trim": false,
+        "mountpoint": "/mnt"
+      }
+      -%}
+      {{ (zpool | default({})) | combine(_zpool , recursive=true, list_merge='append_rp') }}
+
+- name: "Create zfs root filesystem and volumes"
+  ansible.builtin.include_role:
+    name: "zfs"
+  when:
+  - archlinux_install_root_fstype == 'zfs'
+  vars:
+    zfs_zpools: "{{ root_zfs_zpool }}"
+    zfs_archiso: true
+    zfs_systemd_dir: /mnt/etc/systemd/system
+    zfs_zed_enable: false
+    zfs_smartd_enable: false
+    zfs_create_trim_timer: false
+
+- name: Export created zpool
+  ansible.builtin.command:
+    cmd: "zpool export {{ zfs_zpools[0].name }}"
+  failed_when: zpool_export.rc != 0
+  changed_when: false
+  register: zpool_export
+
+- name: Import root zfs pool without mounting
+  ansible.builtin.command:
+    cmd: "zpool import -d /dev/disk/by-id -R /mnt {{ zfs_zpools[0].name }} -N"
+  failed_when: zpool_import.rc != 0
+  changed_when: false
+  register: zpool_import
+
+- name: Mount zfs root volume
+  ansible.builtin.command:
+    cmd: "zfs mount {{ archlinux_install_zfs_root_volume | default('zroot/ROOT/default') }}"
+  failed_when: zfs_mount_root.rc != 0
+  changed_when: false
+  register: zfs_mount_root
+
+- name: Mount other zfs volumes
+  ansible.builtin.command:
+    cmd: "zfs mount -a"
+  failed_when: zfs_mount_other.rc != 0
+  changed_when: false
+  register: zfs_mount_other
+
+- name: Set bootfs parameter to zpool
+  ansible.builtin.command:
+    cmd: "zpool set bootfs={{ archlinux_install_zfs_root_volume | default('zroot/ROOT/default') }} {{ zfs_zpools[0].name }}"
+  failed_when: zfs_set_bootfs.rc != 0
+  changed_when: false
+  register: zfs_set_bootfs
+
+- name: Create directory for zfs cache file in /mnt
+  ansible.builtin.file:
+    path: /mnt/etc/zfs
+    state: directory
+    mode: "0755"
+    recurse: true
+
+- name: Copy zpool cache file to /mnt
+  ansible.builtin.copy:
+    src: /etc/zfs/zpool.cache
+    dest: /mnt/etc/zfs/zpool.cache
+    mode: "preserve"
+    remote_src: true
+
+# - name: Create alt mountpoint for arch-chroot
+#   ansible.posix.mount:
+#     path: /altmnt
+#     src: /mnt
+#     opts: rbind,defaults
+#     state: mounted
+#     fstype: none
+
+- name: Generate hostid
+  ansible.builtin.command:
+    cmd: "hostid"
+  failed_when: hostid_cmd.rc != 0
+  changed_when: false
+  register: hostid_cmd
+
+- name: Update grub cmdline
+  ansible.builtin.set_fact:
+    archlinux_install_grub_cmdline: "{{ archlinux_install_grub_cmdline }} spl.spl_hostid=0x{{ hostid_cmd.stdout }}"
+
+# - name: Update grub cmdline
+#   ansible.builtin.set_fact:
+#     archlinux_install_grub_cmdline: "{{ archlinux_install_grub_cmdline }} root=ZFS={{ archlinux_install_zfs_root_volume | default('zroot/ROOT/default') }} spl.spl_hostid=0x{{ hostid_cmd.stdout }}"
+
+# - name: Set mnt_dir fact as /altmnt
+#   ansible.builtin.set_fact:
+#     mnt_dir: "/altmnt"

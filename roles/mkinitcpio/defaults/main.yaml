@@ -1,0 +1,23 @@
+---
+# defaults file for mkinitcpio
+mkinitcpio_conf_path: "/etc/mkinitcpio.conf"
+mkinitcpio_command: "mkinitcpio -P"
+mkinitcpio_modules: []
+mkinitcpio_binaries: []
+mkinitcpio_files: []
+mkinitcpio_hooks:
+- base
+- udev
+- autodetect
+- microcode
+- modconf
+- kms
+- keyboard
+- keymap
+- consolefont
+- block
+- filesystems
+- fsck
+mkinitcpio_compression: ""
+mkinitcpio_compression_options: []
+mkinitcpio_modules_decompress: ""

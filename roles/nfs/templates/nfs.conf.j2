@@ -1,0 +1,9 @@
+{{ ansible_managed | comment }}
+
+{% for block in nfs_conf.keys() %}
+[{{ block }}]
+{% for key in nfs_conf[block].keys() %}
+{{ key }}={{ nfs_conf[block][key] }}
+{% endfor %}
+
+{% endfor %}

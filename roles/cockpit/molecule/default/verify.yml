@@ -1,0 +1,56 @@
+---
+# This is an example playbook to execute Ansible tests.
+
+- name: Verify
+  hosts: all
+  gather_facts: false
+  tasks:
+  - name: Populate service facts
+    become: true
+    when: services is not defined
+    ansible.builtin.service_facts:
+
+  - name: Verify root login is enabled
+    become: true
+    ansible.builtin.lineinfile:
+      dest: /etc/cockpit/disallowed-users
+      line: "root"
+      mode: "0644"
+      state: absent
+    register: verify_root_login
+
+  - name: Verify port 443 is being listened
+    become: true
+    ansible.builtin.lineinfile:
+      dest: /etc/systemd/system/cockpit.socket.d/listen.conf
+      line: "ListenStream=443"
+      mode: "0644"
+      state: present
+    register: verify_443_port
+
+  - name: Verify port 80 is being listened
+    become: true
+    ansible.builtin.lineinfile:
+      dest: /etc/systemd/system/cockpit.socket.d/listen.conf
+      line: "ListenStream=0.0.0.0:80"
+      mode: "0644"
+      state: present
+    register: verify_80_port
+
+  - name: Verify port 9090 is being listened on localhost
+    become: true
+    ansible.builtin.lineinfile:
+      dest: /etc/systemd/system/cockpit.socket.d/listen.conf
+      line: "ListenStream=127.0.0.1:9090"
+      mode: "0644"
+      state: present
+    register: verify_9090_port
+
+  - name: Run assertions
+    ansible.builtin.assert:
+      that:
+      - "'cockpit.service' in services"
+      - verify_root_login is not changed
+      - verify_443_port is not changed
+      - verify_80_port is not changed
+      - verify_9090_port is not changed

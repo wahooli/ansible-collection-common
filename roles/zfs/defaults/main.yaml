@@ -1,0 +1,78 @@
+---
+# defaults file for zfs
+# zfs_create_trim_timer: true
+# zfs_module_params: [] # module parameters to define
+zfs_systemd_dir: /etc/systemd/system
+zfs_archiso: false
+zfs_zpool_create_default_props:
+  ashift: 12
+  autotrim: "off"
+  autoreplace: "off"
+  # autoexpand: "on"
+zfs_zpool_create_default_fs_props:
+  acltype: posixacl
+  dedup: "off"
+  utf8only: "on"
+  xattr: sa
+  casesensitivity: sensitive
+  aclinherit: passthrough
+  compression: lz4
+  normalization: formD
+  sharenfs: "off"
+  sharesmb: "off"
+
+zfs_zed_rc_file: /etc/zfs/zed.d/zed.rc
+# zfs_zed_enable: true
+# zfs_smartd_enable: false
+# zfs_zed_config:
+#   "export MAILRC":
+#     state: absent
+#     value: /root/.mailrc
+#   ZED_EMAIL_ADDR: emailaddress@email.com
+#   ZED_EMAIL_PROG: mailx
+#   ZED_NOTIFY_VERBOSE: 1
+#   ZED_EMAIL_OPTS: "-s '@SUBJECT@' @ADDRESS@"
+zfs_zpool_import_default_props: {}
+# zfs_zpool_create_default_args: []
+# zfs_zpool_import_default_args: []
+# zfs_zpool_export_default_args: []
+# zfs_zpool_destroy_default_args: []
+# zfs_debug: true
+
+# zfs_zpools:
+# - name: example1
+#   scrub: monthly | weekly | none
+#   enable_trim: true
+#   state: # defaults "present", other options are "imported", "absent", "destroyed"
+#   properties: {} # if empty or undefined, uses zfs_zpool_create_default_props values
+#   force: true
+#   fs_properties: {} # if empty or undefined, uses zfs_zpool_create_default_fs_props values
+#   args: [] # if empty or undefined, uses zfs_zpool_[import/export/create/destroy]_args values
+#   vdevs:
+#   - mode: raidz2
+#     disks:
+#     - /dev/disk/by-id/example-example1
+#     - /dev/disk/by-id/example-example2
+#     - /dev/disk/by-id/example-example3
+#     - /dev/disk/by-id/example-example4
+#     - /dev/disk/by-id/example-example5
+#     - /dev/disk/by-id/example-example6
+# - name: example2
+#   state: # defaults "present", other options are "imported", "absent", "destroyed"
+#   properties: {} # if empty or undefined, uses zfs_zpool_create_default_props values
+#   force: true
+#   fs_properties: {} # if empty or undefined, uses zfs_zpool_create_default_fs_props values
+#   additional_args: "" # string
+#   vdevs:
+#   - mode: mirror
+#     disks:
+#     - /dev/disk/by-id/example-example1
+#     - /dev/disk/by-id/example-example2
+#   - mode: mirror
+#     disks:
+#     - /dev/disk/by-id/example-example3
+#     - /dev/disk/by-id/example-example4
+#   - mode: log mirror
+#     disks:
+#     - /dev/disk/by-id/example-example5
+#     - /dev/disk/by-id/example-example6

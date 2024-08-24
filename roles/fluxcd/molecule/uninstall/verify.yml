@@ -2,8 +2,8 @@
 # This is an example playbook to execute Ansible tests.
 
 - name: Verify
-  hosts: fluxcd-uninstall-server
-  gather_facts: false
+  hosts: server
+  gather_facts: true
   tasks:
   - name: Check flux bin is found in path
     ansible.builtin.command: "which flux"
@@ -21,18 +21,54 @@
       path: "/root/.fluxcd/fluxcd/id_ed25519.pub"
     register: flux_public_key
 
+  - name: Get current user name
+    ansible.builtin.command: whoami
+    register: current_user_name
+    changed_when: current_user_name.rc != 0
+    when: ansible_user is undefined or ansible_user == ""
+
   - name: Check cluster FluxCD installation
     environment:
       K8S_AUTH_KUBECONFIG: "/etc/rancher/k3s/k3s.yaml"
       KUBECONFIG: "/etc/rancher/k3s/k3s.yaml"
+    vars:
+      venv_user: "{{ ansible_user | default(current_user_name.stdout) | default(omit) }}"
+      virtualenv_command: "{{ 'python -m venv' if ansible_facts['os_family'] == 'Archlinux' else 'virtualenv' }}"
     block:
-    - name: Check flux-system ns is absent
-      kubernetes.core.k8s:
-        name: flux-system
-        api_version: v1
-        kind: Namespace
-        state: absent
-      register: flux_system_ns
+    - name: Get user home path
+      ansible.builtin.shell:
+        executable: /bin/bash
+        cmd: |-
+          set -o pipefail
+          grep -E {{ venv_user | default('root') }}: /etc/passwd | awk -F: '{ print $6 }'
+      failed_when: user_home_path.rc != 0
+      changed_when: false
+      register: user_home_path
+
+    - name: Ensure the virtual environment exists
+      ansible.builtin.pip:
+        name: packaging
+        virtualenv: "{{ user_home_path.stdout }}/.ansible-venv"
+        virtualenv_command: "{{ virtualenv_command }}"
+
+    - name: Run commands in venv
+      vars:
+        ansible_python_interpreter: "{{ venv_python }}"
+        venv_dir: "{{ user_home_path.stdout }}/.ansible-venv"
+        venv_python: "{{ venv_dir }}/bin/python"
+      block:
+      - name: Install python pre-requisites
+        ansible.builtin.pip:
+          name: kubernetes
+      - name: Check flux-system ns is absent
+        kubernetes.core.k8s:
+          name: flux-system
+          api_version: v1
+          kind: Namespace
+          state: absent
+        register: flux_system_ns
+    # end block Run commands in venv
+  # end block Check cluster FluxCD installation
 
   - name: Assert
     ansible.builtin.assert:

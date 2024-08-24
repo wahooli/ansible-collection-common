@@ -1,0 +1,12 @@
+- name: "HACK: Copy pacman.conf within docker container"
+  ansible.builtin.copy:
+    src: /etc/pacman.conf
+    dest: /mnt/etc/pacman.conf
+    mode: "0644"
+    remote_src: true
+
+- name: Install archlinux-keyring
+  ansible.builtin.command:
+    cmd: pacstrap -K /mnt archlinux-keyring
+  failed_when: false
+  changed_when: false

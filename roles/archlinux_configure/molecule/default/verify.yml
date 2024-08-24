@@ -1,0 +1,88 @@
+---
+# This is an example playbook to execute Ansible tests.
+
+- name: Verify
+  hosts: all
+  gather_facts: true
+  tasks:
+  - name: Populate service facts
+    become: true
+    ansible.builtin.service_facts:
+
+  - name: Check if yay exists
+    ansible.builtin.stat:
+      path: "/usr/bin/yay"
+    register: verify_yay
+
+  - name: Check if /etc/sysctl.d/80-userconfig.conf exists
+    ansible.builtin.stat:
+      path: "/etc/sysctl.d/80-userconfig.conf"
+    register: verify_sysctl_userconfig
+
+  - name: Verify sambashare group exists
+    become: true
+    ansible.builtin.group:
+      force: false
+      name: sambashare
+      system: true
+    register: sambashare_group
+
+  - name: Verify molecule user groups
+    become: true
+    ansible.builtin.user:
+      append: true
+      name: molecule
+      groups:
+      - wheel
+      - users
+      - deployer
+      - sambashare
+    register: molecule_user_groups
+
+  - name: Verify test-user exists
+    become: true
+    ansible.builtin.user:
+      append: false
+      name: test-user
+      password: "{{ 'doodoo' | password_hash }}"
+      update_password: on_create
+    register: test_user
+
+  - name: Verify /mnt/data exists
+    become: true
+    ansible.builtin.file:
+      name: "/mnt/data"
+      state: directory
+      owner: root
+      group: sambashare
+      mode: "2775"
+      modification_time: preserve
+      access_time: preserve
+    register: mnt_data_dir
+
+  # tests with molecule user, should have permissions as group member of sambashare
+  - name: Create file in /mnt/data
+    ansible.builtin.file:
+      path: /mnt/data/testfile
+      state: touch
+      mode: "0644"
+      modification_time: preserve
+      access_time: preserve
+
+  - name: Verify bind mount from /mnt/data to /srv/share works
+    ansible.builtin.stat:
+      path: /srv/share/testfile
+    register: verify_bind_mount
+
+  - name: Run assertions
+    ansible.builtin.assert:
+      that:
+      - verify_yay.stat.exists
+      - verify_sysctl_userconfig.stat.exists
+      - "'smb.service' in services"
+      - "'wsdd2.service' in services"
+      - not sambashare_group.changed
+      - not molecule_user_groups.changed
+      - not test_user.changed
+      - not mnt_data_dir.changed
+      - verify_bind_mount.stat.exists

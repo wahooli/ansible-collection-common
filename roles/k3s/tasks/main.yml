@@ -4,6 +4,11 @@
   become: true
   ansible.builtin.service_facts:
 
+- name: Gather the package facts
+  become: true
+  ansible.builtin.package_facts:
+    manager: auto
+
 - name: Fail if k3s_role is undefined
   when: k3s_role is undefined
   ansible.builtin.fail:
@@ -43,6 +48,20 @@
   notify:
   - Systemd daemon reload
   - Restart K3s
+  tags:
+  - install
+  - configure
+
+- name: Copy K3s-cleanup service file
+  become: true
+  ansible.builtin.template:
+    src: "k3s-cleanup.service.j2"
+    dest: "{{ k3s_systemd_dir }}/k3s-cleanup.service"
+    owner: root
+    group: root
+    mode: "0644"
+  notify:
+  - Systemd daemon reload
   tags:
   - install
   - configure
@@ -106,6 +125,15 @@
     ansible.builtin.systemd_service:
       name: k3s
       state: started
+      daemon_reload: true
+      enabled: "{{ k3s_systemd_enable }}"
+  - name: Enable K3s cleanup service
+    when:
+    - k3s_role == "server"
+    - k3s_enable_cleanup_service | default(true)
+    ansible.builtin.systemd_service:
+      name: k3s-cleanup
+      state: reloaded
       daemon_reload: true
       enabled: "{{ k3s_systemd_enable }}"
   always:

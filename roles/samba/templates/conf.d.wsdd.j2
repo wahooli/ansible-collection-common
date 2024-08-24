@@ -1,0 +1,12 @@
+{%- macro render_params(config) -%}
+{%- set workgroup = samba_config["global"]["workgroup"] | default("WORKGROUP") -%}
+{%- set hostname = samba_config["global"]["netbios name"] | default("") -%}
+{%- set domain = samba_config["global"]["realm"] | default("") -%}
+--workgroup {{ workgroup }} {{- " --hostname "+ hostname if hostname != "" else "" }} {{- " --domain "+ domain if domain != "" else "" }}
+{%- endmacro -%}
+{{- ansible_managed | comment }}
+# Additional arguments for wsdd can be provided here.
+# Use, e.g., "-i eth0" to restrict operations to a specific interface
+# Refer to the wsdd(8) man page for details
+
+PARAMS="{{ samba_wsdd_params | default(render_params(samba_config | default({})), true) }}"

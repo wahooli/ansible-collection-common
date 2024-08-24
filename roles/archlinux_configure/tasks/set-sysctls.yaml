@@ -1,0 +1,11 @@
+- name: Set sysctls
+  become: true
+  ansible.posix.sysctl:
+    name: "{{ item.name }}"
+    value: "{{ item.value }}"
+    sysctl_file: "{{ archlinux_configure_sysctl_file }}"
+    state: present
+    reload: "{{ ansible_loop.last and reload }}"
+  with_items: "{{ archlinux_configure_sysctls }}"
+  loop_control:
+    extended: true

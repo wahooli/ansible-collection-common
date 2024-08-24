@@ -1,11 +1,24 @@
 ---
-- name: Ensure debian packages are installed
+- name: Ensure Debian packages are installed
+  become: true
   ansible.builtin.apt:
     pkg: "{{ k3s_debian_install_pkg + (['crun', 'dbus'] if k3s_containerd_use_crun else []) }}"
     update_cache: true
     cache_valid_time: 3600
     state: present
   when: ansible_facts['os_family'] == "Debian"
+
+- name: Install crun on Archlinux
+  become: true
+  community.general.pacman:
+    name: crun
+    state: present
+    update_cache: true
+  when:
+  - "'crun' not in ansible_facts.packages"
+  - ansible_facts['os_family'] == "Archlinux"
+  tags:
+  - molecule-idempotence-notest
 
 - name: Enable and start dbus
   when:
@@ -53,6 +66,8 @@
     state: present
 
 - name: Set kernel.pid_max
+  when:
+  - ansible_connection not in [ "container", "docker", "community.docker.docker" ]
   ansible.posix.sysctl:
     name: kernel.pid_max
     value: "{{ 4194304 if ansible_facts.userspace_bits == '64' else 32768 }}"
@@ -74,7 +89,7 @@
     value: "{{ item.value }}"
     sysctl_file: "{{ k3s_sysctl_file }}"
     state: present
-    reload: "{{ ansible_loop.last }}"
+    reload: "{{ ansible_loop.last and ansible_connection not in ['container', 'docker', 'community.docker.docker'] }}"
   with_items: "{{ k3s_sysctls }}"
   loop_control:
     extended: true

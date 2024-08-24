@@ -1,0 +1,22 @@
+---
+# defaults file for archlinux_configure
+archlinux_configure_install_yay: true
+archlinux_configure_install_yay_force: false
+archlinux_configure_install_pkg: []
+archlinux_configure_mkinitcpio: false # see mkinitcpio role for variables
+archlinux_configure_rtc_local_tz: true
+archlinux_configure_samba: false # see samba role for variables
+# archlinux_configure_nofile_limit: 1048576:2097152
+# archlinux_configure_nproc_limit: 262144:524288
+# archlinux_configure_directory_sync: false
+# archlinux_configure_nfs: false
+# archlinux_configure_helm: false
+archlinux_configure_systemd_dir: /etc/systemd/system
+# archlinux_configure_superfans_install: false
+# archlinux_configure_nvidia_patch_install: false
+archlinux_configure_sysctl_file: /etc/sysctl.d/80-userconfig.conf
+archlinux_configure_sysctls: []
+# archlinux_configure_groups: []
+# archlinux_configure_users: []
+# archlinux_configure_directories: []
+# archlinux_configure_mounts: []

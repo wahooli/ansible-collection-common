@@ -1,0 +1,389 @@
+---
+# This is an example playbook to execute Ansible tests.
+- name: Verify hosts
+  hosts: all
+  gather_facts: true
+  tasks:
+  - name: Populate service facts
+    become: true
+    ansible.builtin.service_facts:
+
+  # - name: Remove directory /mnt/data/directory_test recursively
+  #   ansible.builtin.file:
+  #     path: /mnt/data/directory_test
+  #     state: absent
+  #   changed_when: false
+  - name: Test apostrophes in names
+    block:
+    - name: Create directory with apostrophe in name
+      ansible.builtin.file:
+        path: "/mnt/data/space's spaces/1's & 2's"
+        recurse: true
+        state: directory
+        owner: root
+        group: root
+        mode: "ugo=rw,a+X"
+        modification_time: preserve
+        access_time: preserve
+    - name: "Create file /mnt/data/space's spaces/1's & 2's/complicated names'.txt"
+      ansible.builtin.copy:
+        dest: "/mnt/data/space's spaces/1's & 2's/complicated names'.txt"
+        mode: "0644"
+        content: |
+          dsadsadsasda
+          fghjasddsadasi
+    - name: "Stat file /srv/data/space's spaces/1's & 2's/complicated names'.txt"
+      ansible.builtin.stat:
+        path: "/srv/data/space's spaces/1's & 2's/complicated names'.txt"
+      register: verify_apostrophes_in_name
+
+  - name: Test spaces in names
+    block:
+    - name: Create directory with spaces in name
+      ansible.builtin.file:
+        path: "/mnt/data/spaces spaces/1 2"
+        recurse: true
+        state: directory
+        owner: root
+        group: root
+        mode: "ugo=rw,a+X"
+        modification_time: preserve
+        access_time: preserve
+    - name: Create file /mnt/data/spaces spaces/1 2/complicated name.txt
+      ansible.builtin.copy:
+        dest: "/mnt/data/spaces spaces/1 2/complicated name.txt"
+        mode: "0644"
+        content: |
+          dsadsadsasda
+          fghjasddsadasi
+    - name: Stat file /srv/data/spaces spaces/1 2/complicated name.txt
+      ansible.builtin.stat:
+        path: "/srv/data/spaces spaces/1 2/complicated name.txt"
+      register: verify_spaces_in_name
+  # end block Test spaces in names
+
+  - name: Test recursion
+    block:
+    - name: Create nested directory
+      ansible.builtin.file:
+        path: "/mnt/data/directory_test/test/testing/directory"
+        recurse: true
+        state: directory
+        owner: root
+        group: root
+        mode: "ugo=rw,a+X"
+        modification_time: preserve
+        access_time: preserve
+
+    - name: Create file /mnt/data/directory_test/test/testing/directory/deeply_nested
+      ansible.builtin.copy:
+        dest: /mnt/data/directory_test/test/testing/directory/deeply_nested
+        mode: "0644"
+        content: |
+          abcde
+          fghji
+    - name: Create file /mnt/data/directory_test/test/testing/less_deeply_nested
+      ansible.builtin.copy:
+        dest: /mnt/data/directory_test/test/testing/less_deeply_nested
+        mode: "0644"
+        content: |
+          1234567
+          890
+
+    - name: Create file /mnt/data/directory_test/just_a_file
+      ansible.builtin.copy:
+        dest: /mnt/data/directory_test/just_a_file
+        mode: "0644"
+        content: |
+          abababab
+          bbebeeb
+
+    - name: Stat file /srv/data/directory_test/test/testing/directory/deeply_nested
+      ansible.builtin.stat:
+        path: "/srv/data/directory_test/test/testing/directory/deeply_nested"
+      register: verify_nested1
+
+    - name: Stat file /srv/data/directory_test/test/testing/less_deeply_nested
+      ansible.builtin.stat:
+        path: "/srv/data/directory_test/test/testing/less_deeply_nested"
+      register: verify_nested2
+
+    - name: Stat file /srv/data/directory_test/just_a_file
+      ansible.builtin.stat:
+        path: "/srv/data/directory_test/just_a_file"
+      register: verify_nested3
+  # end block Test recursion
+
+  # - name: Remove file /mnt/data/directory_test/just_a_file
+  #   ansible.builtin.file:
+  #     path: /mnt/data/directory_test/just_a_file
+  #     state: absent
+  #   changed_when: false
+
+  # - name: Cleanup
+  #   block:
+  #   - name: Remove directory /mnt/recursion/test/ recursively
+  #     ansible.builtin.file:
+  #       path: /mnt/recursion/test
+  #       state: absent
+  #     changed_when: false
+
+  #   - name: Remove file /mnt/recursion/just_a_file
+  #     ansible.builtin.file:
+  #       path: /mnt/recursion/just_a_file
+  #       state: absent
+  #     changed_when: false
+
+  #   - name: Remove directory /srv/recursion/test/ recursively
+  #     ansible.builtin.file:
+  #       path: /srv/recursion/test/
+  #       state: absent
+  #     changed_when: false
+
+  #   - name: Remove file /srv/recursion/just_a_file
+  #     ansible.builtin.file:
+  #       path: /srv/recursion/just_a_file
+  #       state: absent
+  #     changed_when: false
+  # # end block Cleanup
+
+  - name: Test directory copy
+    block:
+    # inotify apparently has race conditions according to its own manpage. these copy operations do fail randomly
+    # - name: Copy directory tree
+    #   throttle: 1
+    #   ansible.builtin.copy:
+    #     src: "/mnt/data/directory_test/"
+    #     mode: preserve
+    #     dest: /mnt/recursion/
+    #     remote_src: true
+    #   delegate_to: "{{ inventory_hostname }}"
+
+    # with rsync tests are more consistent
+    - name: Synchronize two directories on one remote host.
+      ansible.posix.synchronize:
+        src: /mnt/data/directory_test/
+        dest: /mnt/recursion/
+      delegate_to: "{{ inventory_hostname }}"
+
+    - name: Stat file /srv/recursion/test/testing/directory/deeply_nested
+      ansible.builtin.stat:
+        path: "/srv/recursion/test/testing/directory/deeply_nested"
+      register: verify_dir_copy1
+
+    - name: Stat file /srv/recursion/test/testing/less_deeply_nested
+      ansible.builtin.stat:
+        path: "/srv/recursion/test/testing/less_deeply_nested"
+      register: verify_dir_copy2
+
+    - name: Stat file /srv/recursion/just_a_file
+      ansible.builtin.stat:
+        path: "/srv/recursion/just_a_file"
+      register: verify_dir_copy3
+
+  # - name: Cleanup
+  #   block:
+  #   - name: Remove file /mnt/data/datatest
+  #     ansible.builtin.file:
+  #       path: /mnt/data/datatest
+  #       state: absent
+  #     changed_when: false
+
+  #   - name: Remove file /srv/data/datatest
+  #     ansible.builtin.file:
+  #       path: /srv/data/datatest
+  #       state: absent
+  #     changed_when: false
+  # # end block Cleanup
+
+  - name: Test single file copy, move and removal from destination
+    block:
+    - name: Create file /mnt/data/datatest
+      ansible.builtin.copy:
+        dest: /mnt/data/datatest
+        mode: "0644"
+        content: |
+          fdggdffgd
+          fhghfghf
+
+    - name: Stat file /srv/data/datatest
+      ansible.builtin.stat:
+        path: "/srv/data/datatest"
+      register: verify_datatest
+
+    - name: Move file /mnt/data/datatest to /mnt/data/test_test
+      ansible.builtin.command:
+        cmd: "mv /mnt/data/datatest /mnt/data/test_test"
+      changed_when: false
+
+    - name: Stat file /srv/data/test_test
+      ansible.builtin.stat:
+        path: "/srv/data/test_test"
+      register: verify_move_datatest
+
+    # delete created file
+    - name: Remove file /mnt/data/test_test
+      ansible.builtin.file:
+        path: /mnt/data/test_test
+        state: absent
+
+    - name: Stat file /srv/data/test_test
+      ansible.builtin.stat:
+        path: "/srv/data/test_test"
+      register: verify_rm_test_test
+  # end block Test single file copy and removal from destination
+
+  # - name: Cleanup
+  #   block:
+  #   - name: Remove file /mnt/files/filetest
+  #     ansible.builtin.file:
+  #       path: /mnt/files/filetest
+  #       state: absent
+  #     changed_when: false
+
+  #   - name: Remove file /srv/data/filetest
+  #     ansible.builtin.file:
+  #       path: /srv/data/filetest
+  #       state: absent
+  #     changed_when: false
+
+  #   - name: Remove file /mnt/file_backup/filetest
+  #     ansible.builtin.file:
+  #       path: /mnt/file_backup/filetest
+  #       state: absent
+  #     changed_when: false
+  # # end block Cleanup
+
+  - name: Test single file copy to multiple destinations
+    block:
+    - name: Create file /mnt/files/filetest
+      ansible.builtin.copy:
+        dest: /mnt/files/filetest
+        mode: "0644"
+        content: |
+          gfdgfdgfd
+          jghjhgjgh
+
+    - name: Stat file /srv/data/filetest
+      ansible.builtin.stat:
+        path: "/srv/data/filetest"
+      register: verify_filetest
+
+    - name: Stat file /mnt/file_backup/filetest
+      ansible.builtin.stat:
+        path: "/mnt/file_backup/filetest"
+      register: verify_filetest2
+  # end block Test single file copy to multiple destinations
+
+  - name: Verify file symlink dereference
+    block:
+    - name: Create file /tmp/filetest
+      ansible.builtin.copy:
+        dest: /tmp/filetest
+        mode: "0644"
+        content: hello world
+
+    - name: Stat file /tmp/filetest
+      ansible.builtin.stat:
+        path: "/tmp/filetest"
+      register: verify_link_source
+
+    - name: Create a symbolic link /mnt/data/link
+      ansible.builtin.file:
+        src: /tmp/filetest
+        dest: /mnt/data/link
+        owner: molecule
+        group: molecule
+        state: link
+
+    - name: Stat link /mnt/data/link
+      ansible.builtin.stat:
+        path: "/mnt/data/link"
+      register: filetest_link
+
+    - name: Stat file /srv/data/link
+      ansible.builtin.stat:
+        path: "/srv/data/link"
+      register: verify_link
+  # end block Verify file symlink dereference
+
+  - name: Verify directory symlink dereference
+    block:
+    - name: Create directory
+      ansible.builtin.file:
+        path: "/mnt/unused_test_dir/doot"
+        recurse: true
+        state: directory
+        owner: root
+        group: root
+        mode: "ugo=rw,a+X"
+        modification_time: preserve
+        access_time: preserve
+
+    - name: Create file /mnt/unused_test_dir/doot/filetest
+      ansible.builtin.copy:
+        dest: /mnt/unused_test_dir/doot/filetest
+        mode: "0644"
+        content: hello world
+
+    - name: Create file /mnt/unused_test_dir/testing
+      ansible.builtin.copy:
+        dest: /mnt/unused_test_dir/testing
+        mode: "0644"
+        content: world hello
+
+    - name: Create a symbolic link /mnt/data/link_dir
+      ansible.builtin.file:
+        src: /mnt/unused_test_dir
+        dest: /mnt/data/link_dir
+        owner: molecule
+        group: molecule
+        state: link
+
+    - name: Stat link /mnt/data/link_dir
+      ansible.builtin.stat:
+        path: "/mnt/data/link_dir"
+      register: filetest_link_dir
+
+    - name: Stat dir /srv/data/link_dir
+      ansible.builtin.stat:
+        path: "/srv/data/link_dir"
+      register: verify_link_dir1
+    - name: Stat file /srv/data/link_dir/testing
+      ansible.builtin.stat:
+        path: "/srv/data/link_dir/testing"
+      register: verify_link_dir2
+    - name: Stat file /srv/data/link_dir/doot/filetest
+      ansible.builtin.stat:
+        path: "/srv/data/link_dir/doot/filetest"
+      register: verify_link_dir3
+  # end block Verify file symlink dereference
+
+  - name: Run assertions
+    ansible.builtin.assert:
+      that:
+      - verify_spaces_in_name.stat.exists
+      - verify_apostrophes_in_name.stat.exists
+      - "'directory-sync@file_sync.service' in services"
+      - "'directory-sync@data_sync.service' in services"
+      - verify_datatest.stat.exists
+      - verify_move_datatest.stat.exists
+      - not verify_rm_test_test.stat.exists
+      - verify_filetest.stat.exists
+      - verify_filetest2.stat.exists
+      - verify_nested1.stat.exists
+      - verify_nested2.stat.exists
+      - verify_nested3.stat.exists
+      # commented out due instability
+      # - verify_dir_copy1.stat.exists
+      # - verify_dir_copy2.stat.exists
+      # - verify_dir_copy3.stat.exists
+      - filetest_link.stat.islnk
+      - not verify_link.stat.islnk
+      - verify_link.stat.exists
+      - verify_link_source.stat.checksum == verify_link.stat.checksum
+      - filetest_link_dir.stat.islnk
+      - verify_link_dir1.stat.exists
+      - not verify_link_dir1.stat.islnk
+      - verify_link_dir2.stat.exists
+      - verify_link_dir3.stat.exists

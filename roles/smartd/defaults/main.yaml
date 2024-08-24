@@ -1,0 +1,22 @@
+---
+# defaults file for smartd
+smartd_rund_dir: /etc/smartmontools/run.d
+smartd_runner_path: /usr/share/smartmontools/smartd-runner
+smartd_args_file: /etc/conf.d/smartd
+smartd_config_file: /etc/smartd.conf
+smartd_executable: /usr/bin/smartd
+smartd_systemd_file: /usr/lib/systemd/system/smartd.service
+smartd_start_service: true
+smartd_env:
+  SMARTD_ARGS: "-i 1800" # check status every 1800 seconds (30 minutes)
+  # EMAIL_ACCOUNT: "gmail"
+  # "export MAILRC": "/root/.mailrc"
+smartd_conf:
+  args:
+  - -a # monitor all attributes
+  - -M exec /usr/share/smartmontools/smartd-runner # runs executable
+  # - -W 4,35,40 # will log changes of 4 degrees or more, log when temp reaches 35 degrees, and log/email a warning when temp reaches 40
+  # devices:
+  # - name: /dev/disk/by-id/abc
+  #   args:
+  #   - -W 5, 35,45

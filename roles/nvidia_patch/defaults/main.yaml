@@ -1,0 +1,10 @@
+---
+# defaults file for nvidia_patch
+nvidia_patch_path: /usr/local/lib/nvidia_patch
+nvidia_patch_repo: https://github.com/keylase/nvidia-patch.git
+nvidia_patch_fbc: false
+nvidia_patch_verify_supported: true
+nvidia_patch_fbc_verify_supported: true
+# nvidia_patch_default_args: ""
+# nvidia_patch_fbc_default_args: ""
+# nvidia_patch_driver_version: ""

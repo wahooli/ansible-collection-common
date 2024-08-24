@@ -15,12 +15,18 @@
 - name: Detect CPU arch
   when: not helm_arch | default(false)
   ansible.builtin.set_fact:
-    helm_arch: '{%- if (ansible_facts.architecture is search("arm") and ansible_facts.userspace_bits == "64") or ansible_facts.architecture is search("aarch64") -%}
-    arm64{%- elif ansible_facts.architecture is search("arm") and ansible_facts.userspace_bits == "32" -%}
-    arm{%- elif ansible_facts.architecture == "x86_64" -%}
-    amd64{%- elif ansible_facts.architecture == "i386" -%}
-    i386{%- else -%}
-    {%- endif -%}'
+    helm_arch: |-
+      {%- if (ansible_facts.architecture is search("arm") and ansible_facts.userspace_bits == "64") or ansible_facts.architecture is search("aarch64") -%}
+        arm64
+      {%- elif ansible_facts.architecture is search("arm") and ansible_facts.userspace_bits == "32" -%}
+        arm
+      {%- elif ansible_facts.architecture == "x86_64" -%}
+        amd64
+      {%- elif ansible_facts.architecture == "i386" -%}
+        386
+      {%- else -%}
+        {{ ansible_facts.architecture }}
+      {%- endif -%}
 
 - name: Get latest helm tag
   when: not helm_tag | default(false) or helm_tag | lower == "latest"
@@ -82,6 +88,65 @@
 
 # end block Install helm
 
-- name: Install helm-diff plugin
-  ansible.builtin.import_tasks: install-helm-diff-plugin.yml
+- name: Get current user name
+  ansible.builtin.command: whoami
+  register: current_user_name
+  changed_when: current_user_name.rc != 0
+  when: ansible_user is undefined or ansible_user == ""
+
+- name: Install helm-diff plugin in python venv
   when: helm_diff_install | default(true)
+  vars:
+    venv_user: "{{ ansible_user | default(current_user_name.stdout) | default(omit) }}"
+    virtualenv_command: "{{ 'python -m venv' if ansible_facts['os_family'] == 'Archlinux' else 'virtualenv' }}"
+  block:
+  - name: "Install debian packages"
+    become: true
+    ansible.builtin.apt:
+      pkg:
+      - git
+      - curl
+      - python3-pip
+      - virtualenv
+      update_cache: true
+      cache_valid_time: 3600
+    when: ansible_facts['os_family'] == "Debian"
+
+  - name: Install git on Archlinux
+    become: true
+    community.general.pacman:
+      name: git
+      state: present
+      update_cache: true
+    when:
+    - ansible_facts['os_family'] == "Archlinux"
+    tags:
+    - molecule-idempotence-notest
+
+  - name: Get user home path
+    ansible.builtin.shell:
+      executable: /bin/bash
+      cmd: |-
+        set -o pipefail
+        grep -E {{ venv_user | default('root') }}: /etc/passwd | awk -F: '{ print $6 }'
+    failed_when: user_home_path.rc != 0
+    changed_when: false
+    register: user_home_path
+
+  - name: Ensure the virtual environment exists
+    ansible.builtin.pip:
+      name: packaging
+      virtualenv: "{{ user_home_path.stdout }}/.ansible-venv"
+      virtualenv_command: "{{ virtualenv_command }}"
+
+  - name: Run commands in venv
+    vars:
+      ansible_python_interpreter: "{{ venv_python }}"
+      venv_dir: "{{ user_home_path.stdout }}/.ansible-venv"
+      venv_python: "{{ venv_dir }}/bin/python"
+    block:
+    - name: Install helm-diff plugin
+      ansible.builtin.import_tasks: install-helm-diff-plugin.yml
+
+  # end block Run commands in venv
+# end block Install helm-diff plugin in python venv

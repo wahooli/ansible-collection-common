@@ -1,0 +1,45 @@
+- name: Install arch linux packages for cockpit
+  become: true
+  community.general.pacman:
+    name: |-
+      {{
+        ["cockpit"]
+        + (["cockpit-storaged", "udisks2"] if "storage" in cockpit_addons | default([]) else [])
+        + (["cockpit-packagekit"] if "packagekit" in cockpit_addons | default([]) else [])
+        + (["cockpit-pcp"] if "pcp" in cockpit_addons | default([]) else [])
+        + (["cockpit-machines", "libvirt"] if "machines" in cockpit_addons | default([]) else [])
+        + (["networkmanager"] if "networkmanager" in cockpit_addons | default([]) else [])
+        + (["cockpit-files"] if "files" in cockpit_addons | default([]) else [])
+        + (["cockpit-podman", "podman"] if "podman" in cockpit_addons | default([]) else [])
+        + (["firewalld"] if "firewall" in cockpit_addons | default([]) else [])
+        + (["samba", "nfs-utils"] if "file-sharing" in cockpit_addons | default([]) else [])
+        + (["docker"] if "docker" in cockpit_addons | default([]) else [])
+      }}
+    state: present
+    update_cache: true
+  notify:
+  - Restart cockpit
+  tags:
+  - molecule-idempotence-notest
+
+- name: Check installed packages
+  become: true
+  ansible.builtin.command: pacman -Qm
+  register: installed_packages
+  changed_when: false
+  failed_when: installed_packages.rc > 1
+
+- name: "Install yay packages"
+  become: false
+  changed_when: item not in installed_packages.stdout
+  ansible.builtin.command: "yay --noconfirm -dd --noprogressbar --needed --sync {{ item }}"
+  when: item not in installed_packages.stdout
+  with_items: |-
+      {{
+        []
+        + (["cockpit-zfs-manager"] if "zfs-manager" in cockpit_addons | default([]) else [])
+        + (["cockpit-file-sharing"] if "file-sharing" in cockpit_addons | default([]) else [])
+        + (["cockpit-docker"] if "docker" in cockpit_addons | default([]) else [])
+      }}
+  notify:
+  - Restart cockpit

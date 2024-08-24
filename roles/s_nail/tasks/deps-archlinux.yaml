@@ -1,0 +1,10 @@
+- name: Install Arch linux deps for s-nail
+  become: true
+  community.general.pacman:
+    name:
+    - s-nail
+    - ca-certificates
+    state: present
+    update_cache: true
+  tags:
+  - molecule-idempotence-notest

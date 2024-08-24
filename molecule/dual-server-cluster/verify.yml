@@ -5,7 +5,7 @@
   gather_facts: false
   tasks:
   - name: Wait for nodes to be ready
-    ansible.builtin.command: "kubectl get nodes"
+    ansible.builtin.command: "kubectl get nodes --no-headers"
     register: nodes_ready
     until:
     - '" NotReady " not in nodes_ready.stdout'
@@ -24,3 +24,4 @@
       that:
       - calicoctl_version_output is success
       - nodes_ready is success
+      - nodes_ready.stdout_lines | length == 3

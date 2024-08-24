@@ -1,0 +1,212 @@
+---
+# tasks file for archlinux_configure
+- name: "Modify /etc/mkinitcpio.conf"
+  ansible.builtin.include_role:
+    name: "mkinitcpio"
+  when: archlinux_configure_mkinitcpio | default(false)
+  tags:
+  - mkinitcpio
+
+- name: Configure set RTC timezone
+  when: ansible_connection not in [ "container", "docker", "community.docker.docker" ]
+  become: true
+  ansible.builtin.command:
+    cmd: timedatectl set-local-rtc {{ '1' if archlinux_configure_rtc_local_tz | default(true) else '0' }}
+  failed_when: configure_rtc_tz.rc != 0
+  changed_when: false
+  register: configure_rtc_tz
+
+- name: Install other packages for arch linux
+  become: true
+  community.general.pacman:
+    name: "{{ archlinux_configure_install_pkg + ['samba'] if archlinux_configure_samba else [] }}"
+    state: present
+    update_cache: true
+  when:
+  - archlinux_configure_install_pkg is defined
+  - archlinux_configure_install_pkg | length > 0
+  tags:
+  - molecule-idempotence-notest
+  - install-packages
+
+- name: Check installed packages
+  become: true
+  ansible.builtin.command: pacman -Q
+  register: installed_packages
+  changed_when: false
+  failed_when: installed_packages.rc > 1
+
+- name: Set sysctls
+  when:
+  - archlinux_configure_sysctl_file is defined and archlinux_configure_sysctl_file | length > 0
+  - archlinux_configure_sysctls is defined and archlinux_configure_sysctls | length > 0
+  ansible.builtin.include_tasks: "set-sysctls.yaml"
+  vars:
+    reload: "{{ ansible_connection not in ['container', 'docker', 'community.docker.docker'] }}"
+  tags:
+  - set-sysctls
+  - sysctls
+
+- name: Set limits
+  when:
+  - archlinux_configure_nofile_limit is defined or archlinux_configure_nproc_limit is defined
+  ansible.builtin.include_tasks: "set-limits.yaml"
+  tags:
+  - set-limits
+  - limits
+
+- name: Install yay
+  ansible.builtin.include_tasks: "install-yay.yaml"
+  when:
+  - archlinux_configure_install_yay | default(false) or archlinux_configure_install_yay_force | default(false)
+  - "'yay' not in installed_packages.stdout or archlinux_configure_install_yay_force | default(false)"
+  tags:
+  - install-packages
+
+- name: Create group
+  become: true
+  when:
+  - archlinux_configure_groups is defined
+  - archlinux_configure_groups | length > 0
+  ansible.builtin.group:
+    force: "{{ item.force | default(false) }}"
+    gid: "{{ item.gid | default(omit) }}"
+    local: "{{ item.local | default(false) }}"
+    name: "{{ item.name }}"
+    non_unique: "{{ item.non_unique | default(false) }}"
+    state: "{{ item.state | default('present') }}"
+    system: "{{ item.system | default(false) }}"
+  with_items: "{{ archlinux_configure_groups }}"
+  tags:
+  - create-groups
+
+- name: Create users
+  when:
+  - archlinux_configure_users is defined
+  - archlinux_configure_users | length > 0
+  ansible.builtin.include_tasks: create-users.yaml
+  with_items: "{{ archlinux_configure_users }}"
+  loop_control:
+    loop_var: user
+    label: "{{ user.name }}"
+  vars:
+    create_samba_user: false
+  tags:
+  - create-users
+
+- name: Create directories
+  become: true
+  when:
+  - archlinux_configure_directories is defined
+  - archlinux_configure_directories | length > 0
+  ansible.builtin.file:
+    name: "{{ item.path }}"
+    state: directory
+    owner: "{{ item.owner | default('root') }}"
+    group: "{{ item.group | default('root') }}"
+    mode: "{{ item.mode | default(omit) }}"
+    recurse: "{{ item.recurse | default(false) }}"
+    modification_time: preserve
+    access_time: preserve
+  with_items: "{{ archlinux_configure_directories }}"
+  tags:
+  - create-directories
+
+- name: Create mounts
+  become: true
+  when:
+  - archlinux_configure_mounts is defined
+  - archlinux_configure_mounts | length > 0
+  ansible.posix.mount:
+    path: "{{ item.path }}"
+    src: "{{ item.src }}"
+    opts: "{{ item.opts | default(omit) }}"
+    state: "{{ item.state | default(omit) }}"
+    fstype: "{{ item.fstype | default(omit) }}"
+  with_items: "{{ archlinux_configure_mounts }}"
+  tags:
+  - create-mounts
+
+- name: "Install superfans"
+  ansible.builtin.include_role:
+    name: "superfans"
+    apply:
+      tags:
+        - superfans
+  when: archlinux_configure_superfans_install | default(false)
+  tags:
+  - superfans
+
+- name: "Install nvidia_patch"
+  ansible.builtin.include_role:
+    name: "nvidia_patch"
+    apply:
+      tags:
+        - nvidia_patch
+  when: archlinux_configure_nvidia_patch_install | default(false)
+  tags:
+  - nvidia_patch
+
+- name: "Install helm"
+  when: archlinux_configure_helm | default(false)
+  ansible.builtin.include_role:
+    name: "helm"
+    apply:
+      tags:
+        - helm
+  tags:
+  - helm
+
+- name: "Configure samba"
+  when: archlinux_configure_samba | default(false)
+  ansible.builtin.include_role:
+    name: "samba"
+    apply:
+      tags:
+        - samba
+  tags:
+  - samba
+
+- name: Create samba users
+  when:
+  - archlinux_configure_users is defined
+  - archlinux_configure_users | length > 0
+  ansible.builtin.include_tasks: create-users.yaml
+  with_items: "{{ archlinux_configure_users }}"
+  loop_control:
+    loop_var: user
+    label: "{{ user.name }}"
+  vars:
+    create_user: false
+  tags:
+  - create-users
+
+- name: "Configure cockpit"
+  when: archlinux_configure_cockpit | default(false)
+  ansible.builtin.include_role:
+    name: "cockpit"
+    apply:
+      tags:
+        - cockpit
+  tags:
+  - cockpit
+
+- name: "Configure directory sync"
+  when: archlinux_configure_directory_sync | default(false)
+  ansible.builtin.include_role:
+    name: "directory_sync"
+    apply:
+      tags:
+        - directory_sync
+  tags:
+  - directory_sync
+
+- name: "Configure nfs"
+  when: archlinux_configure_nfs | default(false)
+  ansible.builtin.include_role:
+    name: "nfs"
+    apply:
+      tags:
+        - nfs
+  tags:
+  - nfs

@@ -1,0 +1,78 @@
+---
+# This is an example playbook to execute Ansible tests.
+- name: Verify hosts
+  hosts: all
+  gather_facts: true
+  tasks:
+  - name: Populate service facts
+    become: true
+    ansible.builtin.service_facts:
+
+  - name: Stat superfans service env file
+    ansible.builtin.stat:
+      path: "/etc/conf.d/superfans"
+    register: systemd_superfans_env_file
+
+  - name: Stat superfans service file
+    ansible.builtin.stat:
+      path: "/etc/systemd/system/superfans.service"
+    register: systemd_superfans_file
+
+  - name: Stat superfans wrapper
+    ansible.builtin.stat:
+      path: "/usr/local/bin/superfans"
+    register: superfans_wrapper_file
+
+  - name: Stat superfans git repo dir
+    ansible.builtin.stat:
+      path: "/usr/local/lib/superfans/git"
+    register: superfans_repo_dir
+
+  - name: Run assertions
+    ansible.builtin.assert:
+      that:
+      - "'superfans.service' in services"
+      - systemd_superfans_file.stat.exists
+      - systemd_superfans_env_file.stat.exists
+      - superfans_wrapper_file.stat.exists
+      - superfans_repo_dir.stat.exists
+
+- name: Verify ArchLinux
+  hosts: superfans-arch
+  gather_facts: false
+  tasks:
+  - name: Insert line in file
+    become: true
+    ansible.builtin.lineinfile:
+      path: "/etc/conf.d/superfans"
+      state: "present"
+      regexp: '^SUPERFANS_ARGS=*.'
+      mode: "0644"
+      create: true
+      line: 'SUPERFANS_ARGS="set 30"'
+    register: set_superfans_args
+
+  - name: Run assertions
+    ansible.builtin.assert:
+      that:
+      - not set_superfans_args.changed
+
+- name: Verify Debian
+  hosts: superfans-debian
+  gather_facts: false
+  tasks:
+  - name: Insert line in file
+    become: true
+    ansible.builtin.lineinfile:
+      path: "/etc/conf.d/superfans"
+      state: "present"
+      regexp: '^SUPERFANS_ARGS=*.'
+      mode: "0644"
+      create: true
+      line: 'SUPERFANS_ARGS="preset optimal"'
+    register: set_superfans_args
+
+  - name: Run assertions
+    ansible.builtin.assert:
+      that:
+      - not set_superfans_args.changed

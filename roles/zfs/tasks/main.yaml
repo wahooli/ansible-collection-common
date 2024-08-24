@@ -1,0 +1,112 @@
+---
+# tasks file for zfs
+- name: Populate service facts
+  become: true
+  when:
+  - services is not defined
+  - not zfs_archiso | default(false)
+  ansible.builtin.service_facts:
+
+- name: Install dependencies
+  ansible.builtin.include_tasks: "prepare-{{ ansible_os_family | lower }}.yaml"
+
+- name: Create trim timer service
+  ansible.builtin.include_tasks: zfs-trim-service.yaml
+  when: zfs_create_trim_timer | default(true)
+  tags:
+  - setup-zfs-trim-service
+
+- name: List active zpools
+  become: true
+  ansible.builtin.shell:
+    executable: /bin/sh
+    cmd: |-
+      set -o pipefail
+      zpool list -H -o name
+  changed_when: false
+  register: active_zpools
+
+- name: List importable zpools
+  become: true
+  ansible.builtin.shell:
+    executable: /bin/sh
+    cmd: |-
+      set -o pipefail
+      zpool import {{ import_args }} | sed -nr 's/pool: (.*)$/\1/p' | xargs -L 1
+  changed_when: false
+  register: importable_zpools
+  vars:
+    import_args: "{{ zfs_zpool_import_default_args | default([]) | join(' ') }}"
+
+- name: Handle zpools
+  ansible.builtin.include_tasks: zpools.yaml
+  when:
+  - zfs_zpools is defined
+  - zfs_zpools | length > 0
+  loop: "{{ zfs_zpools }}"
+  loop_control:
+    loop_var: zpool
+    label: "{{ zpool.name }}"
+
+- name: Configure zed
+  ansible.builtin.include_tasks: zed-configure.yaml
+  when:
+  - not zfs_archiso | default(false)
+  - zfs_zed_config is mapping
+  - zfs_zed_config | length > 0
+
+- name: Start and enable zed
+  when:
+  - zfs_zed_enable | default(false)
+  - not zfs_debug | default(false)
+  - not zfs_archiso | default(false)
+  become: true
+  ansible.builtin.systemd_service:
+    name: zfs-zed
+    state: started
+    enabled: true
+
+- name: "Install smartd"
+  when:
+  - zfs_smartd_enable | default(false)
+  - not zfs_debug | default(false)
+  - not zfs_archiso | default(false)
+  ansible.builtin.include_role:
+    name: "smartd"
+
+- name: Enable zfs cache import service
+  when:
+  - not zfs_debug | default(false)
+  - not zfs_archiso | default(false)
+  become: true
+  ansible.builtin.systemd_service:
+    name: "zfs-import-cache.service"
+    state: started
+    enabled: true
+
+- name: Enable zfs mount service
+  when:
+  - not zfs_debug | default(false)
+  - not zfs_archiso | default(false)
+  become: true
+  ansible.builtin.systemd_service:
+    name: "zfs-mount.service"
+    enabled: true
+
+- name: Enable zfs-import target
+  when:
+  - not zfs_debug | default(false)
+  - not zfs_archiso | default(false)
+  become: true
+  ansible.builtin.systemd_service:
+    name: "zfs-import.target"
+    enabled: true
+
+- name: Enable zfs target
+  when:
+  - not zfs_debug | default(false)
+  - not zfs_archiso | default(false)
+  become: true
+  ansible.builtin.systemd_service:
+    name: "zfs.target"
+    enabled: true

@@ -1,0 +1,15 @@
+- name: Install debian deps for smartd
+  become: true
+  ansible.builtin.apt:
+    pkg:
+    - smartmontools
+    - debianutils
+    update_cache: true
+    cache_valid_time: 3600
+  tags:
+  - molecule-idempotence-notest
+
+- name: Override debian specific facts
+  ansible.builtin.set_fact:
+    smartd_systemd_file: /lib/systemd/system/smartmontools.service
+    smartd_executable: /usr/sbin/smartd

@@ -1,7 +1,7 @@
 [Unit]
 Description=Lightweight Kubernetes
 Documentation=https://k3s.io
-Wants=network-online.target
+Wants=network-online.target {{ k3s_systemd_service_wants | default([]) | join(' ') }}
 After=network-online.target {{ k3s_systemd_service_dependencies | default([]) | join(' ') }}
 {% if k3s_systemd_service_dependencies | default([]) != []  %}
 Requires={{ k3s_systemd_service_dependencies | join(' ') }}

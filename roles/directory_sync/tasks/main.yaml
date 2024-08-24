@@ -1,0 +1,71 @@
+---
+# tasks file for directory_sync
+- name: Populate service facts
+  become: true
+  when: services is not defined
+  ansible.builtin.service_facts:
+
+- name: Install deps
+  ansible.builtin.include_tasks: "deps-{{ ansible_os_family | lower }}.yaml"
+
+- name: Ensure env directory exists
+  become: true
+  ansible.builtin.file:
+    path: "{{ directory_sync_env_dir }}"
+    recurse: true
+    state: directory
+    owner: root
+    group: root
+    mode: "u=rw,go=r,a+X"
+    modification_time: preserve
+    access_time: preserve
+
+- name: Create directory_sync script
+  become: true
+  ansible.builtin.template:
+    src: "directory_sync.j2"
+    dest: "{{ directory_sync_script }}"
+    owner: root
+    group: root
+    mode: "0755"
+  register: sync_script
+
+- name: Create directory_sync service file
+  become: true
+  ansible.builtin.template:
+    src: "directory-sync@.service.j2"
+    dest: "{{ directory_sync_systemd_dir }}/directory-sync@.service"
+    owner: root
+    group: root
+    mode: "0644"
+  notify:
+  - Systemd daemon reload
+
+- name: Flush handlers
+  ansible.builtin.meta: flush_handlers
+
+- name: Configure directory-sync instances
+  ansible.builtin.include_tasks: "configure-instance.yaml"
+  when:
+  - directory_sync_instances is defined
+  - directory_sync_instances | length > 0
+  vars:
+    instance: "{{ item.name }}"
+    service_name: "directory-sync@{{ instance }}.service"
+    source: "{{ item.source }}"
+    destination: "{{ item.destination | join(',') if item.destination is not string else item.destination }}"
+    copy_args: "{{ item.copy_args | default('') }}"
+    inotify_args: "{{ item.inotify_args | default('') }}"
+    delete_original: "{{ item.delete_original | default(false) }}"
+    allow_delete: "{{ item.allow_delete | default(false) }}"
+    allow_hardlinks: "{{ item.allow_hardlinks | default(false) }}"
+    copy_directories: "{{ item.copy_directories | default(false) }}"
+    enabled: "{{ item.enabled | default(true) }}"
+    inotify_events: "{{ item.inotify_events | default('') }}"
+    restart_instance: "{{ sync_script.changed }}"
+    verbosity: "{{ item.verbosity | default(0) }}"
+    chown_user: "{{ item.chown_user | default('') }}"
+    chown_group: "{{ item.chown_group | default('') }}"
+    file_chmod: "{{ item.file_chmod | default('') }}"
+    dir_chmod: "{{ item.dir_chmod | default('') }}"
+  with_items: "{{ directory_sync_instances }}"

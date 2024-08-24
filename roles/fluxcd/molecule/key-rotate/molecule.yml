@@ -5,21 +5,29 @@ dependency:
 driver:
   name: docker
 platforms:
-- name: fluxcd-key-rotate-server
-  image: "debian:12"
+- name: fluxcd-key-rotate-server-debian
+  image: debian:12
+  dockerfile: Dockerfile.debian.j2
   tmpfs:
   - /run
   - /tmp
-  volumes:
-  - /lib/modules:/lib/modules:ro
+  privileged: true
+  pre_build_image: false
+  tty: true
+- name: fluxcd-key-rotate-server-arch
+  image: archlinux:base
+  dockerfile: Dockerfile.arch.j2
+  tmpfs:
+  - /run
+  - /tmp
   privileged: true
   pre_build_image: false
   tty: true
 provisioner:
   name: ansible
   inventory:
-    host_vars:
-      fluxcd-key-rotate-server:
+    group_vars:
+      all:
         k3s_role: server
         k3s_config:
           disable:
@@ -40,8 +48,6 @@ provisioner:
           - metrics-bind-address=0.0.0.0
           kube-scheduler-arg:
           - bind-address=0.0.0.0
-    group_vars:
-      all:
         ansible_user: molecule
         fluxcd_bootstrap_install_only: true
         fluxcd_bootstrap_key_rotate: true

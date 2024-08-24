@@ -1,0 +1,9 @@
+- name: Install debian deps for nvidia_patch
+  become: true
+  ansible.builtin.apt:
+    pkg:
+    - git
+    update_cache: true
+    cache_valid_time: 3600
+  tags:
+  - molecule-idempotence-notest

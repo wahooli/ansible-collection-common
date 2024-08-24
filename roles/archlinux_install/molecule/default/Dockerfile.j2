@@ -1,0 +1,46 @@
+FROM {{ item.image }}
+
+ENV container=docker \
+    ANSIBLE_USER=molecule \
+    DEPLOY_GROUP=deployer \
+    SUDO_GROUP={{'sudo' if 'debian' in item.image else 'wheel' }}
+
+RUN pacman -Sy --noconfirm \
+    && pacman --noconfirm -S \
+    sudo \
+    arch-install-scripts \
+    dosfstools \
+    btrfs-progs \
+    glibc \
+    iproute2 \
+    parted \
+    python3 \
+    && pacman -Syu --noconfirm \
+    && rm -rf /var/lib/pacman/sync/* \
+    && rm -Rf /usr/share/doc && rm -Rf /usr/share/man \
+    && set -xe \
+    && groupadd -r ${ANSIBLE_USER} \
+    && groupadd -r ${DEPLOY_GROUP} \
+    && useradd -m -g ${ANSIBLE_USER} ${ANSIBLE_USER} \
+    && usermod -aG ${SUDO_GROUP} ${ANSIBLE_USER} \
+    && usermod -aG ${DEPLOY_GROUP} ${ANSIBLE_USER} \
+    && sed -i "s/^#\s*\(%${SUDO_GROUP}.*\\s\+NOPASSWD:\s\+ALL\)/\1/" /etc/sudoers \
+    && pacman-key --init
+
+STOPSIGNAL SIGRTMIN+3
+VOLUME [ "/tmp", "/run", "/run/lock" ]
+WORKDIR /
+
+RUN mkdir -p /etc/modules-load.d/ ; \
+    (for i in /lib/systemd/system/sysinit.target.wants/*; do test $i != "/lib/systemd/system/sysinit.target.wants/systemd-tmpfiles-setup.service" && rm -f $i; done); \
+    rm -f /lib/systemd/system/multi-user.target.wants/*;\
+    rm -f /etc/systemd/system/*.wants/*;\
+    rm -f /lib/systemd/system/local-fs.target.wants/*; \
+    rm -f /lib/systemd/system/sockets.target.wants/*udev*; \
+    rm -f /lib/systemd/system/sockets.target.wants/*initctl*; \
+    rm -f /lib/systemd/system/basic.target.wants/*; \
+    rm -f /usr/lib/systemd/system/systemd-machine-id-commit.service; \
+    rm -f /usr/lib/systemd/system/systemd-resolved.service; \
+    chmod a+rwx /tmp/;
+
+ENTRYPOINT [ "/lib/systemd/systemd", "log-level=info", "unit=sysinit.target" ]
