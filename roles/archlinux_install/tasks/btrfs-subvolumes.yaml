@@ -49,3 +49,10 @@
     attributes: C
   loop: "{{ archlinux_install_btrfs_subvolumes }}"
   when: item.disable_cow | default(false)
+
+- name: Add btrfs-progs into additional packages
+  ansible.builtin.set_fact:
+    archlinux_install_additional_packages: "{{ (archlinux_install_additional_packages | default([])) + ['btrfs-progs'] }}"
+  when:
+  - archlinux_install_root_fstype == 'btrfs'
+  - "'btrfs-progs' not in (archlinux_install_additional_packages | default([]))"

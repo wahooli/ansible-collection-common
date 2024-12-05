@@ -1,0 +1,56 @@
+---
+dependency:
+  name: shell
+  command: "COLLECTION_INSTALL=false ${GITHUB_WORKSPACE:-..}/${GITHUB_REPOSITORY:-..}/tools/install-deps.sh"
+driver:
+  name: docker
+platforms:
+- name: k3s-static-token-debian
+  image: debian:12
+  dockerfile: Dockerfile.debian.j2
+  tmpfs:
+  - /run
+  - /tmp
+  privileged: true
+  pre_build_image: false
+  tty: true
+- name: k3s-static-token-arch
+  image: archlinux:base
+  dockerfile: Dockerfile.arch.j2
+  tmpfs:
+  - /run
+  - /tmp
+  privileged: true
+  pre_build_image: false
+  tty: true
+provisioner:
+  name: ansible
+  inventory:
+    host_vars:
+      k3s-static-token-arch:
+        k3s_containerd_use_crun: true
+    group_vars:
+      all:
+        ansible_user: molecule
+        k3s_role: server
+        k3s_token: thisShouldn'tBeRandom!
+        # k3s_containerd_pause_image: rancher/mirrored-pause:3.9
+        k3s_kubescheduler_config:
+          leaderElection:
+            leaderElect: true
+          extenders:
+          - urlPrefix: "http://127.0.0.1:9251"
+            filterVerb: "predicate"
+            prioritizeVerb: "prioritize"
+            nodeCacheCapable: false
+            weight: 100
+            managedResources:
+            - name: "topolvm.io/capacity"
+              ignoredByScheduler: true
+        k3s_config:
+          snapshotter: native
+          write-kubeconfig-mode: 644
+          kube-scheduler-arg:
+          - bind-address=0.0.0.0
+verifier:
+  name: ansible

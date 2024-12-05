@@ -40,7 +40,7 @@ k3s_bin_dir: "/usr/local/bin"
 k3s_install_type: notify
 k3s_release_channel: stable
 k3s_use_config_file: true
-k3s_config:
-  write-kubeconfig-mode: 644
-  default-runtime: crun
+# k3s_config:
+#   write-kubeconfig-mode: 644
+#   default-runtime: crun
 # pause-image: rancher/mirrored-pause:3.9

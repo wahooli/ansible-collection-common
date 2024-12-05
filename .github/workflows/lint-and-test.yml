@@ -33,7 +33,6 @@ jobs:
           files_ignore: |
             roles/reboot/**
             roles/zfs/**
-            roles/cilium/**
             *.md
             **/*.md
             **/.yamllint
@@ -58,6 +57,15 @@ jobs:
             tools
             requirements.txt
             requirements.yml
+      - name: Get more disk space
+        uses: jlumbroso/free-disk-space@v1.3.1
+        with:
+          tool-cache: false
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: true
+          swap-storage: true
       - name: Molecule
         uses: gofrolist/molecule-action@v2
         with:
@@ -90,6 +98,15 @@ jobs:
             tools
             requirements.txt
             requirements.yml
+      - name: Get more disk space
+        uses: jlumbroso/free-disk-space@v1.3.1
+        with:
+          tool-cache: false
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: true
+          swap-storage: true
       - name: Molecule
         uses: gofrolist/molecule-action@v2
         with:

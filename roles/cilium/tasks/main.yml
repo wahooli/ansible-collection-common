@@ -1,13 +1,16 @@
 ---
 # tasks file for cilium
-- name: Combine cilium_ip_pools into cilium_helm_values
+- name: Combine cilium_helm_values_override into cilium_helm_values
   when:
-  - cilium_ip_pools is defined
-  - cilium_helm_values is defined
-  - cilium_helm_values.installation is defined
-  - cilium_helm_values.installation.ciliumNetwork is defined
+  - cilium_helm_values_override is defined
   ansible.builtin.set_fact:
-    cilium_helm_values: "{{ cilium_helm_values | combine({'installation': {'ciliumNetwork': {'ipPools': cilium_ip_pools}}}, recursive=true) }}"
+    cilium_helm_values: "{{ (cilium_helm_values | default({})) | combine(cilium_helm_values_override, recursive=true, list_merge='replace') }}"
+
+- name: Install ciliumctl
+  ansible.builtin.import_tasks: cilium-cli.yml
+  become: true
+  when:
+  - cilium_cli_install | default(false)
 
 - name: Install dependencies
   ansible.builtin.include_tasks: "prepare-{{ ansible_os_family | lower }}.yml"
@@ -84,12 +87,6 @@
 
   # end block Run commands in venv
 # end block Install cilium in python venv
-
-- name: Install ciliumctl
-  ansible.builtin.import_tasks: cilium-cli.yml
-  become: true
-  when:
-  - cilium_cli_install | default(false)
 
 - name: Use k3s_bin_dir as cilium_k3s_killalld_dir value if defined
   when: k3s_bin_dir is defined

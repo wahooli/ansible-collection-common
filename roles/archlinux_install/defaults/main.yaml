@@ -33,8 +33,7 @@ archlinux_install_cachyos_install_packages:
 - cachyos-mirrorlist
 - cachyos-v3-mirrorlist
 - cachyos-v4-mirrorlist
-- cachyos/pacman
-archlinux_install_rankmirrors: true
+archlinux_install_rankmirrors: false
 archlinux_install_rankmirrors_count: 5
 # archlinux_install_rankmirrors_countries: [] # https://archlinux.org/mirrorlist/
 archlinux_install_rankmirrors_protocols:
@@ -51,7 +50,6 @@ archlinux_install_additional_packages:
 - sudo
 - efibootmgr
 - grub-btrfs
-- btrfs-progs
 - man-db
 - openssh
 - networkmanager
