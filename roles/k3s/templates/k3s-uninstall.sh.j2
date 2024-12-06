@@ -2,7 +2,7 @@
 set -x
 [ $(id -u) -eq 0 ] || exec sudo $0 $@
 
-{% if k3s_enable_cleanup_service -%}
+{% if k3s_enable_cleanup_service and k3s_role == "server" -%}
 {{ k3s_bin_dir }}/k3s-cleanup-uninstall.sh
 {%- endif %}
 
