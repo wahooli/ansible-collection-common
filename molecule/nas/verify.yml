@@ -1,0 +1,50 @@
+---
+# This is an example playbook to execute Ansible tests.
+- name: Verify servers
+  hosts: k3s_servers
+  gather_facts: false
+  tasks:
+  - name: Check if helm exists
+    ansible.builtin.command: "which helm"
+    register: which_helm_command
+    changed_when: which_helm_command.rc != 0
+    failed_when: false
+
+  - name: Check if k3s exists
+    ansible.builtin.command: "which k3s"
+    register: which_k3s_command
+    changed_when: which_k3s_command.rc != 0
+    failed_when: false
+
+  - name: Check if cilium exists
+    ansible.builtin.command: "which cilium"
+    register: which_cilium_command
+    changed_when: which_cilium_command.rc != 0
+    failed_when: false
+
+  - name: Verify TOKEN contains predefined token
+    become: true
+    ansible.builtin.copy:
+      dest: "/etc/rancher/k3s/TOKEN"
+      owner: root
+      group: root
+      mode: "0644"
+      content: "abcdefghijklmnop123"
+    register: token_file_contains
+
+  - name: Verify config.yaml contains predefined token
+    become: true
+    ansible.builtin.lineinfile:
+      path: "/etc/rancher/k3s/config.yaml"
+      line: "token: abcdefghijklmnop123"
+      state: present
+    register: config_yaml_contains
+
+  - name: Run assertions
+    ansible.builtin.assert:
+      that:
+      - which_helm_command is not changed
+      - which_k3s_command is not changed
+      - which_cilium_command is not changed
+      - token_file_contains is not changed
+      - config_yaml_contains is not changed

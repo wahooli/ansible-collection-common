@@ -45,8 +45,6 @@ provisioner:
               - 10.40.0.0/16
     group_vars:
       all:
-        cilium_ip_pools:
-        - 10.40.0.0/16
         cilium_helm_values:
           kubeProxyReplacement: true
           routingMode: native

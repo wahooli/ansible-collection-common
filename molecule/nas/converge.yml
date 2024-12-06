@@ -1,0 +1,6 @@
+---
+- name: Converge
+  hosts: all
+  gather_facts: true
+- name: Import uninstall playbook
+  ansible.builtin.import_playbook: "{{ lookup('env','MOLECULE_PROJECT_DIRECTORY') | default('../..', true) }}/playbooks/configure_nas.yml"
