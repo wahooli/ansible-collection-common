@@ -16,3 +16,4 @@ cilium_uninstall_wait_timeout: "5m0s"
 cilium_uninstall_retries: 2
 cilium_uninstall_remove_crds: true
 # cilium_helm_values: # helm values for cilium
+# cilium_helm_values_override: # helm values for cilium, can be passed as separate secret

@@ -54,6 +54,9 @@
 
 - name: Copy K3s-cleanup service file
   become: true
+  when:
+  - k3s_role == "server"
+  - k3s_enable_cleanup_service | default(true)
   ansible.builtin.template:
     src: "k3s-cleanup.service.j2"
     dest: "{{ k3s_systemd_dir }}/k3s-cleanup.service"
@@ -84,6 +87,21 @@
     dest: "{{ k3s_bin_dir }}/k3s-killall.sh.d/"
     state: directory
     mode: "0755"
+
+- name: Copy k3s-cleanup-uninstall.sh
+  become: true
+  when:
+  - k3s_role == "server"
+  - k3s_enable_cleanup_service | default(true)
+  ansible.builtin.template:
+    src: "k3s-cleanup-uninstall.sh.j2"
+    dest: "{{ k3s_bin_dir }}/k3s-cleanup-uninstall.sh"
+    owner: root
+    group: root
+    mode: "0700"
+  tags:
+  - install
+  - configure
 
 - name: Copy k3s-uninstall.sh
   become: true

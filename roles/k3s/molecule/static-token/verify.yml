@@ -1,0 +1,45 @@
+---
+# This is an example playbook to execute Ansible tests.
+- name: Verify
+  hosts: all
+  gather_facts: false
+  tasks:
+  - name: Check k3s is installed
+    ansible.builtin.command: "k3s --version"
+    register: k3s_version_output
+    changed_when: k3s_version_output.rc != 0
+
+  - name: Wait for nodes to be ready
+    ansible.builtin.command: "kubectl get nodes"
+    register: nodes_ready
+    until:
+    - '" NotReady " not in nodes_ready.stdout'
+    changed_when: nodes_ready.rc != 0
+    retries: 60
+    delay: 1
+
+  - name: Verify TOKEN contains predefined token
+    become: true
+    ansible.builtin.copy:
+      dest: "/etc/rancher/k3s/TOKEN"
+      owner: root
+      group: root
+      mode: "0644"
+      content: "thisShouldn'tBeRandom!"
+    register: token_file_contains
+    failed_when: token_file_contains is changed
+
+  - name: Verify config.yaml contains predefined token
+    become: true
+    ansible.builtin.lineinfile:
+      path: "/etc/rancher/k3s/config.yaml"
+      line: "token: thisShouldn'tBeRandom!"
+      state: present
+    register: config_yaml_contains
+    failed_when: config_yaml_contains is changed
+
+  - name: Run assertions
+    ansible.builtin.assert:
+      that:
+      - k3s_version_output is success
+      - nodes_ready is success

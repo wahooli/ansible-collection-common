@@ -1,0 +1,14 @@
+#!/bin/sh
+set -x
+[ $(id -u) -eq 0 ] || exec sudo $0 $@
+
+if command -v systemctl; then
+    systemctl disable k3s-cleanup
+    systemctl reset-failed k3s-cleanup
+    systemctl daemon-reload
+fi
+
+rm -f {{ k3s_systemd_dir }}/k3s-cleanup.service
+rm -f {{ k3s_systemd_dir }}/k3s-cleanup.service.env
+
+rm -f {{ k3s_bin_dir }}/k3s-cleanup-uninstall.sh

@@ -108,10 +108,14 @@
   changed_when: false
   when: "pacman_conf | default('/etc/pacman.conf') != '/etc/pacman.conf'"
 
-- name: Refresh package cache
+- name: Refresh package cache and install cachyos specific pacman
   when: "pacman_conf | default('/etc/pacman.conf') == '/etc/pacman.conf'"
   community.general.pacman:
     update_cache: true
+    name: "cachyos/pacman"
+    state: "latest"
+  tags:
+  - molecule-idempotence-notest
 
 - name: Override archlinux_install_kernel value
   ansible.builtin.set_fact:

@@ -2,6 +2,15 @@
 set -x
 [ $(id -u) -eq 0 ] || exec sudo $0 $@
 
+{% if k3s_enable_cleanup_service -%}
+{{ k3s_bin_dir }}/k3s-cleanup-uninstall.sh
+{%- endif %}
+
+if (ls {{ k3s_systemd_dir }}/k3s-*.service || ls /etc/init.d/k3s-*) >/dev/null 2>&1; then
+    set +x; echo 'Additional k3s services installed, skipping uninstall of k3s'; set -x
+    exit
+fi
+
 {{ k3s_bin_dir }}/k3s-killall.sh
 
 if command -v systemctl; then
@@ -17,14 +26,10 @@ rm -f {{ k3s_systemd_dir }}/k3s.service
 rm -f {{ k3s_systemd_dir }}/k3s.service.env
 
 remove_uninstall() {
-    rm -f /usr/local/bin/k3s-uninstall.sh
+    rm -f {{ k3s_bin_dir }}/k3s-uninstall.sh
 }
 trap remove_uninstall EXIT
 
-if (ls {{ k3s_systemd_dir }}/k3s*.service || ls /etc/init.d/k3s*) >/dev/null 2>&1; then
-    set +x; echo 'Additional k3s services installed, skipping uninstall of k3s'; set -x
-    exit
-fi
 
 for cmd in kubectl crictl ctr; do
     if [ -L {{ k3s_bin_dir }}/$cmd ]; then
@@ -33,11 +38,11 @@ for cmd in kubectl crictl ctr; do
 done
 
 rm -rf {{ k3s_config_path }}
+rm -rf /etc/rancher
 rm -rf /run/k3s
 rm -rf /run/flannel
 rm -rf {{ k3s_data_dir }}
 rm -rf {{ k3s_kubelet_root_dir }}
-rm -rf /var/lib/kubelet
 rm -f {{ k3s_bin_dir }}/k3s
 rm -f {{ k3s_bin_dir }}/k3s-killall.sh
 rm -rf {{ k3s_bin_dir }}/k3s-killall.sh.d/

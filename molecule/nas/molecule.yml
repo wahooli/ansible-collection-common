@@ -1,0 +1,308 @@
+---
+dependency:
+  name: shell
+  command: "${MOLECULE_PROJECT_DIRECTORY}/tools/install-deps.sh"
+driver:
+  name: docker
+platforms:
+- name: nas
+  image: archlinux:base
+  dockerfile: Dockerfile.arch.j2
+  groups:
+  - arch_linux_hosts
+  - k3s_servers
+  - cilium_hosts
+  - k3s_hosts
+  - kubectl_hosts
+  - fluxcd_hosts
+  tmpfs:
+  - /run
+  - /tmp
+  volumes:
+  - /lib/modules:/lib/modules:ro
+  privileged: true
+
+  pre_build_image: false
+  tty: true
+  networks:
+  - name: nas
+  docker_networks:
+  - name: nas
+
+provisioner:
+  name: ansible
+  env:
+    ANSIBLE_ROLES_PATH: "${MOLECULE_PROJECT_DIRECTORY}/roles"
+  inventory:
+    group_vars:
+      all:
+        fluxcd_bootstrap_install_only: true
+        fluxcd_bootstrap_allow: true
+        ansible_user: molecule
+
+      arch_linux_hosts:
+        archlinux_configure_cockpit: true
+        archlinux_configure_directories:
+        - path: /srv
+          owner: root
+          group: root
+        - path: /mnt/data
+          owner: root
+          group: sambashare
+          mode: "2775"
+        - group: special-users
+          mode: u=rw,go=r,a+X
+          owner: root
+          path: /mnt/special/users
+        archlinux_configure_directory_sync: true
+        archlinux_configure_groups:
+        - name: sambashare
+          system: true
+        - name: users
+          system: true
+        - gid: 2000
+          name: special-users
+          system: true
+        archlinux_configure_helm: true
+        archlinux_configure_install_pkg:
+        - python-packaging
+        archlinux_configure_mkinitcpio: false
+        archlinux_configure_mounts:
+        - path: /srv/share
+          src: /mnt/data
+          opts: bind
+          state: mounted
+          fstype: none
+        archlinux_configure_nfs: true
+        archlinux_configure_nofile_limit: 1048576:2097152
+        archlinux_configure_nvidia_patch_install: true
+        nvidia_patch_driver_version: "555.58.02"
+        # lists supported versions only, doesn't actually run the patch in unprivileged container
+        nvidia_patch_default_args: "-l"
+        nvidia_patch_fbc_default_args: "-l"
+        archlinux_configure_samba: true
+        archlinux_configure_superfans_install: true
+        archlinux_configure_sysctls:
+        - name: net.core.netdev_max_backlog
+          value: 16384
+        - name: net.core.somaxconn
+          value: 8192
+        archlinux_configure_users:
+        - name: molecule
+          groups:
+          - users
+          - sambashare
+        - name: system-user
+          shell: /bin/nologin
+          system: true
+          create_home: false
+          groups:
+          - sambashare
+        - name: test-user
+          shell: /bin/bash
+          password: test123
+          system: false
+          create_home: true
+          groups:
+          - users
+          - sambashare
+        - name: special-user
+          create_home: false
+          password: ababababababab
+          system: false
+          uid: 2009
+          group: special-users
+        cockpit_addons:
+        - storage
+        - packagekit
+        - files
+        - file-sharing
+        cockpit_allow_root_login: true
+        cockpit_listen_addresses:
+        - address: 0.0.0.0
+          port: 443
+        - address: 0.0.0.0
+          port: 80
+        directory_sync_instances:
+        - name: data_sync
+          enabled: true
+          source: /mnt/data/
+          copy_args: -v -p
+          inotify_args:
+          - -r
+          - --exclude
+          - '.*(/\.|~)'
+          copy_directories: true
+          verbosity: 10
+          allow_delete: true
+          destination: /srv/data
+          chown_user: molecule
+          chown_group: deployer
+          dir_chmod: 2775
+          file_chmod: 664
+        - name: file_sync
+          source: /mnt/files/
+          verbosity: 10
+          copy_args: -v -p
+          inotify_args:
+          - --exclude
+          - '.*(/\.|~)'
+          destination:
+          - /srv/data/
+          - /mnt/file_backup/
+        - name: recursion_test
+          source: /mnt/recursion/
+          verbosity: 10
+          copy_args: -v -p
+          inotify_args:
+          - -r
+          - --exclude
+          - '.*(/\.|~)'
+          copy_directories: true
+          destination:
+          - /srv/recursion/
+        kubernetes_secret_data:
+        - data:
+            aaaaaaaaaa: bbbbbbbbbb
+            cccccccc: d
+          name: secret-in-default-ns
+          namespace: default
+        - data:
+            key_name: key_value
+            haha: hello
+          name: some-secret-in-different-ns
+          namespace: testing
+        mkinitcpio_hooks:
+        - base
+        - udev
+        - autodetect
+        - microcode
+        - modconf
+        - keyboard
+        - keymap
+        - consolefont
+        - block
+        - filesystems
+        nfs_conf:
+          nfsd:
+            threads: 16
+        nfs_exports:
+          /srv/nfs/not_home:
+          - host: 192.168.1.0/24
+            opts:
+            - rw
+            - sync
+          - host: 192.168.2.0/24
+            opts:
+            - rw
+            - no_subtree_check
+            - async
+          /srv/nfs/home:
+          - host: desktop
+            opts:
+            - rw
+            - anonuid=99
+            - anongid=99
+        samba_enable_avahi_discovery: true
+        samba_enable_presets: true
+        samba_enable_wsdd2_discovery: true
+        samba_netbios_name: nas
+        samba_preset:
+          enable_guest_access: true
+          enable_usershares: false
+          improve_throughput: true
+          macos_server_side_copy: true
+          min_protocol: SMB3_11
+          transport_encryption: enabled
+        samba_shares:
+          guest_share:
+            comment: guest share
+            path: /tmp/
+            public: "yes"
+            only guest: "yes"
+            writable: "yes"
+            printable: "no"
+        samba_config:
+          global:
+            create mask: "0664"
+            directory mask: "2755"
+            force create mode: "0644"
+            force directory mode: "2755"
+            workgroup: testwg
+            vfs object: fruit streams_xattr
+        superfans_default_args: set 30
+
+      cilium_hosts:
+        cilium_helm_values:
+          kubeProxyReplacement: true
+          routingMode: native
+          autoDirectNodeRoutes: true
+          k8sServicePort: 6443
+          ipv4NativeRoutingCIDR: gets overridden by cilium_helm_values_override
+          k8sServiceHost: gets overridden by cilium_helm_values_override
+          ipam:
+            mode: "cluster-pool"
+            operator:
+              clusterPoolIPv4MaskSize: 20 # ips to allocate per node, defaults to 24
+              clusterPoolIPv4PodCIDRList:
+              - gets overridden by cilium_helm_values_override
+              - asdf
+          directRoutingSkipUnreachable: true
+          hubble:
+            enabled: false
+          envoy:
+            enabled: false
+          cni:
+            logFile: /dev/null
+          operator:
+            replicas: 1
+        cilium_helm_values_override:
+          ipv4NativeRoutingCIDR: 10.40.0.0/14
+          k8sServiceHost: nas
+          ipam:
+            operator:
+              clusterPoolIPv4PodCIDRList:
+              - 10.40.0.0/16
+
+      k3s_hosts:
+        k3s_allow_swap: true
+        k3s_kubelet_config:
+          maxPods: 250
+          shutdownGracePeriod: 30s
+          shutdownGracePeriodCriticalPods: 10s
+        k3s_role: server
+        k3s_node_labels:
+        - node_type=master
+        helm_diff_install: true
+        k3s_cluster_dns: 10.43.0.10
+        k3s_config:
+          cluster-domain: cluster.local
+          disable:
+          - servicelb
+          - local-storage
+          - traefik
+          disable-cloud-controller: true
+          disable-helm-controller: true
+          disable-kube-proxy: true
+          disable-network-policy: true
+          flannel-backend: none
+          kube-controller-manager-arg:
+          - bind-address=0.0.0.0
+          - terminated-pod-gc-threshold=10
+          kube-proxy-arg:
+          - metrics-bind-address=0.0.0.0
+          kube-scheduler-arg:
+          - bind-address=0.0.0.0
+          snapshotter: native
+          write-kubeconfig-mode: 644
+        k3s_containerd_use_crun: true
+        k3s_kubeconfig_context_name: nas
+        k3s_kubeconfig_server: nas
+        k3s_service_cidr: 10.43.0.0/16
+        k3s_tls_san:
+        - 127.0.0.1
+        - nas
+        k3s_token: abcdefghijklmnop123
+
+verifier:
+  name: ansible
