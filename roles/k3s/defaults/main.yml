@@ -27,6 +27,9 @@
 # k3s_systemd_service_dependencies: # list of dependencies for systemd service template
 # k3s_systemd_service_wants: [] # list of wants for systemd service template
 # - var-lib-longhorn.mount
+# k3s_kubeconfig_merge_path: ~/.kube/config
+k3s_kubeconfig_merge_cleanup: true # removes separate kubeconfig files after merge
+k3s_kubeconfig_merge_configs: true # requires kubectl installed on local machine
 k3s_enable_cleanup_service: true
 k3s_allow_cluster_init: true # joins multiple masters/server into same cluster if there are more than 2 in play
 k3s_containerd_log_level: "warn" # Supported levels are: "trace", "debug", "info", "warn", "error", "fatal", "panic"

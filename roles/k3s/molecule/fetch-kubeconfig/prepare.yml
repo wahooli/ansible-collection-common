@@ -1,0 +1,30 @@
+---
+- name: Install sudo, kubectl and python3 on dest_hosts
+  hosts: kubeconfig_dest_hosts
+  gather_facts: false
+  tasks:
+  - name: Run pacman
+    changed_when: false
+    ansible.builtin.raw: "pacman --noconfirm -Sy sudo kubectl python3"
+  vars:
+    ansible_user: root
+
+- name: Prepare kubeconfig fetch hosts
+  hosts: kubeconfig_dest_hosts
+  tasks:
+  - name: Create /root/.kube directory
+    ansible.builtin.file:
+      path: "/root/.kube"
+      state: directory
+      mode: "0644"
+    tags:
+    - molecule-idempotence-notest
+
+- name: Prepare k3s hosts
+  hosts: k3s_server
+  tasks:
+  - name: "Install older version of k3s"
+    ansible.builtin.include_role:
+      name: "k3s"
+    vars:
+      k3s_skip_prepare: false
