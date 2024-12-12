@@ -1,0 +1,79 @@
+---
+dependency:
+  name: shell
+  command: "COLLECTION_INSTALL=false ${GITHUB_WORKSPACE:-..}/${GITHUB_REPOSITORY:-..}/tools/install-deps.sh"
+driver:
+  name: docker
+platforms:
+- name: fetch-kubeconfig-server-arch
+  image: archlinux:base
+  dockerfile: Dockerfile.arch.j2
+  tmpfs:
+  - /run
+  - /tmp
+  privileged: true
+  pre_build_image: false
+  tty: true
+  groups:
+  - k3s_server
+  networks:
+  - name: fetch-kubeconfig
+  docker_networks:
+  - name: fetch-kubeconfig
+- name: fetch-kubeconfig-server-debian
+  image: "debian:12"
+  dockerfile: Dockerfile.debian.j2
+  tmpfs:
+  - /run
+  - /tmp
+  privileged: true
+  pre_build_image: false
+  tty: true
+  groups:
+  - k3s_server
+  networks:
+  - name: fetch-kubeconfig
+  docker_networks:
+  - name: fetch-kubeconfig
+- name: fetch-kubeconfig-arch
+  image: archlinux:base
+  privileged: false
+  pre_build_image: true
+  tty: true
+  groups:
+  - kubeconfig_dest_hosts
+  networks:
+  - name: fetch-kubeconfig
+  docker_networks:
+  - name: fetch-kubeconfig
+provisioner:
+  name: ansible
+  inventory:
+    host_vars:
+      fetch-kubeconfig-server-arch:
+        k3s_kubeconfig_cluster_name: arch
+        k3s_kubeconfig_context_name: arch
+        k3s_kubeconfig_user_name: arch
+      fetch-kubeconfig-server-debian:
+        k3s_kubeconfig_cluster_name: debian
+        k3s_kubeconfig_context_name: debian
+        k3s_kubeconfig_user_name: debian
+    group_vars:
+      all:
+        k3s_kubeconfig_merge_path: ~/.kube/config
+        # ansible_ssh_pass: ansiblemolecule
+        fetch_kubeconfig_host_override: fetch-kubeconfig-arch
+        ansible_user: molecule
+        k3s_kubeconfig_output_path: /tmp
+      k3s_server:
+        k3s_skip_prepare: true
+        k3s_role: server
+        k3s_config:
+          disable:
+          - traefik
+          snapshotter: native
+          write-kubeconfig-mode: 644
+      kubeconfig_dest_hosts:
+        ansible_user: root
+verifier:
+  name: ansible
