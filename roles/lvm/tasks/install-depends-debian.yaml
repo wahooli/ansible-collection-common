@@ -1,0 +1,10 @@
+- name: Apt install LVM dependencies
+  become: true
+  ansible.builtin.apt:
+    pkg:
+    - lvm2
+    - udev
+    update_cache: true
+    cache_valid_time: 3600
+  tags:
+  - molecule-idempotence-notest

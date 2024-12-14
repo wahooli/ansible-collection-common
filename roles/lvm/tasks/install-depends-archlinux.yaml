@@ -1,0 +1,8 @@
+- name: Pacman install LVM dependencies
+  become: true
+  community.general.pacman:
+    name: lvm2
+    state: present
+    update_cache: true
+  tags:
+  - molecule-idempotence-notest

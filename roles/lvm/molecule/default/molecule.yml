@@ -6,8 +6,20 @@ dependency:
 driver:
   name: docker
 platforms:
-- name: lvm-test
+- name: lvm-test-debian
   image: debian:12
+  dockerfile: Dockerfile.debian.j2
+  tmpfs:
+  - /run
+  - /tmp
+  volumes:
+  - /lib/modules:/lib/modules:ro
+  privileged: true
+  pre_build_image: false
+  tty: true
+- name: lvm-test-arch
+  image: archlinux:base
+  dockerfile: Dockerfile.arch.j2
   tmpfs:
   - /run
   - /tmp
@@ -22,8 +34,10 @@ provisioner:
     group_vars:
       all:
         ansible_user: molecule
+    host_vars:
+      lvm-test-debian:
         lvm_vgs:
-        - name: vg.testdata
+        - name: vg.testdata.debian
           pvs:
           - /dummydev1
           - /dummydev2
@@ -33,15 +47,23 @@ provisioner:
             opts: --zero n
         lvm_lvols:
         - name: mountedPool
-          vg: vg.testdata
+          vg: vg.testdata.debian
           size: 50%VG
           opts: --zero n
-          # cannot find actually created lvm devices within containers
-          # fs:
-          #   type: ext4
-          # mount:
-          #   path: /mnt/test
-          #   opts: nofail,x-systemd.device-timeout=15
-          #   boot: true
+      lvm-test-arch:
+        lvm_vgs:
+        - name: vg.testdata.arch
+          pvs:
+          - /dummydev7
+          - /dummydev8
+          lvols:
+          - name: emptyPool
+            size: 50%VG
+            opts: --zero n
+        lvm_lvols:
+        - name: mountedPool
+          vg: vg.testdata.arch
+          size: 50%VG
+          opts: --zero n
 verifier:
   name: ansible

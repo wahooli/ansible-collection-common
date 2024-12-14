@@ -26,6 +26,6 @@
   - name: Run assertions
     ansible.builtin.assert:
       that:
-      - pvdisplay_output.stdout_lines | length == 2
-      - vgdisplay_output.stdout_lines | length == 1
-      - lvdisplay_output.stdout_lines | length == 2
+      - pvdisplay_output.stdout_lines | length == 4
+      - vgdisplay_output.stdout_lines | length == 2
+      - lvdisplay_output.stdout_lines | length == 4
