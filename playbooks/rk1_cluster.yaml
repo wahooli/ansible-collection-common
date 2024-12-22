@@ -1,0 +1,62 @@
+- name: Run lvm role against lvm_hosts group
+  hosts: lvm_hosts
+  gather_facts: true
+  any_errors_fatal: true
+  roles:
+  - role: lvm
+  tags:
+  - lvm
+
+- name: Install helm
+  hosts: helm_hosts
+  gather_facts: true
+  any_errors_fatal: true
+  roles:
+  - role: helm
+  tags:
+  - helm
+
+- name: Reboot if needed
+  hosts: all
+  gather_facts: true
+  any_errors_fatal: true
+  roles:
+  - role: reboot
+  tags:
+  - reboot
+
+- name: Set up k3s cluster
+  hosts: k3s_hosts
+  gather_facts: true
+  any_errors_fatal: true
+  roles:
+  - role: "k3s"
+  tags:
+  - k3s
+
+- name: Install cilium
+  hosts: cilium_hosts
+  gather_facts: true
+  any_errors_fatal: true
+  roles:
+  - role: "cilium"
+  tags:
+  - cilium
+
+- name: Create cluster secrets
+  hosts: kubectl_hosts
+  gather_facts: true
+  any_errors_fatal: true
+  roles:
+  - role: "kubernetes_secret"
+  tags:
+  - secrets
+
+- name: Bootstrap FluxCD repository
+  hosts: fluxcd_hosts
+  gather_facts: true
+  any_errors_fatal: true
+  roles:
+  - role: "fluxcd"
+  tags:
+  - fluxcd
