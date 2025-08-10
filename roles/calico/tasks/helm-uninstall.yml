@@ -1,11 +1,12 @@
+---
 - name: Uninstall calico
   environment:
     K8S_AUTH_KUBECONFIG: "{{ calico_kubeconfig }}"
   block:
-  - name: Increment the retry count
+  - name: Increment the retry count # noqa: var-naming[no-role-prefix]
     ansible.builtin.set_fact:
       retry_count: "{{ 0 if retry_count is undefined else retry_count | int + 1 }}"
-  - name: "Helm uninstall calico"
+  - name: "Helm uninstall calico" # noqa: var-naming[no-role-prefix]
     failed_when: false
     kubernetes.core.helm:
       name: calico

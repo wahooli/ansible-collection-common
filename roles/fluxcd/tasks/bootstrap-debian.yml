@@ -1,3 +1,4 @@
+---
 - name: Install dependencies
   when:
   - "'openssh-client' not in ansible_facts.packages or 'python3-virtualenv' not in ansible_facts.packages"

@@ -1,4 +1,5 @@
-- name: Ensure the tigera-operator Namespace exists.
+---
+- name: Ensure the tigera-operator Namespace exists. # noqa: var-naming[no-role-prefix]
   kubernetes.core.k8s:
     definition:
       apiVersion: v1
@@ -56,7 +57,7 @@
     update_repo_cache: true
   when: not calico_repo_add.changed
 
-- name: "Helm deploy calico {{ calico_version }}"
+- name: "Helm deploy calico {{ calico_version }}" # noqa: var-naming[no-role-prefix]
   kubernetes.core.helm:
     name: calico
     chart_ref: projectcalico/tigera-operator
@@ -81,14 +82,14 @@
       path: /rules/-
       value:
         apiGroups:
-          - operator.tigera.io
+        - operator.tigera.io
         resources:
-          - installations
-          - apiservers
+        - installations
+        - apiservers
         verbs:
-          - delete
+        - delete
 
-- name: Wait until default FelixConfiguration has manifested
+- name: Wait until default FelixConfiguration has manifested # noqa: var-naming[no-role-prefix]
   kubernetes.core.k8s_info:
     api_version: "{{ calico_felix_configuration_apiversion }}"
     kind: FelixConfiguration

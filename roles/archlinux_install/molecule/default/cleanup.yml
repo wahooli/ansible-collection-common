@@ -41,7 +41,7 @@
         state: absent
       failed_when: false
 
-    - name: "Run swapoff /mnt{{ archlinux_install_swapfile }}"
+    - name: "Run swapoff for swapfile"
       ansible.builtin.command:
         cmd: "swapoff /mnt{{ archlinux_install_swapfile }}"
       failed_when: false

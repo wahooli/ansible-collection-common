@@ -2,6 +2,6 @@
 - name: Converge
   hosts: all
   tasks:
-    - name: "Include helm role"
-      ansible.builtin.include_role:
-        name: "helm"
+  - name: "Include helm role"
+    ansible.builtin.include_role:
+      name: "helm"

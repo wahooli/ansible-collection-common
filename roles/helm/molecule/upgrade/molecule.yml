@@ -6,18 +6,20 @@ driver:
 platforms:
 - name: helm-upgrade-arch
   image: archlinux:base
-  dockerfile: Dockerfile.arch.j2
+  dockerfile: ../../../../molecule-shared/Dockerfile.archlinux.j2
   pre_build_image: false
 - name: helm-upgrade-debian-11
   image: debian:11
-  dockerfile: Dockerfile.debian.j2
+  dockerfile: ../../../../molecule-shared/Dockerfile.debian.j2
   pre_build_image: false
 - name: helm-upgrade-debian-12
   image: debian:12
-  dockerfile: Dockerfile.debian.j2
+  dockerfile: ../../../../molecule-shared/Dockerfile.debian.j2
   pre_build_image: false
 provisioner:
   name: ansible
+  env:
+    ANSIBLE_ROLES_PATH: ../../..
   inventory:
     group_vars:
       all:

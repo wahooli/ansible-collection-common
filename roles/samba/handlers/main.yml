@@ -6,7 +6,7 @@
     name: smb
     state: restarted
   when:
-  - "'smb.service' in services"
+  - "'smb.service' in ansible_facts.services"
 
 - name: Restart avahi
   become: true
@@ -14,7 +14,7 @@
     name: avahi-daemon
     state: restarted
   when:
-  - "'avahi-daemon.service' in services"
+  - "'avahi-daemon.service' in ansible_facts.services"
 
 - name: Restart nmbd
   become: true
@@ -22,7 +22,7 @@
     name: nmb
     state: restarted
   when:
-  - "'nmb.service' in services"
+  - "'nmb.service' in ansible_facts.services"
 
 - name: Restart wsdd
   become: true
@@ -30,7 +30,7 @@
     name: wsdd
     state: restarted
   when:
-  - "'wsdd.service' in services"
+  - "'wsdd.service' in ansible_facts.services"
 
 - name: Restart wsdd2
   become: true
@@ -38,4 +38,4 @@
     name: wsdd2
     state: restarted
   when:
-  - "'wsdd2.service' in services"
+  - "'wsdd2.service' in ansible_facts.services"

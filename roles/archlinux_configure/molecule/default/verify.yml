@@ -79,8 +79,8 @@
       that:
       - verify_yay.stat.exists
       - verify_sysctl_userconfig.stat.exists
-      - "'smb.service' in services"
-      - "'wsdd2.service' in services"
+      - "'smb.service' in ansible_facts.services"
+      - "'wsdd2.service' in ansible_facts.services"
       - not sambashare_group.changed
       - not molecule_user_groups.changed
       - not test_user.changed

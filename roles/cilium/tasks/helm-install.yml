@@ -1,3 +1,4 @@
+---
 - name: Get current cilium helm version
   block:
   - name: Get cilium helmrelease information
@@ -27,7 +28,7 @@
     update_repo_cache: true
   when: not cilium_repo_add.changed
 
-- name: "Helm deploy cilium {{ cilium_version }}"
+- name: "Helm deploy cilium {{ cilium_version }}" # noqa: var-naming[no-role-prefix]
   kubernetes.core.helm:
     name: cilium
     chart_ref: cilium/cilium

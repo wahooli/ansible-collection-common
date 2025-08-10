@@ -1,16 +1,17 @@
+---
 - name: Unmount boot partition
   ansible.posix.mount:
     path: "{{ '/mnt/boot/efi' if archlinux_install_uefi else '/mnt/boot' }}"
     state: unmounted
 
-- name: Unmount all zfs volumes
+- name: Unmount all zfs volumes # noqa: var-naming[no-role-prefix]
   ansible.builtin.command:
     cmd: "zfs umount -a"
   failed_when: zfs_umount.rc != 0
   changed_when: false
   register: zfs_umount
 
-- name: "Export zpool {{ zfs_zpools[0].name }}"
+- name: "Export zpool {{ zfs_zpools[0].name }}" # noqa: var-naming[no-role-prefix]
   ansible.builtin.command:
     cmd: "zpool export {{ zfs_zpools[0].name }}"
   failed_when: zpool_export.rc != 0

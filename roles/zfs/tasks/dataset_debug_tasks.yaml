@@ -1,3 +1,4 @@
+---
 - name: "Debug: {{ zfs_command_name | capitalize }}"
   when: zfs_debug | default(false)
   ansible.builtin.debug:

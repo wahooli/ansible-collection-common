@@ -1,14 +1,15 @@
+---
 - name: Unmount and wipe partitions
   when: archlinux_install_wipe_drive
   block:
-  - name: Check if mounted
+  - name: Check if mounted # noqa: var-naming[no-role-prefix]
     ansible.builtin.command:
       cmd: "findmnt /mnt"
     changed_when: false
     failed_when: false
     register: partitioning_findmnt
 
-  - name: Unmount recursive
+  - name: Unmount recursive # noqa: var-naming[no-role-prefix]
     ansible.builtin.command:
       cmd: "umount -A --recursive /mnt"
     failed_when: partitioning_umount_recursive.rc != 0
@@ -16,7 +17,7 @@
     register: partitioning_umount_recursive
     when: partitioning_findmnt.rc == 0
 
-  - name: Remove filesystem from boot partition
+  - name: Remove filesystem from boot partition # noqa: var-naming[no-role-prefix]
     community.general.filesystem:
       dev: '{{ archlinux_install_boot_partition }}'
       state: absent
@@ -25,7 +26,7 @@
     delay: 5
     until: partitioning_wipe_boot is not failed
 
-  - name: Remove filesystem from root partition
+  - name: Remove filesystem from root partition # noqa: var-naming[no-role-prefix]
     community.general.filesystem:
       dev: '{{ archlinux_install_root_partition }}'
       state: absent
@@ -34,7 +35,7 @@
     delay: 5
     until: partitioning_wipe_root is not failed
 
-  - name: Wipe partitions
+  - name: Wipe partitions # noqa: var-naming[no-role-prefix]
     ansible.builtin.command:
       cmd: "wipefs -a {{ archlinux_install_drive }}"
     failed_when: partitioning_wipefs.rc != 0

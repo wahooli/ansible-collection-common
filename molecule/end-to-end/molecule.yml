@@ -7,7 +7,7 @@ driver:
 platforms:
 - name: end-to-end-server
   image: archlinux:base
-  dockerfile: Dockerfile.arch.j2
+  dockerfile: ../../molecule-shared/Dockerfile.archlinux-systemd.j2
   groups:
   - k3s_servers
   - helm_hosts
@@ -29,7 +29,7 @@ platforms:
 
 - name: end-to-end-agent
   image: debian:12
-  dockerfile: Dockerfile.debian.j2
+  dockerfile: ../../molecule-shared/Dockerfile.debian-systemd.j2
   groups:
   - k3s_agents
   - k3s_hosts

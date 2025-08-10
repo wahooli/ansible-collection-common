@@ -24,15 +24,15 @@
     cmd: |-
       set -o pipefail
       nvidia-smi --version | grep -i "driver version" | awk '{print $4;}'
-  failed_when: nvidia_smi.rc != 0
+  failed_when: nvidia_patch_smi.rc != 0
   changed_when: false
-  register: nvidia_smi
+  register: nvidia_patch_smi
 
 - name: Run patch
   ansible.builtin.include_tasks: "run-patch.yaml"
   vars:
     verify_supported: "{{ nvidia_patch_verify_supported | default(true) }}"
-    driver_version: "{{ nvidia_patch_driver_version | default(nvidia_smi.stdout) }}"
+    driver_version: "{{ nvidia_patch_driver_version | default(nvidia_patch_smi.stdout) }}"
     patch_script: "patch.sh"
     patch_args: "{{ nvidia_patch_default_args | default(omit) }}"
 
@@ -41,6 +41,6 @@
   ansible.builtin.include_tasks: "run-patch.yaml"
   vars:
     verify_supported: "{{ nvidia_patch_fbc_verify_supported | default(true) }}"
-    driver_version: "{{ nvidia_patch_driver_version | default(nvidia_smi.stdout) }}"
+    driver_version: "{{ nvidia_patch_driver_version | default(nvidia_patch_smi.stdout) }}"
     patch_script: "patch-fbc.sh"
     patch_args: "{{ nvidia_patch_fbc_default_args | default(omit) }}"

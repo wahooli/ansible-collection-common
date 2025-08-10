@@ -1,4 +1,5 @@
-- name: Check if can access cluster with kubectl
+---
+- name: Check if can access cluster with kubectl # noqa: var-naming[no-role-prefix]
   ansible.builtin.command: "kubectl get nodes"
   register: kubectl_command
   failed_when: false
@@ -9,7 +10,7 @@
   - cilium_kubeconfig | default("") == ""
   ansible.builtin.import_tasks: resolve-kubeconfig.yml
 
-- name: Check if ciliumctl exists
+- name: Check if ciliumctl exists # noqa: var-naming[no-role-prefix]
   ansible.builtin.command: "which cilium"
   register: which_cilium_command
   changed_when: false
@@ -29,13 +30,13 @@
     path: "{{ cilium_k3s_killalld_dir }}/99-remove-cilium-interfaces.sh"
     state: absent
 
-- name: Check if helm exists
+- name: Check if helm exists # noqa: var-naming[no-role-prefix]
   ansible.builtin.command: "which helm"
   register: which_helm_command
   changed_when: false
   failed_when: false
 
-- name: Get current user name
+- name: Get current user name # noqa: var-naming[no-role-prefix]
   ansible.builtin.command: whoami
   register: current_user_name
   changed_when: current_user_name.rc != 0
@@ -47,7 +48,7 @@
     venv_user: "{{ ansible_user | default(current_user_name.stdout) | default(omit) }}"
     virtualenv_command: "{{ 'python -m venv' if ansible_facts['os_family'] == 'Archlinux' else 'virtualenv' }}"
   block:
-  - name: Get user home path
+  - name: Get user home path # noqa: var-naming[no-role-prefix]
     ansible.builtin.shell:
       executable: /bin/bash
       cmd: |-

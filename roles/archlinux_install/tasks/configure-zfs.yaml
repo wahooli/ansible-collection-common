@@ -1,3 +1,4 @@
+---
 - name: "Create zfs-trim service"
   ansible.builtin.include_role:
     name: "zfs"
@@ -15,56 +16,56 @@
     regexp: '^({{ zfs_zpools[0].name }}.*)$'
     replace: '# \1'
 
-- name: Set cachefile in chroot
+- name: Set cachefile in chroot # noqa: var-naming[no-role-prefix]
   ansible.builtin.command:
     cmd: "arch-chroot /mnt zpool set cachefile=/etc/zfs/zpool.cache {{ zfs_zpools[0].name }}"
   failed_when: zfs_configure_enable_cachefile.rc != 0
   changed_when: false
   register: zfs_configure_enable_cachefile
 
-- name: Generate hostid
+- name: Generate hostid # noqa: var-naming[no-role-prefix]
   ansible.builtin.command:
     cmd: "hostid"
   failed_when: hostid_cmd.rc != 0
   changed_when: false
   register: hostid_cmd
 
-- name: Generate zfs hostid
+- name: Generate zfs hostid # noqa: var-naming[no-role-prefix]
   ansible.builtin.command:
     cmd: "arch-chroot /mnt zgenhostid {{ hostid_cmd.stdout }}"
   failed_when: zfs_configure_enable_cachefile.rc != 0
   changed_when: false
   register: zfs_configure_enable_cachefile
 
-- name: Enable zfs cache import service
+- name: Enable zfs cache import service # noqa: var-naming[no-role-prefix]
   ansible.builtin.command:
     cmd: arch-chroot /mnt systemctl enable zfs-import-cache.service
   failed_when: zfs_configure_enable_cache_import.rc != 0
   changed_when: false
   register: zfs_configure_enable_cache_import
 
-- name: Enable zfs mount service
+- name: Enable zfs mount service # noqa: var-naming[no-role-prefix]
   ansible.builtin.command:
     cmd: arch-chroot /mnt systemctl enable zfs-mount.service
   failed_when: zfs_configure_enable_zfs_mount.rc != 0
   changed_when: false
   register: zfs_configure_enable_zfs_mount
 
-- name: Enable zfs import target
+- name: Enable zfs import target # noqa: var-naming[no-role-prefix]
   ansible.builtin.command:
     cmd: arch-chroot /mnt systemctl enable zfs-import.target
   failed_when: zfs_configure_enable_zfs_import_target.rc != 0
   changed_when: false
   register: zfs_configure_enable_zfs_import_target
 
-- name: Enable zfs target
+- name: Enable zfs target # noqa: var-naming[no-role-prefix]
   ansible.builtin.command:
     cmd: arch-chroot /mnt systemctl enable zfs.target
   failed_when: zfs_configure_enable_zfs_target.rc != 0
   changed_when: false
   register: zfs_configure_enable_zfs_target
 
-- name: Enable zfs trim for datasets
+- name: Enable zfs trim for datasets # noqa: var-naming[no-role-prefix]
   when: zpool.enable_trim | default(false)
   ansible.builtin.command:
     cmd: arch-chroot /mnt systemctl enable zfs-trim@{{- zpool.name -}}.timer
@@ -75,7 +76,7 @@
   loop_control:
     loop_var: zpool
 
-- name: Enable zfs scrub for datasets
+- name: Enable zfs scrub for datasets # noqa: var-naming[no-role-prefix]
   when: zpool.scrub | default("none") in ["weekly", "monthly"]
   ansible.builtin.command:
     cmd: arch-chroot /mnt systemctl enable zfs-scrub-{{- zpool.scrub -}}@{{- zpool.name -}}.timer
@@ -86,7 +87,7 @@
   loop_control:
     loop_var: zpool
 
-- name: Regenerate initramfs
+- name: Regenerate initramfs # noqa: var-naming[no-role-prefix]
   ansible.builtin.command:
     cmd: "arch-chroot /mnt mkinitcpio -P"
   failed_when: zfs_configure_initramfs.rc != 0

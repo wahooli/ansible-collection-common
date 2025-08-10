@@ -1,0 +1,12 @@
+---
+- name: Prepare
+  hosts: all
+  tasks:
+  - name: Install dietpi-default packages
+    become: true
+    ansible.builtin.apt:
+      pkg:
+      - dbus
+      - openssh-server
+      state: present
+      update_cache: true

@@ -26,7 +26,7 @@
   - archlinux_install_root_partition is not defined
   - archlinux_install_root_partition | length < 1
 
-- name: Verify the boot mode
+- name: Verify the boot mode # noqa: var-naming[no-role-prefix]
   ansible.builtin.stat:
     path: /sys/firmware/efi/efivars
   register: efivars
@@ -36,7 +36,7 @@
     msg: Target system is not UEFI-capabile. Aborting.
   when: archlinux_install_uefi and not efivars.stat.exists
 
-- name: Update the system clock
+- name: Update the system clock # noqa: var-naming[no-role-prefix]
   ansible.builtin.command:
     cmd: timedatectl set-ntp true
   failed_when: timedatectl_ntp.rc != 0
@@ -140,7 +140,7 @@
   loop_control:
     loop_var: user
 
-- name: "Set root password"
+- name: "Set root password" # noqa: var-naming[no-role-prefix]
   ansible.builtin.command:
     cmd: "arch-chroot /mnt usermod --password {{ archlinux_install_root_password | password_hash('sha512') }} root"
   failed_when: root_password.rc != 0

@@ -1,16 +1,17 @@
+---
 - name: Check if patch is supported
   become: true
   ansible.builtin.command:
     cmd: "{{ nvidia_patch_path }}/{{ patch_script }} -c {{ driver_version }}"
-  failed_when: patch_supported.rc != 0
+  failed_when: nvidia_patch_supported.rc != 0
   changed_when: false
-  register: patch_supported
+  register: nvidia_patch_supported
   when: verify_supported | default(true)
 
 - name: "Run script {{ patch_script }}"
   become: true
   ansible.builtin.command:
     cmd: "{{ nvidia_patch_path }}/{{ patch_script }} {{ patch_args }}"
-  failed_when: run_patch.rc != 0
+  failed_when: nvidia_patch_run.rc != 0
   changed_when: false
-  register: run_patch
+  register: nvidia_patch_run

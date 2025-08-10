@@ -20,6 +20,7 @@
       become: true
       ansible.builtin.package_facts:
         manager: auto
+      when: ansible_facts.packages is not defined
 
     - name: "Remove vgs"
       when:

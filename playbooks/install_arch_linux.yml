@@ -1,3 +1,4 @@
+---
 - name: Install Arch linux
   hosts: arch_linux_install_hosts
   roles:

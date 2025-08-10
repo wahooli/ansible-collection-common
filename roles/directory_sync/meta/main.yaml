@@ -1,3 +1,4 @@
+---
 galaxy_info:
   author: wahooli
   description: Creates systemd service for syncing new files to other directory

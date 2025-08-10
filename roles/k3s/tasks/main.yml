@@ -3,11 +3,23 @@
 - name: Populate service facts
   become: true
   ansible.builtin.service_facts:
+  when: ansible_facts.services is not defined
+
+- name: Update pacman package cache
+  become: true
+  community.general.pacman:
+    update_cache: true
+  tags:
+  - molecule-idempotence-notest
+  when:
+  - ansible_os_family == "Archlinux"
+  - ansible_facts.packages is not defined
 
 - name: Gather the package facts
   become: true
   ansible.builtin.package_facts:
     manager: auto
+  when: ansible_facts.packages is not defined
 
 - name: Fail if k3s_role is undefined
   when: k3s_role is undefined
@@ -118,7 +130,7 @@
 - name: Start K3s on server nodes
   become: true
   when:
-  - "'k3s.service' not in services"
+  - "'k3s.service' not in ansible_facts.services"
   - k3s_systemd_start
   - k3s_role == "server"
   tags:
@@ -174,14 +186,14 @@
   tags:
   - install
   when:
-  - "'k3s.service' not in services or k3s_force_cluster_init is defined"
+  - "'k3s.service' not in ansible_facts.services or k3s_force_cluster_init is defined"
   - using_embedded_etcd | default(false)
   - inventory_hostname == k3s_cluster_init_host
   block:
   - name: Remove cluster-init from configuration
     ansible.builtin.set_fact:
       k3s_config: "{{ k3s_config | default({}) | combine({'cluster-init': omit}) }}"
-  - name: Rewrite K3s service file
+  - name: Rewrite K3s service file # noqa: var-naming[no-role-prefix]
     when: k3s_use_config_file is undefined or not k3s_use_config_file
     register: cluster_init_service_file
     ansible.builtin.template:
@@ -190,7 +202,7 @@
       owner: root
       group: root
       mode: "0644"
-  - name: Rewrite K3s configuration file if enabled
+  - name: Rewrite K3s configuration file if enabled # noqa: var-naming[no-role-prefix]
     when: k3s_use_config_file is defined and k3s_use_config_file
     register: cluster_init_config_file
     ansible.builtin.copy:
@@ -209,7 +221,7 @@
 
 - name: Start K3s on agent node
   when:
-  - "'k3s.service' not in services"
+  - "'k3s.service' not in ansible_facts.services"
   - k3s_systemd_start
   - k3s_role == "agent"
   become: true
@@ -229,7 +241,7 @@
       path: "{{ k3s_data_dir }}/agent/images/{{ images_tar }}"
       state: absent
 
-- name: Get current user name
+- name: Get current user name # noqa: var-naming[no-role-prefix]
   ansible.builtin.command: whoami
   register: current_user_name
   changed_when: current_user_name.rc != 0

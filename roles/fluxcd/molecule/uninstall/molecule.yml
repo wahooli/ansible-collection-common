@@ -7,7 +7,7 @@ driver:
 platforms:
 - name: fluxcd-uninstall-server-debian
   image: debian:12
-  dockerfile: Dockerfile.debian.j2
+  dockerfile: ../../../../molecule-shared/Dockerfile.debian-systemd.j2
   tmpfs:
   - /run
   - /tmp
@@ -22,7 +22,7 @@ platforms:
   - name: fluxcd-uninstall
 - name: fluxcd-uninstall-agent-debian
   image: debian:12
-  dockerfile: Dockerfile.debian.j2
+  dockerfile: ../../../../molecule-shared/Dockerfile.debian-systemd.j2
   tmpfs:
   - /run
   - /tmp
@@ -37,7 +37,7 @@ platforms:
   - name: fluxcd-uninstall
 - name: fluxcd-uninstall-server-arch
   image: archlinux:base
-  dockerfile: Dockerfile.arch.j2
+  dockerfile: ../../../../molecule-shared/Dockerfile.archlinux-systemd.j2
   tmpfs:
   - /run
   - /tmp
@@ -48,6 +48,8 @@ platforms:
   - server
 provisioner:
   name: ansible
+  env:
+    ANSIBLE_ROLES_PATH: ../../..
   inventory:
     host_vars:
       fluxcd-uninstall-agent-debian:

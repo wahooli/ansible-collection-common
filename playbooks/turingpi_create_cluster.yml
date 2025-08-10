@@ -1,3 +1,4 @@
+---
 - name: Edit boot config
   hosts: rpi_hosts
   gather_facts: true

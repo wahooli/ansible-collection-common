@@ -1,9 +1,10 @@
-- name: Read mirrorlist file contents
+---
+- name: Read mirrorlist file contents # noqa: var-naming[no-role-prefix]
   ansible.builtin.slurp:
     src: /etc/pacman.d/mirrorlist
   register: mirrorlist_contents
 
-- name: Rank pacman mirrors
+- name: Rank pacman mirrors # noqa: var-naming[no-role-prefix]
   when:
   - archlinux_install_rankmirrors
   - (mirrorlist_contents.content | b64decode).splitlines() | length > (archlinux_install_rankmirrors_count | default(5) | int)
@@ -31,14 +32,14 @@
   ansible.builtin.set_fact:
     archlinux_install_packages: "{{ ['base', 'linux-firmware'] + [archlinux_install_kernel | default('linux')] + (archlinux_install_additional_packages | default([])) }}"
 
-- name: Install base system
+- name: Install base system # noqa: var-naming[no-role-prefix]
   ansible.builtin.command:
     argv: "{{ ['pacstrap', '-K', '/mnt'] + archlinux_install_packages + [('intel-ucode' if ansible_processor[1].find('Intel') != -1 else ('amd-ucode' if ansible_processor[1].find('AMD') != -1 else '')) if archlinux_install_ucode else ''] }}"
   args:
     creates: /mnt/bin
   register: pacstrap_command
 
-- name: Run genfstab
+- name: Run genfstab # noqa: var-naming[no-role-prefix]
   ansible.builtin.shell:
     executable: /bin/bash
     cmd: |
@@ -52,7 +53,7 @@
   ansible.builtin.include_tasks: pacstrap-docker-hacks.yaml
   when: ansible_connection in [ "container", "docker", "community.docker.docker" ]
 
-- name: Check if /mnt/etc/pacman.conf exists
+- name: Check if /mnt/etc/pacman.conf exists # noqa: var-naming[no-role-prefix]
   ansible.builtin.stat:
     path: "/mnt/etc/pacman.conf"
   register: pacstrap_pacman_conf

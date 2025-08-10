@@ -3,7 +3,7 @@
 - name: Populate service facts
   become: true
   when:
-  - services is not defined
+  - ansible_facts.services is not defined
   - not zfs_archiso | default(false)
   ansible.builtin.service_facts:
 
@@ -24,7 +24,7 @@
       set -o pipefail
       zpool list -H -o name
   changed_when: false
-  register: active_zpools
+  register: zfs_active_zpools
 
 - name: List importable zpools
   become: true
@@ -34,7 +34,7 @@
       set -o pipefail
       zpool import {{ import_args }} | sed -nr 's/pool: (.*)$/\1/p' | xargs -L 1
   changed_when: false
-  register: importable_zpools
+  register: zfs_importable_zpools
   vars:
     import_args: "{{ zfs_zpool_import_default_args | default([]) | join(' ') }}"
 

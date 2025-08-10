@@ -1,3 +1,4 @@
+---
 - name: Gather the package facts
   block:
   - name: Gather the package facts Debian
@@ -5,14 +6,6 @@
     ansible.builtin.package_facts:
       manager: auto
   rescue:
-  # - name: Ensure sudo is installed
-  #   become: true
-  #   become_method: ansible.builtin.su
-  #   ansible.builtin.package:
-  #     name: sudo
-  #     state: present
-  #   # when:
-  #   # - "'sudo' not in ansible_facts.packages"
   - name: Ensure python3-apt is installed
     become: true
     ansible.builtin.package:
@@ -24,7 +17,7 @@
     ansible.builtin.package_facts:
       manager: auto
 
-- name: Set pre-upgrade kernel version fact on Debian
+- name: Set pre-upgrade kernel version fact on Debian # noqa: var-naming[no-role-prefix]
   ansible.builtin.set_fact:
     pre_upgrade_kernel: "{{ ansible_facts.packages | dict2items | selectattr('key', 'match', '^linux-image-[A-Za-z0-9]+$') | map(attribute='value') | first | map(attribute='version') }}"
   when:

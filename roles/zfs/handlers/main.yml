@@ -6,4 +6,4 @@
     name: zfs-zed
     state: restarted
   when:
-  - "'zfs-zed.service' in services"
+  - "'zfs-zed.service' in ansible_facts.services"

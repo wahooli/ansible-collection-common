@@ -7,7 +7,7 @@ driver:
 platforms:
 - name: nas
   image: archlinux:base
-  dockerfile: Dockerfile.arch.j2
+  dockerfile: ../../molecule-shared/Dockerfile.archlinux-systemd.j2
   groups:
   - arch_linux_hosts
   - k3s_servers
@@ -116,7 +116,7 @@ provisioner:
         - storage
         - packagekit
         - files
-        - file-sharing
+        # - file-sharing
         cockpit_allow_root_login: true
         cockpit_listen_addresses:
         - address: 0.0.0.0

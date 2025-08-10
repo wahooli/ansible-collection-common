@@ -2,7 +2,7 @@
 # tasks file for directory_sync
 - name: Populate service facts
   become: true
-  when: services is not defined
+  when: ansible_facts.services is not defined
   ansible.builtin.service_facts:
 
 - name: Install deps
@@ -20,7 +20,7 @@
     modification_time: preserve
     access_time: preserve
 
-- name: Create directory_sync script
+- name: Create directory_sync script # noqa: var-naming[no-role-prefix]
   become: true
   ansible.builtin.template:
     src: "directory_sync.j2"

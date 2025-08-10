@@ -5,10 +5,10 @@
     path: "{{ kubectl_install_path }}/kubectl"
   register: kubectl_binary
 
-- name: Get latest kubectl version
+- name: Get latest kubectl version # noqa: var-naming[no-role-prefix]
   when: kubectl_version | default("stable") == "stable"
   block:
-  - name: Get latest kubectl version
+  - name: Get latest kubectl version # noqa: var-naming[no-role-prefix]
     ansible.builtin.uri:
       url: https://dl.k8s.io/release/stable.txt
       return_content: true

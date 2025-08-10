@@ -1,3 +1,4 @@
+---
 # tasks file for s_nail
 - name: Install deps
   ansible.builtin.include_tasks: "deps-{{ ansible_os_family | lower }}.yaml"
@@ -38,7 +39,7 @@
         grep -E {{ s_nail_configure_user | default('root') }}: /etc/passwd | awk -F: '{ print $6 }'
     failed_when: user_home_path.rc != 0
     changed_when: false
-    register: user_home_path
+    register: user_home_path # noqa: var-naming[no-role-prefix]
 
   - name: Apply global s-nail configuration
     become: true

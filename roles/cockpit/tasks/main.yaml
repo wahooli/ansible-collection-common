@@ -2,7 +2,7 @@
 # tasks file for cockpit
 - name: Populate service facts
   become: true
-  when: services is not defined
+  when: ansible_facts.services is not defined
   ansible.builtin.service_facts:
 
 - name: Install dependencies

@@ -7,7 +7,7 @@ driver:
 platforms:
 - name: k3s-static-token-debian
   image: debian:12
-  dockerfile: Dockerfile.debian.j2
+  dockerfile: ../../../../molecule-shared/Dockerfile.debian-systemd.j2
   tmpfs:
   - /run
   - /tmp
@@ -16,7 +16,7 @@ platforms:
   tty: true
 - name: k3s-static-token-arch
   image: archlinux:base
-  dockerfile: Dockerfile.arch.j2
+  dockerfile: ../../../../molecule-shared/Dockerfile.archlinux-systemd.j2
   tmpfs:
   - /run
   - /tmp
@@ -25,6 +25,8 @@ platforms:
   tty: true
 provisioner:
   name: ansible
+  env:
+    ANSIBLE_ROLES_PATH: ../../..
   inventory:
     host_vars:
       k3s-static-token-arch:

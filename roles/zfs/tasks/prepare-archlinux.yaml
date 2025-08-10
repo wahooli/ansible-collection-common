@@ -1,3 +1,4 @@
+---
 - name: Install zfs-utils
   become: true
   community.general.pacman:

@@ -13,7 +13,7 @@ platforms:
   - /dev/zfs:/dev/zfs
   - /lib/modules:/lib/modules:ro
   # - /proc/self/mounts:/proc/self/mounts
-  dockerfile: Dockerfile.arch.j2
+  dockerfile: ../../../../molecule-shared/Dockerfile.archlinux-systemd.j2
   pre_build_image: false
   privileged: false
   capabilities:
@@ -21,6 +21,8 @@ platforms:
   tty: true
 provisioner:
   name: ansible
+  env:
+    ANSIBLE_ROLES_PATH: ../../..
   inventory:
     group_vars:
       all:

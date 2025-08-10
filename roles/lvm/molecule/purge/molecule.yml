@@ -8,6 +8,7 @@ driver:
 platforms:
 - name: lvm-purge-test
   image: debian:12
+  dockerfile: ../../../../molecule-shared/Dockerfile.debian-systemd.j2
   tmpfs:
   - /run
   - /tmp
@@ -18,6 +19,8 @@ platforms:
   tty: true
 provisioner:
   name: ansible
+  env:
+    ANSIBLE_ROLES_PATH: ../../..
   inventory:
     group_vars:
       all:

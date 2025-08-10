@@ -1,3 +1,4 @@
+---
 - name: "Create mountpoint btrfs root"
   ansible.builtin.file:
     path: "/btrfs-root"

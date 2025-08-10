@@ -1,11 +1,12 @@
-- name: Configure local timezone
+---
+- name: Configure local timezone # noqa: var-naming[no-role-prefix]
   ansible.builtin.command:
     cmd: arch-chroot /mnt ln -sf /usr/share/zoneinfo/{{ archlinux_install_timezone }} /etc/localtime
   failed_when: configure_local_tz.rc != 0
   changed_when: false
   register: configure_local_tz
 
-- name: Set HW clock
+- name: Set HW clock # noqa: var-naming[no-role-prefix]
   ansible.builtin.command:
     cmd: arch-chroot /mnt hwclock --systohc
   failed_when: ansible_connection not in [ "container", "docker", "community.docker.docker" ] and configure_hwclock.rc != 0
@@ -26,7 +27,7 @@
     force: false
     mode: "0644"
 
-- name: Generate locales
+- name: Generate locales # noqa: var-naming[no-role-prefix]
   ansible.builtin.command:
     cmd: arch-chroot /mnt locale-gen
   failed_when: configure_locale_gen.rc != 0
@@ -69,7 +70,7 @@
   - archlinux_install_blacklist_modules is defined
   - archlinux_install_blacklist_modules | length > 0
 
-- name: Install mkinitcpio
+- name: Install mkinitcpio # noqa: var-naming[no-role-prefix]
   ansible.builtin.command:
     argv:
     - arch-chroot
@@ -118,21 +119,21 @@
 - name: Flush handlers
   ansible.builtin.meta: flush_handlers
 
-- name: Enable SSH server
+- name: Enable SSH server # noqa: var-naming[no-role-prefix]
   ansible.builtin.command:
     cmd: arch-chroot /mnt systemctl enable sshd
   failed_when: configure_enable_sshd.rc != 0
   changed_when: false
   register: configure_enable_sshd
 
-- name: Enable NetworkManager
+- name: Enable NetworkManager # noqa: var-naming[no-role-prefix]
   ansible.builtin.command:
     cmd: arch-chroot /mnt systemctl enable NetworkManager
   failed_when: configure_enable_networkmanager.rc != 0
   changed_when: false
   register: configure_enable_networkmanager
 
-- name: Enable qemu-guest-agent
+- name: Enable qemu-guest-agent # noqa: var-naming[no-role-prefix]
   ansible.builtin.command:
     cmd: arch-chroot /mnt systemctl enable qemu-guest-agent
   failed_when: configure_enable_networkmanager.rc != 0
@@ -168,7 +169,7 @@
       group: root
       mode: "0644"
 
-  - name: Enable systemd-timesyncd
+  - name: Enable systemd-timesyncd # noqa: var-naming[no-role-prefix]
     ansible.builtin.command:
       cmd: arch-chroot /mnt systemctl enable systemd-timesyncd.service
     failed_when: configure_enable_systemd_timesyncd.rc != 0

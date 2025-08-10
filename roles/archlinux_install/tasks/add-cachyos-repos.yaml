@@ -1,11 +1,12 @@
+---
 - name: Get supported instruction set
   ansible.builtin.shell:
     cmd: |
       set -o pipefail
       /lib/ld-linux-x86-64.so.2 --help | grep supported | awk '{print $1;}' | head -n 1
-  failed_when: cachyos_supported_isa.stderr != ''
+  failed_when: archlinux_install_cachyos_supported_isa.stderr != ''
   changed_when: false
-  register: cachyos_supported_isa
+  register: archlinux_install_cachyos_supported_isa
 
 - name: Check CachyOS key exists in keyring
   ansible.builtin.shell:
@@ -13,11 +14,11 @@
       set -o pipefail
       pacman-key --list-keys | grep {{ archlinux_install_cachyos_key_id }}
   failed_when: false
-  changed_when: cachyos_key_exists.stdout == ''
-  register: cachyos_key_exists
+  changed_when: archlinux_install_cachyos_key_exists.stdout == ''
+  register: archlinux_install_cachyos_key_exists
 
 - name: Import CachyOS pacman key
-  when: cachyos_key_exists.stdout == ''
+  when: archlinux_install_cachyos_key_exists.stdout == ''
   community.general.pacman_key:
     id: "{{ archlinux_install_cachyos_key_id }}"
     keyserver: "{{ archlinux_install_cachyos_key_server }}"
@@ -41,9 +42,9 @@
   - name: Check cachyos-mirrorlist file exists
     ansible.builtin.stat:
       path: /etc/pacman.d/cachyos-mirrorlist
-    register: mirrorlist
-  - name: "Download CachyOS base mirrorlist"
-    when: not mirrorlist.stat.exists
+    register: archlinux_install_mirrorlist
+  - name: "Download CachyOS base mirrorlist" # noqa: var-naming[no-role-prefix]
+    when: not archlinux_install_mirrorlist.stat.exists
     ansible.builtin.get_url:
       url: "https://mirror.cachyos.org/cachyos-mirrorlist"
       dest: "/etc/pacman.d/cachyos-mirrorlist"
@@ -74,14 +75,14 @@
     backup: true
     insertbefore: "^\\[core\\]"
     block: |
-      {%- if cachyos_supported_isa.stdout == "x86-64-v3" -%}
+      {%- if archlinux_install_cachyos_supported_isa.stdout == "x86-64-v3" -%}
       [cachyos-v3]
       Include = /etc/pacman.d/cachyos-v3-mirrorlist
       [cachyos-core-v3]
       Include = /etc/pacman.d/cachyos-v3-mirrorlist
       [cachyos-extra-v3]
       Include = /etc/pacman.d/cachyos-v3-mirrorlist
-      {% elif cachyos_supported_isa.stdout == "x86-64-v4" -%}
+      {% elif archlinux_install_cachyos_supported_isa.stdout == "x86-64-v4" -%}
       [cachyos-v4]
       Include = /etc/pacman.d/cachyos-v4-mirrorlist
       [cachyos-core-v4]

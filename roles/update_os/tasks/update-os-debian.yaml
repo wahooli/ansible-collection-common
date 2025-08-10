@@ -1,7 +1,8 @@
+---
 - name: Update and upgrade apt packages
   become: true
-  register: apt_status
-  until: apt_status is success
+  register: update_os_apt_status
+  until: update_os_apt_status is success
   delay: 6
   retries: 15
   ansible.builtin.apt:

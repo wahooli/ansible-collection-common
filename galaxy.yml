@@ -1,3 +1,4 @@
+---
 ### REQUIRED
 # The namespace of the collection. This can be a company/brand/organization or product namespace under which all
 # content lives. May only contain alphanumeric lowercase characters and underscores. Namespaces cannot start with
@@ -8,7 +9,7 @@ namespace: wahooli
 name: common
 
 # The version of the collection. Must be compatible with semantic versioning
-version: 1.0.0
+version: 1.0.1
 
 # The path to the Markdown (.md) readme file. This path is relative to the root of the collection
 readme: README.md

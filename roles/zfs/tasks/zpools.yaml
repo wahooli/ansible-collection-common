@@ -1,3 +1,4 @@
+---
 - name: Handle zpool
   when:
   - zpool.name is defined
@@ -5,8 +6,8 @@
   vars:
     # noqa: jinja[spacing]
     zpool_action: |-
-      {%- set is_active_zpool = zpool.name in active_zpools.stdout_lines -%}
-      {%- set is_exported_zpool = zpool.name in importable_zpools.stdout_lines -%}
+      {%- set is_active_zpool = zpool.name in zfs_active_zpools.stdout_lines -%}
+      {%- set is_exported_zpool = zpool.name in zfs_importable_zpools.stdout_lines -%}
       {%- if zpool.state | default('present') != 'present' -%}
         {%- if (is_active_zpool or is_exported_zpool) or zpool.force | default(false) -%}
           {%- if zpool.state == 'absent' and is_active_zpool -%}
@@ -81,7 +82,7 @@
     zpool_command_name: |-
       {%- set _zpool_action = "skip" -%}
       {%- if zpool.state | default('present') == 'present' -%}
-        {%- if (zpool.name not in importable_zpools.stdout_lines and zpool.name not in active_zpools.stdout_lines) or zpool.force | default(false) -%}
+        {%- if (zpool.name not in zfs_importable_zpools.stdout_lines and zpool.name not in zfs_active_zpools.stdout_lines) or zpool.force | default(false) -%}
           {%- set _zpool_action = "create" -%}
         {%- else -%}
           {%- set _zpool_action = "import" -%}

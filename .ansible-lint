@@ -10,9 +10,12 @@ profile: production # min, basic, moderate, safety, shared, production
 # and not relative to the CWD of execution. CLI arguments passed to the --exclude
 # option are parsed relative to the CWD of execution.
 exclude_paths:
-  - .cache/ # implicit unless exclude_paths is defined in config
-  - .github/
-  - tools/
+- .cache/ # implicit unless exclude_paths is defined in config
+- .github/
+- tools/
+- .ansible/
+- molecule-shared/
+- molecule/
 # parseable: true
 # quiet: true
 # strict: true
@@ -45,20 +48,18 @@ use_default_rules: true
 # When putting ignores inside the ignore file, they are marked as ignored, but
 # still visible, making it easier to address later.
 skip_list:
-- yaml[indentation]
 - yaml[line-length]
-- name[prefix]
 
 # Ansible-lint does not automatically load rules that have the 'opt-in' tag.
 # You must enable opt-in rules by listing each rule 'id' below.
 enable_list:
-  - args
-  - empty-string-compare # opt-in
-  - no-log-password # opt-in
-  - no-same-owner # opt-in
-  # add yaml here if you want to avoid ignoring yaml checks when yamllint
-  # library is missing. Normally its absence just skips using that rule.
-  - yaml
+- args
+- empty-string-compare # opt-in
+- no-log-password # opt-in
+- no-same-owner # opt-in
+# add yaml here if you want to avoid ignoring yaml checks when yamllint
+# library is missing. Normally its absence just skips using that rule.
+- yaml
 # Report only a subset of tags and fully ignore any others
 # tags:
 #   - jinja[spacing]
@@ -97,12 +98,12 @@ extra_vars:
 # List of additional kind:pattern to be added at the top of the default
 # match list, first match determines the file kind.
 kinds:
-  # - playbook: "**/examples/*.{yml,yaml}"
-  # - galaxy: "**/folder/galaxy.yml"
-  # - tasks: "**/tasks/*.yml"
-  # - vars: "**/vars/*.yml"
-  # - meta: "**/meta/main.yml"
-  - yaml: "**/*.yaml-too"
+# - playbook: "**/examples/*.{yml,yaml}"
+# - galaxy: "**/folder/galaxy.yml"
+# - tasks: "**/tasks/*.yml"
+# - vars: "**/vars/*.yml"
+# - meta: "**/meta/main.yml"
+- yaml: "**/*.yaml-too"
 
 # List of additional collections to allow in only-builtins rule.
 # only_builtins_allow_collections:

@@ -11,7 +11,7 @@ platforms:
   - /run
   - /tmp
   pre_build_image: false
-  dockerfile: Dockerfile.client.j2
+  dockerfile: ../../../../molecule-shared/Dockerfile.debian.j2
   tty: true
   networks:
   - name: kubernetes-secret
@@ -19,7 +19,7 @@ platforms:
   - name: kubernetes-secret
 - name: kubernetes-secret-server
   image: "debian:12"
-  dockerfile: Dockerfile.server.j2
+  dockerfile: ../../../../molecule-shared/Dockerfile.debian-systemd.j2
   groups:
   - kubernetes_server
   tmpfs:
@@ -36,6 +36,8 @@ platforms:
   - name: kubernetes-secret
 provisioner:
   name: ansible
+  env:
+    ANSIBLE_ROLES_PATH: ../../..
   inventory:
     host_vars:
       client:

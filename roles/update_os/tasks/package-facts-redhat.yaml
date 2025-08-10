@@ -1,7 +1,5 @@
+---
 - name: Gather the package facts RedHat
   become: true
   ansible.builtin.package_facts:
     manager: auto
-
-# - debug:
-#     var: ansible_facts.packages

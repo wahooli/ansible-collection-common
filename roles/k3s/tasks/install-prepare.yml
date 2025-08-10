@@ -37,7 +37,7 @@
   - ansible_connection not in [ "container", "docker", "community.docker.docker" ]
   with_items: "{{ k3s_kernel_modules }}"
 
-- name: Disable swap for current session
+- name: Disable swap for current session # noqa: var-naming[no-role-prefix]
   when:
   - not k3s_allow_swap | default(false)
   - ansible_connection not in [ "container", "docker", "community.docker.docker" ]

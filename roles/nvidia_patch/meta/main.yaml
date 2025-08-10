@@ -1,3 +1,4 @@
+---
 galaxy_info:
   author: wahooli
   description: Downloads nvidia_patch script from github and runs it

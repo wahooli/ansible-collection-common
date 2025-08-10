@@ -1,3 +1,4 @@
+---
 - name: "{{ zfs_command_name | capitalize }}"
   become: true
   ansible.builtin.command:

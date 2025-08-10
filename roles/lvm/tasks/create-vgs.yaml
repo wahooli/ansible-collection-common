@@ -1,3 +1,4 @@
+---
 - name: "Create vg {{ vg.name }}"
   become: true
   community.general.lvg:

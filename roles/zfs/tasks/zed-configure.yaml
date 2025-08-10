@@ -1,3 +1,4 @@
+---
 - name: "Install s-nail"
   ansible.builtin.include_role:
     name: "s_nail"

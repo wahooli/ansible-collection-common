@@ -1,9 +1,10 @@
-- name: Check if swap file exists
+---
+- name: Check if swap file exists # noqa: var-naming[no-role-prefix]
   ansible.builtin.stat:
     path: "{{ dietpi_configure_swapfile }}"
   register: swapfile
 
-- name: Allocate swapfile
+- name: Allocate swapfile # noqa: var-naming[no-role-prefix]
   become: true
   when:
   - not swapfile.stat.exists
@@ -24,7 +25,7 @@
     modification_time: preserve
     access_time: preserve
 
-- name: Format swap file
+- name: Format swap file # noqa: var-naming[no-role-prefix]
   become: true
   when:
   - dietpi_configure_swapfile
@@ -44,7 +45,7 @@
     regexp: "{{ dietpi_configure_swapfile }}"
     line: "{{ dietpi_configure_swapfile }} none swap sw 0 0"
 
-- name: "Swap on {{ dietpi_configure_swapfile }}"
+- name: "Swap on {{ dietpi_configure_swapfile }}" # noqa: var-naming[no-role-prefix]
   become: true
   when:
   - dietpi_configure_swapfile

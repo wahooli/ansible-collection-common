@@ -1,3 +1,4 @@
+---
 - name: Install Arch linux deps for s-nail
   become: true
   community.general.pacman:
