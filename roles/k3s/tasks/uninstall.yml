@@ -1,4 +1,5 @@
-- name: Check if k3s-uninstall.sh exists
+---
+- name: Check if k3s-uninstall.sh exists # noqa: var-naming[no-role-prefix]
   become: true
   ansible.builtin.command: "which k3s-uninstall.sh"
   register: which_k3s_uninstall_command

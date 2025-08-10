@@ -2,8 +2,9 @@
 - name: Gather the package facts
   ansible.builtin.package_facts:
     manager: auto
+  when: ansible_facts.packages is not defined
 
-- name: Prompt for possible data deletion
+- name: Prompt for possible data deletion # noqa: var-naming[no-role-prefix]
   when:
   - lvm_uninstall_wipe_fs | default(false)
   - ansible_connection not in [ "container", "docker", "community.docker.docker" ]
@@ -12,7 +13,7 @@
     echo: true
   register: wipe_prompt_global
 
-- name: Set allow_purge as fact
+- name: Set allow_purge as fact # noqa: var-naming[no-role-prefix]
   ansible.builtin.set_fact:
     allow_purge: "{{ true if ((wipe_prompt_global is defined and not wipe_prompt_global.skipped | default(false) and wipe_prompt_global.user_input == 'yes') or (ansible_connection in ['container', 'docker', 'community.docker.docker']) and lvm_uninstall_wipe_fs | default(false)) else false }}"
 

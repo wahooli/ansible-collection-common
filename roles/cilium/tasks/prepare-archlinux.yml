@@ -1,3 +1,4 @@
+---
 - name: Install git on Archlinux
   become: true
   community.general.pacman:

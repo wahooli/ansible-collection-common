@@ -19,21 +19,21 @@ platforms:
   - /run
   - /tmp
 - name: debian-11-update-os
-  dockerfile: Dockerfile.debian.j2
+  dockerfile: ../../../../molecule-shared/Dockerfile.debian.j2
   pre_build_image: false
   image: debian:11
   tmpfs:
   - /run
   - /tmp
 - name: debian-12-update-os
-  dockerfile: Dockerfile.debian.j2
+  dockerfile: ../../../../molecule-shared/Dockerfile.debian.j2
   pre_build_image: false
   image: debian:12
   tmpfs:
   - /run
   - /tmp
 - name: arch-update-os
-  dockerfile: Dockerfile.arch.j2
+  dockerfile: ../../../../molecule-shared/Dockerfile.archlinux.j2
   pre_build_image: false
   image: archlinux:base
   tmpfs:
@@ -41,6 +41,8 @@ platforms:
   - /tmp
 provisioner:
   name: ansible
+  env:
+    ANSIBLE_ROLES_PATH: ../../..
   inventory:
     group_vars:
       all:

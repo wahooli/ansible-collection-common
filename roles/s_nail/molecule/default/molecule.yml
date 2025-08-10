@@ -9,7 +9,7 @@ platforms:
   tmpfs:
   - /run
   - /tmp
-  dockerfile: Dockerfile.arch.j2
+  dockerfile: ../../../../molecule-shared/Dockerfile.archlinux.j2
   pre_build_image: false
   tty: true
 - name: s-nail-debian
@@ -17,11 +17,13 @@ platforms:
   tmpfs:
   - /run
   - /tmp
-  dockerfile: Dockerfile.debian.j2
+  dockerfile: ../../../../molecule-shared/Dockerfile.debian.j2
   pre_build_image: false
   tty: true
 provisioner:
   name: ansible
+  env:
+    ANSIBLE_ROLES_PATH: ../../..
   inventory:
     host_vars:
       s-nail-arch:

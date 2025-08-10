@@ -1,3 +1,4 @@
+---
 - name: Lvol mountpath operations
   when:
   - lvol.vg | default(vg_name | default(false))
@@ -6,7 +7,7 @@
   - lvol.mount.path is defined
   - lvol.state | default("present") == "present"
   block:
-  - name: Create mount path for lvol
+  - name: Create mount path for lvol # noqa: var-naming[no-role-prefix]
     become: true
     ansible.builtin.file:
       path: "{{ lvol.mount.path }}"
@@ -24,7 +25,7 @@
       state: unmounted
 # end block Lvol mountpath operations
 
-- name: "Create {{ ('thinpool' if lvol.name is undefined and lvol.thinpool is defined else 'lvol') + ' ' + lvol.name | default(lvol.thinpool) }}"
+- name: "Create {{ ('thinpool' if lvol.name is undefined and lvol.thinpool is defined else 'lvol') + ' ' + lvol.name | default(lvol.thinpool) }}" # noqa: var-naming[no-role-prefix]
   become: true
   when:
   - lvol.vg | default(vg_name | default(false))

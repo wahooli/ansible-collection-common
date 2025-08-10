@@ -1,3 +1,4 @@
+---
 - name: Create FAT32 filesystem in boot partition
   community.general.filesystem:
     dev: '{{ archlinux_install_boot_partition }}'

@@ -1,3 +1,4 @@
+---
 galaxy_info:
   author: wahooli
   description: Downloads superfans script from github, for controlling supermicro fans. Creates systemd env and bash wrapper script which invokes superfans script within virtual environment

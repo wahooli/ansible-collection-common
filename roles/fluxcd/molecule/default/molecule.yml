@@ -6,14 +6,16 @@ driver:
 platforms:
 - name: fluxcd-install-debian
   image: debian:12
-  dockerfile: Dockerfile.debian.j2
+  dockerfile: ../../../../molecule-shared/Dockerfile.debian.j2
   pre_build_image: false
 - name: fluxcd-install-arch
   image: archlinux:base
-  dockerfile: Dockerfile.arch.j2
+  dockerfile: ../../../../molecule-shared/Dockerfile.archlinux.j2
   pre_build_image: false
 provisioner:
   name: ansible
+  env:
+    ANSIBLE_ROLES_PATH: ../../..
   inventory:
     group_vars:
       all:

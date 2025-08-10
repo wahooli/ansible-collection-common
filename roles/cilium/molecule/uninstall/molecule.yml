@@ -6,7 +6,7 @@ driver:
   name: docker
 platforms:
 - name: k3s-cilium-uninstall-debian
-  dockerfile: Dockerfile.debian.j2
+  dockerfile: ../../../../molecule-shared/Dockerfile.debian-systemd.j2
   image: debian:12
   tmpfs:
   - /run
@@ -15,7 +15,7 @@ platforms:
   pre_build_image: false
   tty: true
 - name: k3s-cilium-uninstall-arch
-  dockerfile: Dockerfile.arch.j2
+  dockerfile: ../../../../molecule-shared/Dockerfile.archlinux-systemd.j2
   image: archlinux:base
   tmpfs:
   - /run
@@ -25,6 +25,8 @@ platforms:
   tty: true
 provisioner:
   name: ansible
+  env:
+    ANSIBLE_ROLES_PATH: ../../..
   inventory:
     group_vars:
       all:

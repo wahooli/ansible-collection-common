@@ -1,3 +1,4 @@
+---
 - name: "Debug: {{ zpool_command_name | capitalize }}"
   when: zfs_debug | default(false)
   ansible.builtin.debug:
@@ -9,7 +10,7 @@
     recurse: true
     parsable: true
   when:
-  - zpool.name in active_zpools.stdout_lines
+  - zpool.name in zfs_active_zpools.stdout_lines
 
 - name: "Debug: Handle datasets in {{ zpool.name }}"
   ansible.builtin.include_tasks: datasets.yaml

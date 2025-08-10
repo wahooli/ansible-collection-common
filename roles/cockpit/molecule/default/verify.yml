@@ -7,7 +7,7 @@
   tasks:
   - name: Populate service facts
     become: true
-    when: services is not defined
+    when: ansible_facts.services is not defined
     ansible.builtin.service_facts:
 
   - name: Verify root login is enabled
@@ -49,7 +49,7 @@
   - name: Run assertions
     ansible.builtin.assert:
       that:
-      - "'cockpit.service' in services"
+      - "'cockpit.service' in ansible_facts.services"
       - verify_root_login is not changed
       - verify_443_port is not changed
       - verify_80_port is not changed

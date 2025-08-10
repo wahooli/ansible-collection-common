@@ -1,3 +1,4 @@
+---
 - name: Install dependencies
   when:
   - "'openssh' not in ansible_facts.packages or 'python-packaging' not in ansible_facts.packages"

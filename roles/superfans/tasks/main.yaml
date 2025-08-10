@@ -2,7 +2,7 @@
 # tasks file for superfans
 - name: Populate service facts
   become: true
-  when: services is not defined
+  when: ansible_facts.services is not defined
   ansible.builtin.service_facts:
 
 - name: Install deps
@@ -86,4 +86,4 @@
     daemon_reload: true
     enabled: true
   when:
-  - "'superfans.service' not in services"
+  - "'superfans.service' not in ansible_facts.services"

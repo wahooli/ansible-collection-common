@@ -9,7 +9,7 @@ platforms:
   tmpfs:
   - /run
   - /tmp
-  dockerfile: Dockerfile.arch.j2
+  dockerfile: ../../../../molecule-shared/Dockerfile.archlinux-systemd.j2
   pre_build_image: false
   privileged: true
   # privileged: false
@@ -21,7 +21,7 @@ platforms:
   tmpfs:
   - /run
   - /tmp
-  dockerfile: Dockerfile.debian.j2
+  dockerfile: ../../../../molecule-shared/Dockerfile.debian-systemd.j2
   pre_build_image: false
   privileged: true
   # privileged: false
@@ -30,6 +30,8 @@ platforms:
   tty: true
 provisioner:
   name: ansible
+  env:
+    ANSIBLE_ROLES_PATH: ../../..
   inventory:
     host_vars:
       nfs-arch:

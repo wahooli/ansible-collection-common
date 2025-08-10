@@ -31,7 +31,7 @@
   - name: Run assertions
     ansible.builtin.assert:
       that:
-      - "'superfans.service' in services"
+      - "'superfans.service' in ansible_facts.services"
       - systemd_superfans_file.stat.exists
       - systemd_superfans_env_file.stat.exists
       - superfans_wrapper_file.stat.exists

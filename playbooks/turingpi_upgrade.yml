@@ -1,3 +1,4 @@
+---
 - name: Run os upgrades
   hosts: all
   gather_facts: true

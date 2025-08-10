@@ -1,3 +1,4 @@
+---
 - name: "HACK: Copy pacman.conf within docker container"
   ansible.builtin.copy:
     src: /etc/pacman.conf

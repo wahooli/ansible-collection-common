@@ -1,3 +1,4 @@
+---
 - name: Run lvm role against lvm_hosts group
   hosts: lvm_hosts
   gather_facts: true

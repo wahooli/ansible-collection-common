@@ -29,7 +29,7 @@
       cilium_version: "{{ cilium_releases_json.json.tag_name | trim | regex_replace('^v', '') }}"
     when: not cilium_releases_json.failed
 
-- name: Check if can access cluster with kubectl
+- name: Check if can access cluster with kubectl # noqa: var-naming[no-role-prefix]
   become: true
   ansible.builtin.command: "kubectl get nodes"
   register: kubectl_command
@@ -41,7 +41,7 @@
   - cilium_kubeconfig | default("") == ""
   ansible.builtin.import_tasks: resolve-kubeconfig.yml
 
-- name: Get current user name
+- name: Get current user name # noqa: var-naming[no-role-prefix]
   ansible.builtin.command: whoami
   register: current_user_name
   changed_when: current_user_name.rc != 0
@@ -53,7 +53,7 @@
     venv_user: "{{ ansible_user | default(current_user_name.stdout) | default(omit) }}"
     virtualenv_command: "{{ 'python -m venv' if ansible_facts['os_family'] == 'Archlinux' else 'virtualenv' }}"
   block:
-  - name: Get user home path
+  - name: Get user home path # noqa: var-naming[no-role-prefix]
     ansible.builtin.shell:
       executable: /bin/bash
       cmd: |-

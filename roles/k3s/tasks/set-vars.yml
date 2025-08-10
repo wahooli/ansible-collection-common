@@ -1,13 +1,14 @@
+---
 - name: Read token file contents if exists
   tags:
   - configure
   - install
   block:
-  - name: Check if TOKEN file exists
+  - name: Check if TOKEN file exists # noqa: var-naming[no-role-prefix]
     ansible.builtin.stat:
       path: "{{ k3s_config_path }}/TOKEN"
     register: token_file_stat
-  - name: Read token from file
+  - name: Read token from file # noqa: var-naming[no-role-prefix]
     when: token_file_stat.stat.exists
     ansible.builtin.slurp:
       src: "{{ token_file_stat.stat.path }}"
@@ -25,11 +26,11 @@
   - configure
   - install
   block:
-  - name: Check if SERVER file exists
+  - name: Check if SERVER file exists # noqa: var-naming[no-role-prefix]
     ansible.builtin.stat:
       path: "{{ k3s_config_path }}/SERVER"
     register: server_file_stat
-  - name: Read server from file
+  - name: Read server from file # noqa: var-naming[no-role-prefix]
     when: server_file_stat.stat.exists
     ansible.builtin.slurp:
       src: "{{ server_file_stat.stat.path }}"
@@ -47,16 +48,16 @@
   - configure
   - install
   block:
-  - name: Check config.yaml exists
+  - name: Check config.yaml exists # noqa: var-naming[no-role-prefix]
     ansible.builtin.stat:
       path: "{{ k3s_config_path }}/config.yaml"
     register: config_file_stat
-  - name: "Read config file"
+  - name: "Read config file" # noqa: var-naming[no-role-prefix]
     when: config_file_stat.stat.exists
     ansible.builtin.slurp:
       src: "{{ config_file_stat.stat.path }}"
     register: config_file_contents
-  - name: "Parse yaml into variable"
+  - name: "Parse yaml into variable" # noqa: var-naming[no-role-prefix]
     when: config_file_stat.stat.exists
     ansible.builtin.set_fact:
       config_yaml_content: "{{ config_file_contents.content | b64decode | from_yaml }}"
@@ -78,7 +79,7 @@
 
 - name: Use ansible variables as token
   when:
-  - "'k3s.service' not in services"
+  - "'k3s.service' not in ansible_facts.services"
   - k3s_token is undefined or k3s_server is undefined
   tags:
   - install
@@ -117,7 +118,7 @@
     run_once: true
     ansible.builtin.set_fact:
       k3s_server_hosts: "{{ (dict((hostvars | dict2items | map(attribute='key')) | zip(ansible_play_hosts | map('extract', hostvars, 'k3s_role'))) | dict2items | rejectattr('value', '==', 'agent') | items2dict).keys() }}"
-  - name: Determine if using embedded_etcd
+  - name: Determine if using embedded_etcd # noqa: var-naming[no-role-prefix]
     when: k3s_allow_cluster_init
     run_once: true
     ansible.builtin.set_fact:
@@ -132,7 +133,7 @@
 
 - name: Check if host has cluster-init configuration value
   when:
-  - "'k3s.service' not in services or k3s_force_cluster_init is defined"
+  - "'k3s.service' not in ansible_facts.services or k3s_force_cluster_init is defined"
   - using_embedded_etcd | default(false)
   tags:
   - install
@@ -167,7 +168,7 @@
   - using_embedded_etcd | default(false)
   - k3s_cluster_init_host is defined
   - inventory_hostname == k3s_cluster_init_host
-  - "'k3s.service' not in services or k3s_force_cluster_init is defined"
+  - "'k3s.service' not in ansible_facts.services or k3s_force_cluster_init is defined"
   ansible.builtin.set_fact:
     k3s_config: "{{ k3s_config | default({}) | combine({'cluster-init': true}) }}"
   tags:
@@ -176,7 +177,7 @@
 - name: Set k3s_server fact
   when:
   - k3s_server is undefined or k3s_server | length < 1
-  - "'k3s.service' not in services"
+  - "'k3s.service' not in ansible_facts.services"
   - (using_embedded_etcd | default(false) and inventory_hostname != k3s_cluster_init_host)
     or
     (not using_embedded_etcd | default(false) and k3s_role == "agent")
@@ -214,11 +215,11 @@
     or
     ((k3s_kubelet_root_dir | default ("")) != "")
   block:
-  - name: Set kubelet-arg defaults
+  - name: Set kubelet-arg defaults # noqa: var-naming[no-role-prefix]
     ansible.builtin.set_fact:
       kubelet_args: "{{ k3s_config['kubelet-arg'] | default([]) }}"
 
-  - name: Replace config from k3s_config.kubelet-arg when k3s_kubelet_config is set
+  - name: Replace config from k3s_config.kubelet-arg when k3s_kubelet_config is set # noqa: var-naming[no-role-prefix]
     when:
     - k3s_kubelet_config is defined
     - k3s_kubelet_config | length > 0
@@ -228,7 +229,7 @@
       kubelet_args: |
         {{ (kubelet_args | difference (kubelet_args | map('regex_search', regexp) | list)) + ["config=" ~ k3s_config_path ~ "/kubelet.config.yml"] }}
 
-  - name: Replace root-dir from k3s_config.kubelet-arg when k3s_kubelet_root_dir is set
+  - name: Replace root-dir from k3s_config.kubelet-arg when k3s_kubelet_root_dir is set # noqa: var-naming[no-role-prefix]
     when:
     - k3s_kubelet_root_dir is defined
     - k3s_kubelet_root_dir | length > 0
@@ -275,12 +276,12 @@
   - k3s_kubescheduler_config | length > 0
   - k3s_role == "server"
   block:
-  - name: Set kube-scheduler-arg defaults
+  - name: Set kube-scheduler-arg defaults # noqa: var-naming[no-role-prefix]
     ansible.builtin.set_fact:
       kubescheduler_args: "{{ k3s_config['kube-scheduler-arg'] | default([]) }}"
       k3s_kubescheduler_config: "{{ k3s_kubescheduler_config | default({}) | combine({'clientConnection': { 'kubeconfig' :  k3s_data_dir ~ '/server/cred/scheduler.kubeconfig' }}, recursive=true) }}"
 
-  - name: Replace config from k3s_config.kube-scheduler-arg when k3s_kubescheduler_config is set
+  - name: Replace config from k3s_config.kube-scheduler-arg when k3s_kubescheduler_config is set # noqa: var-naming[no-role-prefix]
     vars:
       regexp: '^config=.*'
     ansible.builtin.set_fact:
@@ -319,14 +320,14 @@
 
 - name: Detect CPU arch
   block:
-  - name: Set x64 specific facts
+  - name: Set x64 specific facts # noqa: var-naming[no-role-prefix]
     when: ansible_facts.architecture == "x86_64"
     ansible.builtin.set_fact:
       images_tar: k3s-airgap-images-amd64.tar
       bin_name: k3s
       shasum_file: sha256sum-amd64.txt
       containerd_pause_image: "{{ None if k3s_containerd_pause_image is undefined else k3s_containerd_pause_image ~ '-amd64' }}"
-  - name: Set arm64 specific facts
+  - name: Set arm64 specific facts # noqa: var-naming[no-role-prefix]
     when: ( ansible_facts.architecture is search("arm") and ansible_facts.userspace_bits == "64" )
           or ansible_facts.architecture is search("aarch64")
     ansible.builtin.set_fact:
@@ -334,10 +335,10 @@
       bin_name: k3s-arm64
       shasum_file: sha256sum-arm64.txt
       containerd_pause_image: "{{ None if k3s_containerd_pause_image is undefined else k3s_containerd_pause_image ~ '-arm64' }}"
-  - name: Set arm specific facts
+  - name: Set arm specific facts # noqa: var-naming[no-role-prefix]
     when:
-      - ansible_facts.architecture is search("arm")
-      - ansible_facts.userspace_bits == "32"
+    - ansible_facts.architecture is search("arm")
+    - ansible_facts.userspace_bits == "32"
     ansible.builtin.set_fact:
       images_tar: k3s-airgap-images-arm.tar
       bin_name: k3s-armhf

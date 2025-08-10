@@ -2,6 +2,21 @@
 - name: Prepare
   hosts: all
   tasks:
+  - name: Install archiso packages
+    become: true
+    community.general.pacman:
+      name:
+      - sudo
+      - arch-install-scripts
+      - dosfstools
+      - btrfs-progs
+      - glibc
+      - iproute2
+      - parted
+      - python3
+      state: present
+      update_cache: true
+
   - name: Unmount /mnt/boot
     ansible.posix.mount:
       path: /mnt/boot

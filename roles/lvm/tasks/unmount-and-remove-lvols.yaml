@@ -1,3 +1,4 @@
+---
 - name: Lvol mountpath operations
   when:
   - lvol.vg | default(vg_name | default(false))
@@ -18,7 +19,7 @@
       state: absent
 # end block Lvol mountpath operations
 
-- name: Prompt for possible data deletion
+- name: Prompt for possible data deletion # noqa: var-naming[no-role-prefix]
   when:
   - not allow_purge | default(false)
   - lvol.state | default("present") == "absent"
@@ -28,11 +29,11 @@
     echo: true
   register: wipe_prompt
 
-- name: Set lvol state as fact
+- name: Set lvol state as fact # noqa: var-naming[no-role-prefix]
   ansible.builtin.set_fact:
     lvol_state: "{{ 'absent' if ((wipe_prompt is defined and wipe_prompt.user_input is defined and wipe_prompt.user_input == 'yes') and not allow_purge | default(false)) or (allow_purge | default(false)) else 'present' }}"
 
-- name: Set lvol state as fact in molecule tests
+- name: Set lvol state as fact in molecule tests # noqa: var-naming[no-role-prefix]
   when:
   - ansible_connection in [ "container", "docker", "community.docker.docker" ]
   ansible.builtin.set_fact:

@@ -7,7 +7,7 @@ driver:
 platforms:
 - name: fluxcd-cluster-upgrade-server-debian
   image: debian:12
-  dockerfile: Dockerfile.debian.j2
+  dockerfile: ../../../../molecule-shared/Dockerfile.debian-systemd.j2
   tmpfs:
   - /run
   - /tmp
@@ -16,7 +16,7 @@ platforms:
   tty: true
 - name: fluxcd-cluster-upgrade-server-arch
   image: archlinux:base
-  dockerfile: Dockerfile.arch.j2
+  dockerfile: ../../../../molecule-shared/Dockerfile.archlinux-systemd.j2
   tmpfs:
   - /run
   - /tmp
@@ -25,6 +25,8 @@ platforms:
   tty: true
 provisioner:
   name: ansible
+  env:
+    ANSIBLE_ROLES_PATH: ../../..
   inventory:
     group_vars:
       all:

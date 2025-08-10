@@ -1,3 +1,4 @@
+---
 - name: Upgrade k3s cluster
   hosts: k3s_hosts
   roles:

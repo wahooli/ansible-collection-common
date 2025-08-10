@@ -21,6 +21,6 @@
   - name: Run assertions
     ansible.builtin.assert:
       that:
-      - "'nfs-server.service' in services"
+      - "'nfs-server.service' in ansible_facts.services"
       - verify_nfs_conf.stat.exists
       - verify_exports.stat.exists

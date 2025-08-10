@@ -1,3 +1,4 @@
+---
 - name: Handle dataset
   when:
   - dataset.name is defined

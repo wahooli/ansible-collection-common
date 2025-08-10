@@ -7,7 +7,7 @@ driver:
 platforms:
 - name: fluxcd-multi-cluster-server-1
   image: "debian:12"
-  dockerfile: Dockerfile.debian.j2
+  dockerfile: ../../../../molecule-shared/Dockerfile.debian-systemd.j2
   tmpfs:
   - /run
   - /tmp
@@ -16,7 +16,7 @@ platforms:
   tty: true
 - name: fluxcd-multi-cluster-server-2
   image: "debian:12"
-  dockerfile: Dockerfile.debian.j2
+  dockerfile: ../../../../molecule-shared/Dockerfile.debian-systemd.j2
   tmpfs:
   - /run
   - /tmp
@@ -25,7 +25,7 @@ platforms:
   tty: true
 - name: fluxcd-multi-cluster-server-3
   image: archlinux:base
-  dockerfile: Dockerfile.arch.j2
+  dockerfile: ../../../../molecule-shared/Dockerfile.archlinux-systemd.j2
   tmpfs:
   - /run
   - /tmp
@@ -34,6 +34,8 @@ platforms:
   tty: true
 provisioner:
   name: ansible
+  env:
+    ANSIBLE_ROLES_PATH: ../../..
   inventory:
     host_vars:
       fluxcd-multi-cluster-server-1:

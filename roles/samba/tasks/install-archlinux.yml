@@ -1,3 +1,4 @@
+---
 - name: Install arch linux packages for samba
   become: true
   community.general.pacman:
@@ -19,9 +20,9 @@
 - name: "Install wsdd2 with yay"
   become: false
   ansible.builtin.command: "yay --noconfirm -dd --noprogressbar --needed --sync {{ item }}"
-  changed_when: "'installing '+item in yay_install_wsdd2.stdout"
-  register: yay_install_wsdd2
-  failed_when: yay_install_wsdd2.rc != 0
+  changed_when: "'installing '+item in samba_yay_install_wsdd2.stdout"
+  register: samba_yay_install_wsdd2
+  failed_when: samba_yay_install_wsdd2.rc != 0
   with_items:
   - wsdd2
   when: samba_enable_wsdd2_discovery | default(false)

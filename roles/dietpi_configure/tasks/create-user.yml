@@ -1,3 +1,4 @@
+---
 - name: "Create user {{ item.name }}"
   ansible.builtin.user:
     append: true

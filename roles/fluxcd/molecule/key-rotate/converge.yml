@@ -3,6 +3,6 @@
   hosts: all
   gather_facts: true
   tasks:
-    - name: "Include fluxcd"
-      ansible.builtin.include_role:
-        name: "fluxcd"
+  - name: "Include fluxcd"
+    ansible.builtin.include_role:
+      name: "fluxcd"

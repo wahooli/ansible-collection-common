@@ -3,6 +3,6 @@
   hosts: all
   gather_facts: true
   tasks:
-    - name: "Include update_os"
-      ansible.builtin.include_role:
-        name: "update_os"
+  - name: "Include update_os"
+    ansible.builtin.include_role:
+      name: "update_os"

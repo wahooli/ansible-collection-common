@@ -2,6 +2,7 @@
 # tasks file for update_os
 - name: Gather package facts
   ansible.builtin.include_tasks: "package-facts-{{ ansible_os_family | lower }}.yaml"
+  when: ansible_facts.packages is not defined
 
 - name: Update os
   ansible.builtin.include_tasks: "update-os-{{ ansible_os_family | lower }}.yaml"
@@ -11,7 +12,7 @@
   ansible.builtin.package_facts:
     manager: auto
 
-- name: Set post-upgrade kernel version fact on Debian
+- name: Set post-upgrade kernel version fact on Debian # noqa: var-naming[no-role-prefix]
   ansible.builtin.set_fact:
     post_upgrade_kernel: "{{ ansible_facts.packages | dict2items | selectattr('key', 'match', '^linux-image-[A-Za-z0-9]+$') | map(attribute='value') | first | map(attribute='version') }}"
   when:
@@ -31,7 +32,7 @@
   - post_upgrade_kernel is defined
   - post_upgrade_kernel != pre_upgrade_kernel
 
-- name: Check if reboot-required exists
+- name: Check if reboot-required exists # noqa: var-naming[no-role-prefix]
   ansible.builtin.stat:
     path: /var/run/reboot-required
   register: reboot_required

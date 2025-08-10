@@ -1,17 +1,11 @@
-# - name: Export created zpool
-#   ansible.builtin.command:
-#     cmd: "zpool export {{ zfs_zpools[0].name }}"
-#   failed_when: false
-#   changed_when: false
-#   register: zpool_export
-
+---
 - name: Remount cowspace to 50% of ram
   ansible.posix.mount:
     path: /run/archiso/cowspace
     opts: size=50%
     state: remounted
 
-- name: Check if zfs kernel module exists
+- name: Check if zfs kernel module exists # noqa: var-naming[no-role-prefix]
   ansible.builtin.shell:
     cmd: |-
       set -o pipefail
@@ -28,13 +22,13 @@
     when: ansible_memtotal_mb < 6144
     ansible.builtin.fail:
       msg: "You need more 6gb or more ram to continue"
-  - name: Download archiso zfs install script
+  - name: Download archiso zfs install script # noqa: var-naming[no-role-prefix]
     ansible.builtin.get_url:
       url: "{{ archlinux_install_archiso_zfs_script_url }}"
       dest: "/tmp/archiso_zfs_init"
       mode: "0755"
     register: helm_dl
-  - name: Run zfs install script directly from github
+  - name: Run zfs install script directly from github # noqa: var-naming[no-role-prefix]
     ansible.builtin.command:
       cmd: /tmp/archiso_zfs_init
     failed_when: zfs_install.rc != 0
@@ -77,7 +71,7 @@
 #     mode: "0755"
 #     recurse: true
 
-- name: Get PARTUUID of rootfs
+- name: Get PARTUUID of rootfs # noqa: var-naming[no-role-prefix]
   ansible.builtin.shell:
     cmd: |-
       set -o pipefail
@@ -86,7 +80,7 @@
   changed_when: false
   register: root_part_uuid
 
-- name: Modify root zpool parameters
+- name: Modify root zpool parameters # noqa: var-naming[no-role-prefix]
   when:
   - archlinux_install_root_fstype == 'zfs'
   ansible.builtin.set_fact:
@@ -116,35 +110,35 @@
     zfs_smartd_enable: false
     zfs_create_trim_timer: false
 
-- name: Export created zpool
+- name: Export created zpool # noqa: var-naming[no-role-prefix]
   ansible.builtin.command:
     cmd: "zpool export {{ zfs_zpools[0].name }}"
   failed_when: zpool_export.rc != 0
   changed_when: false
   register: zpool_export
 
-- name: Import root zfs pool without mounting
+- name: Import root zfs pool without mounting # noqa: var-naming[no-role-prefix]
   ansible.builtin.command:
     cmd: "zpool import -d /dev/disk/by-id -R /mnt {{ zfs_zpools[0].name }} -N"
   failed_when: zpool_import.rc != 0
   changed_when: false
   register: zpool_import
 
-- name: Mount zfs root volume
+- name: Mount zfs root volume # noqa: var-naming[no-role-prefix]
   ansible.builtin.command:
     cmd: "zfs mount {{ archlinux_install_zfs_root_volume | default('zroot/ROOT/default') }}"
   failed_when: zfs_mount_root.rc != 0
   changed_when: false
   register: zfs_mount_root
 
-- name: Mount other zfs volumes
+- name: Mount other zfs volumes # noqa: var-naming[no-role-prefix]
   ansible.builtin.command:
     cmd: "zfs mount -a"
   failed_when: zfs_mount_other.rc != 0
   changed_when: false
   register: zfs_mount_other
 
-- name: Set bootfs parameter to zpool
+- name: Set bootfs parameter to zpool # noqa: var-naming[no-role-prefix]
   ansible.builtin.command:
     cmd: "zpool set bootfs={{ archlinux_install_zfs_root_volume | default('zroot/ROOT/default') }} {{ zfs_zpools[0].name }}"
   failed_when: zfs_set_bootfs.rc != 0
@@ -173,7 +167,7 @@
 #     state: mounted
 #     fstype: none
 
-- name: Generate hostid
+- name: Generate hostid # noqa: var-naming[no-role-prefix]
   ansible.builtin.command:
     cmd: "hostid"
   failed_when: hostid_cmd.rc != 0

@@ -1,4 +1,5 @@
-- name: "Create env file for instance {{ instance }}"
+---
+- name: "Create env file for instance {{ instance }}" # noqa: var-naming[no-role-prefix]
   become: true
   ansible.builtin.template:
     src: "directory_sync.env.j2"
@@ -15,7 +16,7 @@
     state: started
     enabled: "{{ enabled }}"
   when:
-  - service_name not in services
+  - service_name not in ansible_facts.services
   - enabled
 
 - name: "{{ task_name }}"
@@ -24,7 +25,7 @@
     name: "{{ service_name }}"
     state: "{{ 'restarted' if enabled else 'stopped' }}"
   when:
-  - service_name in services
+  - service_name in ansible_facts.services
   - env_file.changed or not enabled or restart_instance
   vars:
     task_name: "{{ 'Restart' if enabled else 'Stop' }} directory_sync instance {{ instance }}"

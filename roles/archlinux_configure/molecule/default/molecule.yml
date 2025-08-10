@@ -10,7 +10,7 @@ platforms:
   tmpfs:
   - /run
   - /tmp
-  dockerfile: Dockerfile.arch.j2
+  dockerfile: ../../../../molecule-shared/Dockerfile.archlinux-systemd.j2
   pre_build_image: false
   privileged: true
   published_ports:
@@ -21,6 +21,8 @@ platforms:
   tty: true
 provisioner:
   name: ansible
+  env:
+    ANSIBLE_ROLES_PATH: ../../..
   inventory:
     group_vars:
       all:

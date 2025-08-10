@@ -45,13 +45,13 @@
     daemon_reload: true
     enabled: true
 
-- name: Read /etc/hostname
+- name: Read /etc/hostname # noqa: var-naming[no-role-prefix]
   when: ansible_hostname is undefined
   ansible.builtin.slurp:
     src: /etc/hostname
   register: hostname_file
 
-- name: Set current hostname fact
+- name: Set current hostname fact # noqa: var-naming[no-role-prefix]
   ansible.builtin.set_fact:
     current_hostname: "{{ ansible_hostname | default(hostname_file.content | default('') | b64decode | trim) }}"
 
@@ -110,12 +110,12 @@
   - dietpi_configure_users is defined
   loop: "{{ dietpi_configure_users }}"
 
-- name: Check if ZRAM is configured
+- name: Check if ZRAM is configured # noqa: var-naming[no-role-prefix]
   ansible.builtin.stat:
     path: "{{ dietpi_configure_zram_swap_udev_rules }}"
   register: zram_udev_file
 
-- name: Configure ZRAM swap
+- name: Configure ZRAM swap # noqa: var-naming[no-role-prefix]
   become: true
   when:
   - ansible_connection not in [ "container", "docker", "community.docker.docker" ]
@@ -151,7 +151,7 @@
   loop_control:
     extended: true
 
-- name: Run dietpi-update
+- name: Run dietpi-update # noqa: var-naming[no-role-prefix]
   become: true
   when:
   - ansible_connection not in [ "container", "docker", "community.docker.docker" ]

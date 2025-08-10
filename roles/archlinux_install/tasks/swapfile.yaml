@@ -1,3 +1,4 @@
+---
 - name: "Create a swapfile in /mnt{{ archlinux_install_swapfile }}"
   community.general.filesize:
     path: "/mnt{{ archlinux_install_swapfile }}"
@@ -6,7 +7,7 @@
     group: root
     mode: "0600"
 
-- name: Check swapfile is active
+- name: Check swapfile is active # noqa: var-naming[no-role-prefix]
   ansible.builtin.shell:
     cmd: |
       set -o pipefail
@@ -15,7 +16,7 @@
   changed_when: swapfile_swapon_exists.stdout == ''
   register: swapfile_swapon_exists
 
-- name: "Run mkswap on /mnt{{ archlinux_install_swapfile }}"
+- name: "Run mkswap on /mnt{{ archlinux_install_swapfile }}" # noqa: var-naming[no-role-prefix]
   ansible.builtin.command:
     cmd: "mkswap /mnt{{ archlinux_install_swapfile }}"
   failed_when: swapfile_mkswap.rc != 0
@@ -23,7 +24,7 @@
   register: swapfile_mkswap
   when: swapfile_swapon_exists.stdout == ''
 
-- name: "Run swapon /mnt{{ archlinux_install_swapfile }}"
+- name: "Run swapon /mnt{{ archlinux_install_swapfile }}" # noqa: var-naming[no-role-prefix]
   ansible.builtin.command:
     cmd: "swapon /mnt{{ archlinux_install_swapfile }}"
   failed_when: swapfile_swapon.rc != 0

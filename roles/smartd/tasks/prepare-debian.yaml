@@ -1,3 +1,4 @@
+---
 - name: Install debian deps for smartd
   become: true
   ansible.builtin.apt:

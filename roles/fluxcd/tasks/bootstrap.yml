@@ -1,19 +1,19 @@
 ---
-- name: Set bootstrap related facts
+- name: Set bootstrap related facts # noqa: var-naming[no-role-prefix]
   ansible.builtin.set_fact:
     keys_directory: "{{ fluxcd_bootstrap_ssh_key_path }}/{{ fluxcd_bootstrap_key_name }}"
     private_key_path: "{{ fluxcd_bootstrap_ssh_key_path }}/{{ fluxcd_bootstrap_key_name }}/id_{{ fluxcd_bootstrap_ssh_key_type }}"
     public_key_path: "{{ fluxcd_bootstrap_ssh_key_path }}/{{ fluxcd_bootstrap_key_name }}/id_{{ fluxcd_bootstrap_ssh_key_type }}.pub"
-    bootstrap_param_components: "{{ '--components ' + fluxcd_bootstrap_components | join(',') if fluxcd_bootstrap_components is defined and fluxcd_bootstrap_components | length > 0 }}"
-    bootstrap_param_components_extra: "{{ '--components-extra=' + fluxcd_bootstrap_components_extra | join(',') if fluxcd_bootstrap_components_extra is defined and fluxcd_bootstrap_components_extra | length > 0 }}"
-    bootstrap_param_cluster_domain: "{{ '--cluster-domain=' + fluxcd_bootstrap_cluster_domain if fluxcd_bootstrap_cluster_domain is defined }}"
-    bootstrap_param_network_policy: "{{ '--network-policy=' + fluxcd_bootstrap_network_policy | string | lower  if fluxcd_bootstrap_network_policy is defined }}"
-    bootstrap_param_git_url: "{{ '--url=' + git_url if git_url != '' and git_url is defined }}"
-    bootstrap_param_git_branch: "{{ '--branch=' + fluxcd_bootstrap_git_branch if fluxcd_bootstrap_git_branch is defined }}"
-    bootstrap_param_git_path: "{{ '--path=' + fluxcd_bootstrap_git_path if fluxcd_bootstrap_git_path is defined }}"
-    bootstrap_param_key_passphrase: "{{ '--password=' + fluxcd_bootstrap_ssh_key_passphrase if fluxcd_bootstrap_ssh_key_passphrase is defined }}"
-    bootstrap_param_namespace: "{{ '--namespace=' + fluxcd_bootstrap_namespace if fluxcd_bootstrap_namespace is defined }}"
-    bootstrap_param_version: "{{ '--version=' + fluxcd_bootstrap_version if fluxcd_bootstrap_version is defined }}"
+    bootstrap_param_components: "{{ '--components ' + fluxcd_bootstrap_components | join(',') if fluxcd_bootstrap_components | default(None) is not none else '' }}"
+    bootstrap_param_components_extra: "{{ '--components-extra=' + fluxcd_bootstrap_components_extra | join(',') if fluxcd_bootstrap_components_extra | length > 0 and (fluxcd_bootstrap_components_extra | default(None) is not none) else '' }}"
+    bootstrap_param_cluster_domain: "{{ '--cluster-domain=' + fluxcd_bootstrap_cluster_domain if fluxcd_bootstrap_cluster_domain | default(None) is not none else '' }}"
+    bootstrap_param_network_policy: "{{ '--network-policy=' + fluxcd_bootstrap_network_policy | string | lower if fluxcd_bootstrap_network_policy | default(None) is not none else '' }}"
+    bootstrap_param_git_url: "{{ '--url=' + git_url if git_url != '' and git_url | default(None) is not none else '' }}"
+    bootstrap_param_git_branch: "{{ '--branch=' + fluxcd_bootstrap_git_branch if fluxcd_bootstrap_git_branch | default(None) is not none else '' }}"
+    bootstrap_param_git_path: "{{ '--path=' + fluxcd_bootstrap_git_path if fluxcd_bootstrap_git_path | default(None) is not none else '' }}"
+    bootstrap_param_key_passphrase: "{{ '--password=' + fluxcd_bootstrap_ssh_key_passphrase if fluxcd_bootstrap_ssh_key_passphrase | default(None) is not none else '' }}"
+    bootstrap_param_namespace: "{{ '--namespace=' + fluxcd_bootstrap_namespace if fluxcd_bootstrap_namespace | default(None) is not none else '' }}"
+    bootstrap_param_version: "{{ '--version=' + fluxcd_bootstrap_version if fluxcd_bootstrap_version | default(None) is not none else '' }}"
     bootstrap_param_force: "{{ '--force' if fluxcd_bootstrap_force | default(false) else '' }}"
   vars:
     bootstrap_git_url: "{{ fluxcd_bootstrap_git_url | default('') }}"
@@ -25,7 +25,7 @@
     state: directory
     mode: '0700'
 
-- name: Chceck if private key exists
+- name: Chceck if private key exists # noqa: var-naming[no-role-prefix]
   ansible.builtin.stat:
     path: "{{ private_key_path }}"
   register: flux_bootstrap_pk
@@ -37,6 +37,7 @@
   - name: Gather the package facts
     ansible.builtin.package_facts:
       manager: auto
+    when: ansible_facts.packages is not defined
   - name: Install dependencies
     ansible.builtin.include_tasks: "bootstrap-{{ ansible_os_family | lower }}.yml"
 # end block Install required software
@@ -46,7 +47,7 @@
   tags:
   - molecule-idempotence-notest
   block:
-  - name: Use passed values as keys
+  - name: Use passed values as keys # noqa: var-naming[no-role-prefix]
     # run_once: true
     when:
     - fluxcd_bootstrap_ssh_key_private_content | default("") != ""
@@ -66,7 +67,7 @@
         path: "~/.tmp/"
         state: directory
         mode: '0700'
-    - name: Create temporary directory for keys
+    - name: Create temporary directory for keys # noqa: var-naming[no-role-prefix]
       ansible.builtin.tempfile:
         path: "~/.tmp/" # chattr fails on tmpfs, eg. /tmp
         state: directory
@@ -77,16 +78,16 @@
         size: "{{ fluxcd_bootstrap_ssh_key_size }}"
         passphrase: "{{ fluxcd_bootstrap_ssh_key_passphrase | default('') }}"
         type: "{{ fluxcd_bootstrap_ssh_key_type }}"
-    - name: Read generated keys
+    - name: Read generated keys # noqa: var-naming[no-role-prefix]
       ansible.builtin.slurp:
         src: "{{ flux_bootstrap_ssh_key_temp.path }}/{{ ssh_key_name }}"
       register: generated_keys
       loop:
-        - "{{ fluxcd_bootstrap_key_name }}"
-        - "{{ fluxcd_bootstrap_key_name }}.pub"
+      - "{{ fluxcd_bootstrap_key_name }}"
+      - "{{ fluxcd_bootstrap_key_name }}.pub"
       loop_control:
         loop_var: ssh_key_name
-    - name: Read keys into envs
+    - name: Read keys into envs # noqa: var-naming[no-role-prefix]
       ansible.builtin.set_fact:
         bootstrap_private_key_content: "{{ generated_keys.results | selectattr('ssh_key_name', 'equalto', fluxcd_bootstrap_key_name) | map(attribute='content') | first | ansible.builtin.b64decode | trim }}"
         bootstrap_public_key_content: "{{ generated_keys.results | selectattr('ssh_key_name', 'equalto', fluxcd_bootstrap_key_name + '.pub') | map(attribute='content') | first | ansible.builtin.b64decode | trim }}"
@@ -97,7 +98,7 @@
         path: "{{ flux_bootstrap_ssh_key_temp.path }}"
 # end block Set ssh keys same across hosts having same key name
 
-- name: "Write public key"
+- name: "Write public key" # noqa: var-naming[no-role-prefix]
   when:
   - bootstrap_public_key_content is defined
   ansible.builtin.copy:
@@ -106,7 +107,7 @@
     mode: '0644'
   register: bootstrap_public_key_write
 
-- name: "Write private key"
+- name: "Write private key" # noqa: var-naming[no-role-prefix]
   when:
   - bootstrap_private_key_content is defined
   ansible.builtin.copy:
@@ -115,7 +116,7 @@
     mode: '0600'
   register: bootstrap_private_key_write
 
-- name: Get current user name
+- name: Get current user name # noqa: var-naming[no-role-prefix]
   ansible.builtin.command: whoami
   register: current_user_name
   changed_when: current_user_name.rc != 0
@@ -127,7 +128,7 @@
     venv_user: "{{ ansible_user | default(current_user_name.stdout) | default(omit) }}"
     virtualenv_command: "{{ 'python -m venv' if ansible_facts['os_family'] == 'Archlinux' else 'virtualenv' }}"
   block:
-  - name: Get user home path
+  - name: Get user home path # noqa: var-naming[no-role-prefix]
     ansible.builtin.shell:
       executable: /bin/bash
       cmd: |-
@@ -166,7 +167,7 @@
   when:
   - fluxcd_bootstrap_github_deploy_key_create
   block:
-  - name: Enter GitHub OTP code
+  - name: Enter GitHub OTP code # noqa: var-naming[no-role-prefix]
     when:
     - fluxcd_bootstrap_github_deploy_key_otp_login
     ansible.builtin.pause:
@@ -203,7 +204,7 @@
       token: "{{ fluxcd_bootstrap_github_deploy_key_password }}"
 # end block Add deploy key to GitHub
 
-- name: Resolve absolute path of private key
+- name: Resolve absolute path of private key # noqa: var-naming[no-role-prefix]
   when:
   - not fluxcd_bootstrap_install_only
   ansible.builtin.command: "realpath {{ private_key_path }}"
@@ -215,7 +216,7 @@
   when:
   - fluxcd_bootstrap_git_url is defined
   block:
-  - name: Run ssh-keyscan for git host
+  - name: Run ssh-keyscan for git host # noqa: var-naming[no-role-prefix]
     ansible.builtin.command: "ssh-keyscan -T 10 {{ fluxcd_bootstrap_git_url | regex_replace('^.*@(.*):.*$', '\\1') if fluxcd_bootstrap_git_url is regex('^.*@.*') else fluxcd_bootstrap_git_url | urlsplit('hostname') }}"
     register: keyscan
     failed_when: keyscan.rc != 0
@@ -232,15 +233,15 @@
       loop_var: scan_result
 # end block Generate ssh known hosts
 
-- name: Run flux bootstrap
+- name: Run flux bootstrap # noqa: var-naming[no-role-prefix]
   when:
   - not fluxcd_bootstrap_install_only
-  ansible.builtin.command: "flux bootstrap git --silent --private-key-file={{ pk_realpath.stdout }} {{ bootstrap_param_git_url }} {{ bootstrap_param_git_branch }} {{ bootstrap_param_key_passphrase }} {{ bootstrap_param_git_path }} {{ bootstrap_param_components }} {{ bootstrap_param_components_extra }} {{ bootstrap_param_cluster_domain }} {{ bootstrap_param_network_policy }} {{ bootstrap_param_namespace }} {{ bootstrap_param_version }} {{ bootstrap_param_force }}"
+  ansible.builtin.command: "flux bootstrap git --silent --private-key-file={{ pk_realpath.stdout }} {{ bootstrap_param_git_url }} {{ bootstrap_param_git_branch }} {{ bootstrap_param_key_passphrase }} {{ bootstrap_param_git_path }} {{ bootstrap_param_components }} {{ bootstrap_param_components_extra }} {{ bootstrap_param_cluster_domain }} {{ bootstrap_param_network_policy }} {{ bootstrap_param_namespace }} {{ bootstrap_param_version }} {{ bootstrap_param_force }}" # yamllint disable-line rule:line-length
   failed_when: flux_cli_bootstrap.rc != 0
   changed_when: false
   register: flux_cli_bootstrap
 
-- name: Run flux install
+- name: Run flux install # noqa: var-naming[no-role-prefix]
   when:
   - fluxcd_bootstrap_install_only
   ansible.builtin.command: "flux install {{ bootstrap_param_components }} {{ bootstrap_param_components_extra }} {{ bootstrap_param_cluster_domain }} {{ bootstrap_param_network_policy }} {{ bootstrap_param_namespace }} {{ bootstrap_param_version }}"

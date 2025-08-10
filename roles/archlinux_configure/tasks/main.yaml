@@ -12,9 +12,9 @@
   become: true
   ansible.builtin.command:
     cmd: timedatectl set-local-rtc {{ '1' if archlinux_configure_rtc_local_tz | default(true) else '0' }}
-  failed_when: configure_rtc_tz.rc != 0
+  failed_when: archlinux_configure_configure_rtc_tz.rc != 0
   changed_when: false
-  register: configure_rtc_tz
+  register: archlinux_configure_configure_rtc_tz
 
 - name: Install other packages for arch linux
   become: true
@@ -32,9 +32,9 @@
 - name: Check installed packages
   become: true
   ansible.builtin.command: pacman -Q
-  register: installed_packages
+  register: archlinux_configure_installed_packages
   changed_when: false
-  failed_when: installed_packages.rc > 1
+  failed_when: archlinux_configure_installed_packages.rc > 1
 
 - name: Set sysctls
   when:
@@ -59,7 +59,7 @@
   ansible.builtin.include_tasks: "install-yay.yaml"
   when:
   - archlinux_configure_install_yay | default(false) or archlinux_configure_install_yay_force | default(false)
-  - "'yay' not in installed_packages.stdout or archlinux_configure_install_yay_force | default(false)"
+  - "'yay' not in archlinux_configure_installed_packages.stdout or archlinux_configure_install_yay_force | default(false)"
   tags:
   - install-packages
 
@@ -132,7 +132,7 @@
     name: "superfans"
     apply:
       tags:
-        - superfans
+      - superfans
   when: archlinux_configure_superfans_install | default(false)
   tags:
   - superfans
@@ -142,7 +142,7 @@
     name: "nvidia_patch"
     apply:
       tags:
-        - nvidia_patch
+      - nvidia_patch
   when: archlinux_configure_nvidia_patch_install | default(false)
   tags:
   - nvidia_patch
@@ -153,7 +153,7 @@
     name: "helm"
     apply:
       tags:
-        - helm
+      - helm
   tags:
   - helm
 
@@ -163,7 +163,7 @@
     name: "samba"
     apply:
       tags:
-        - samba
+      - samba
   tags:
   - samba
 
@@ -187,7 +187,7 @@
     name: "cockpit"
     apply:
       tags:
-        - cockpit
+      - cockpit
   tags:
   - cockpit
 
@@ -197,7 +197,7 @@
     name: "directory_sync"
     apply:
       tags:
-        - directory_sync
+      - directory_sync
   tags:
   - directory_sync
 
@@ -207,6 +207,6 @@
     name: "nfs"
     apply:
       tags:
-        - nfs
+      - nfs
   tags:
   - nfs

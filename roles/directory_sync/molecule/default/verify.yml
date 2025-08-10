@@ -364,8 +364,8 @@
       that:
       - verify_spaces_in_name.stat.exists
       - verify_apostrophes_in_name.stat.exists
-      - "'directory-sync@file_sync.service' in services"
-      - "'directory-sync@data_sync.service' in services"
+      - "'directory-sync@file_sync.service' in ansible_facts.services"
+      - "'directory-sync@data_sync.service' in ansible_facts.services"
       - verify_datatest.stat.exists
       - verify_move_datatest.stat.exists
       - not verify_rm_test_test.stat.exists

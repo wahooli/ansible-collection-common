@@ -2,7 +2,7 @@
 # tasks file for nfs
 - name: Populate service facts
   become: true
-  when: services is not defined
+  when: ansible_facts.services is not defined
   ansible.builtin.service_facts:
 
 - name: Install deps
@@ -46,4 +46,4 @@
     state: started
     enabled: true
   when:
-  - "'nfs-server.service' not in services"
+  - "'nfs-server.service' not in ansible_facts.services"

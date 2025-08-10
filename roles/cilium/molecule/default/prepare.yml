@@ -54,6 +54,36 @@
     changed_when: false
     failed_when: false
 
+  - name: Check /var/run/netns exists
+    become: true
+    ansible.builtin.stat:
+      path: /var/run/netns
+    register: var_run_netns
+
+  - name: Create netns dir
+    become: true
+    when: not var_run_netns.stat.exists
+    ansible.builtin.file:
+      path: /var/run/netns
+      state: directory
+      recurse: true
+      mode: "0755"
+
+  - name: Mount cilium netns dir
+    become: true
+    when: not var_run_netns.stat.exists
+    ansible.posix.mount:
+      path: /var/run/netns
+      src: none
+      fstype: tmpfs
+      state: ephemeral
+
+  - name: Mount cilium netns dir # noqa: command-instead-of-module
+    become: true
+    ansible.builtin.command: mount --make-shared /var/run/netns
+    changed_when: false
+    failed_when: false
+
   - name: "Install helm"
     ansible.builtin.include_role:
       name: "helm"

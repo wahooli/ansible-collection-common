@@ -1,3 +1,4 @@
+---
 - name: "Remove lvols"
   when:
   - vg.lvols is defined
@@ -21,7 +22,7 @@
     vg_options: "{{ vg.vg_options | default(omit) }}"
     state: "{{ 'absent' if allow_purge | default(false) else 'inactive' }}"
 
-- name: "Remove pvs from vg {{ vg.name }}"
+- name: "Remove pvs from vg {{ vg.name }}" # noqa: var-naming[no-role-prefix]
   become: true
   when: allow_purge | default(false)
   ansible.builtin.command: "pvremove {{ pv }}"

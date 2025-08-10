@@ -1,3 +1,4 @@
+---
 - name: Provision dietpi hosts
   hosts: dietpi_hosts
   gather_facts: false

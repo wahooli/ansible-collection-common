@@ -30,7 +30,7 @@
   when:
   - fluxcd_bootstrap_hosts is undefined
   block:
-  - name: Check if can access cluster with kubectl
+  - name: Check if can access cluster with kubectl # noqa: var-naming[no-role-prefix]
     ansible.builtin.command: "kubectl get nodes"
     register: kubectl_command
     failed_when: false
@@ -41,12 +41,12 @@
     ansible.builtin.set_fact:
       fluxcd_bootstrap_hosts: "{{ [inventory_hostname] }}"
 
-- name: Check flux cli is found in install path
+- name: Check flux cli is found in install path # noqa: var-naming[no-role-prefix]
   ansible.builtin.stat:
     path: "{{ fluxcd_cli_install_path }}/flux"
   register: flux_cli_binary
 
-- name: Get installed flux cli version
+- name: Get installed flux cli version # noqa: var-naming[no-role-prefix]
   ansible.builtin.shell:
     cmd: |
       set -o pipefail
@@ -90,11 +90,11 @@
           i386
         {%- else -%}
         {%- endif -%}
-  - name: Create temporary download directory
+  - name: Create temporary download directory # noqa: var-naming[no-role-prefix]
     ansible.builtin.tempfile:
       state: directory
     register: flux_cli_tmp
-  - name: Download flux cli
+  - name: Download flux cli # noqa: var-naming[no-role-prefix]
     ansible.builtin.get_url:
       url: https://github.com/{{ fluxcd_github_repo }}/releases/download/v{{ fluxcd_version }}/flux_{{ fluxcd_version }}_{{ fluxcd_cli_os }}_{{ fluxcd_cli_arch }}.tar.gz
       checksum: "sha256:https://github.com/{{ fluxcd_github_repo }}/releases/download/v{{ fluxcd_version }}/flux_{{ fluxcd_version }}_checksums.txt"
@@ -124,7 +124,7 @@
     K8S_AUTH_KUBECONFIG: "{{ fluxcd_kubeconfig }}"
     KUBECONFIG: "{{ fluxcd_kubeconfig }}"
   block:
-  - name: Check cluster FluxCD installation
+  - name: Check cluster FluxCD installation # noqa: var-naming[no-role-prefix]
     ansible.builtin.command: "flux check"
     failed_when: false
     changed_when: flux_cli_check.rc != 0
@@ -139,7 +139,7 @@
   ansible.builtin.set_fact:
     fluxcd_key_names: "{{ fluxcd_key_names + [hostvars[item].fluxcd_bootstrap_key_name] }}"
   when: hostvars[item].fluxcd_bootstrap_key_name is defined
-  with_items: "{{ play_hosts }}"
+  with_items: "{{ ansible_play_batch }}"
 
 - name: Include FluxCD bootstrap tasks
   environment:

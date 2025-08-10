@@ -6,7 +6,7 @@
     name: smartd
     state: restarted
   when:
-  - "'smartd.service' in services"
+  - "'smartd.service' in ansible_facts.services"
 
 - name: Systemd daemon reload
   become: true

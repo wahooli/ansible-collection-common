@@ -1,3 +1,4 @@
+---
 galaxy_info:
   author: wahooli
   description: Creates kubernetes secrets

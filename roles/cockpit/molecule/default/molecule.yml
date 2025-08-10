@@ -11,7 +11,7 @@ platforms:
   - /tmp
   volumes:
   - /dev:/dev
-  dockerfile: Dockerfile.arch.j2
+  dockerfile: ../../../../molecule-shared/Dockerfile.archlinux-systemd.j2
   pre_build_image: false
   privileged: true
   tty: true
@@ -24,7 +24,7 @@ platforms:
   - /tmp
   volumes:
   - /dev:/dev
-  dockerfile: Dockerfile.debian.j2
+  dockerfile: ../../../../molecule-shared/Dockerfile.debian-systemd.j2
   pre_build_image: false
   privileged: true
   tty: true
@@ -32,6 +32,8 @@ platforms:
   - 127.0.0.1:8089:80
 provisioner:
   name: ansible
+  env:
+    ANSIBLE_ROLES_PATH: ../../..
   inventory:
     group_vars:
       all:
@@ -46,7 +48,7 @@ provisioner:
         - files
         - firewall
         - zfs-manager
-        - file-sharing
+        # - file-sharing
         - docker
         cockpit_listen_addresses:
         - port: 443

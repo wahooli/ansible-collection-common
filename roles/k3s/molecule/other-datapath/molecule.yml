@@ -7,16 +7,19 @@ driver:
 platforms:
 - name: k3s-server-other-datapath
   image: "debian:12"
+  dockerfile: ../../../../molecule-shared/Dockerfile.debian-systemd.j2
   tmpfs:
   - /run
   - /tmp
   volumes:
-    - /lib/modules:/lib/modules:ro
+  - /lib/modules:/lib/modules:ro
   privileged: true
   pre_build_image: false
   tty: true
 provisioner:
   name: ansible
+  env:
+    ANSIBLE_ROLES_PATH: ../../..
   inventory:
     host_vars:
       k3s-server-other-datapath:

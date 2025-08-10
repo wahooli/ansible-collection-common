@@ -6,7 +6,7 @@
     name: superfans
     state: restarted
   when:
-  - "'superfans.service' in services"
+  - "'superfans.service' in ansible_facts.services"
 
 - name: Systemd daemon reload
   become: true

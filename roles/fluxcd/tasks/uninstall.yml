@@ -1,3 +1,4 @@
+---
 - name: Determine fluxcd_kubeconfig fact if not set
   when:
   - fluxcd_kubeconfig | default("") == ""
@@ -7,7 +8,7 @@
   when:
   - fluxcd_bootstrap_hosts is undefined
   block:
-  - name: Check if can access cluster with kubectl
+  - name: Check if can access cluster with kubectl # noqa: var-naming[no-role-prefix]
     become: true
     ansible.builtin.command: "kubectl get nodes"
     register: kubectl_command
@@ -19,7 +20,7 @@
     ansible.builtin.set_fact:
       fluxcd_bootstrap_hosts: "{{ [inventory_hostname] }}"
 
-- name: Check flux cli is found in install path
+- name: Check flux cli is found in install path # noqa: var-naming[no-role-prefix]
   ansible.builtin.stat:
     path: "{{ fluxcd_cli_install_path }}/flux"
   register: flux_cli_binary
@@ -32,13 +33,13 @@
     K8S_AUTH_KUBECONFIG: "{{ fluxcd_kubeconfig }}"
     KUBECONFIG: "{{ fluxcd_kubeconfig }}"
   block:
-  - name: Run flux uninstall
+  - name: Run flux uninstall # noqa: var-naming[no-role-prefix]
     ansible.builtin.command: "flux uninstall --silent"
     failed_when: flux_cli_install.rc != 0
     changed_when: false
     register: flux_cli_install
 
-- name: Get current user name
+- name: Get current user name # noqa: var-naming[no-role-prefix]
   ansible.builtin.command: whoami
   register: current_user_name
   changed_when: current_user_name.rc != 0
@@ -51,7 +52,7 @@
     venv_user: "{{ ansible_user | default(current_user_name.stdout) | default(omit) }}"
     virtualenv_command: "{{ 'python -m venv' if ansible_facts['os_family'] == 'Archlinux' else 'virtualenv' }}"
   block:
-  - name: Get user home path
+  - name: Get user home path # noqa: var-naming[no-role-prefix]
     ansible.builtin.shell:
       executable: /bin/bash
       cmd: |-
@@ -76,7 +77,7 @@
     - name: Install python pre-requisites
       ansible.builtin.pip:
         name: kubernetes
-    - name: Wait until flux-system namespace has manifested been removed
+    - name: Wait until flux-system namespace has manifested been removed # noqa: var-naming[no-role-prefix]
       when:
       - inventory_hostname in fluxcd_bootstrap_hosts | default([])
       run_once: true

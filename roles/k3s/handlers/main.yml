@@ -9,7 +9,7 @@
   become: true
   throttle: 1
   when:
-  - "'k3s.service' in services"
+  - "'k3s.service' in ansible_facts.services"
   - k3s_systemd_start
   ansible.builtin.systemd_service:
     name: k3s

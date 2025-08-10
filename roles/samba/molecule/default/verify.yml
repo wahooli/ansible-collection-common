@@ -23,11 +23,11 @@
       that:
       - verify_samba_conf.stat.exists
       - verify_wsdd_conf.stat.exists
-      - "'smb.service' in services"
-      - "'avahi-daemon.service' in services"
-      - "'wsdd.service' in services"
-      - "'nmb.service' in services"
-      - "'wsdd2.service' not in services"
+      - "'smb.service' in ansible_facts.services"
+      - "'avahi-daemon.service' in ansible_facts.services"
+      - "'wsdd.service' in ansible_facts.services"
+      - "'nmb.service' in ansible_facts.services"
+      - "'wsdd2.service' not in ansible_facts.services"
 
 - name: Verify Debian
   hosts: samba-debian
@@ -46,8 +46,8 @@
     ansible.builtin.assert:
       that:
       - verify_samba_conf.stat.exists
-      - "'smb.service' in services"
-      - "'avahi-daemon.service' in services"
-      - "'wsdd2.service' in services"
-      - "'wsdd.service' not in services"
-      - "'nmb.service' in services"
+      - "'smb.service' in ansible_facts.services"
+      - "'avahi-daemon.service' in ansible_facts.services"
+      - "'wsdd2.service' in ansible_facts.services"
+      - "'wsdd.service' not in ansible_facts.services"
+      - "'nmb.service' in ansible_facts.services"

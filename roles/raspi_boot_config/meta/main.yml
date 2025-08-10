@@ -1,3 +1,4 @@
+---
 galaxy_info:
   author: wahooli
   description: Modifies raspberry pi /boot/config.txt and /boot/cmdline.txt files

@@ -7,6 +7,7 @@ driver:
 platforms:
 - name: raspberry-pi-server-01
   image: "debian:12"
+  dockerfile: ../../Dockerfile.debian-systemd.j2
   groups:
   - k3s_servers
   - k3s_hosts
@@ -28,6 +29,7 @@ platforms:
 
 - name: raspberry-pi-agent-01
   image: "debian:12"
+  dockerfile: ../../Dockerfile.debian-systemd.j2
   groups:
   - k3s_agents
   - k3s_hosts
@@ -48,6 +50,7 @@ platforms:
 
 - name: raspberry-pi-agent-02
   image: "debian:12"
+  dockerfile: ../../Dockerfile.debian-systemd.j2
   groups:
   - k3s_agents
   - k3s_hosts
@@ -68,6 +71,7 @@ platforms:
 
 - name: raspberry-pi-agent-03
   image: "debian:12"
+  dockerfile: ../../Dockerfile.debian-systemd.j2
   groups:
   - k3s_agents
   - k3s_hosts

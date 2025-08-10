@@ -1,9 +1,10 @@
+---
 - name: Set K3s version fact
   when:
   - k3s_version is undefined
   - k3s_release_channel is defined
   block:
-  - name: Get latest K3s version information
+  - name: Get latest K3s version information # noqa: var-naming[no-role-prefix]
     ansible.builtin.uri:
       url: "https://update.k3s.io/v1-release/channels"
       return_content: true
@@ -21,9 +22,9 @@
 
 - name: Get current K3s version if installed
   when:
-  - "'k3s.service' in services"
+  - "'k3s.service' in ansible_facts.services"
   block:
-  - name: Read current K3s version
+  - name: Read current K3s version # noqa: var-naming[no-role-prefix]
     ansible.builtin.command: "{{ k3s_bin_dir }}/kubectl version --client=true -o json"
     ignore_errors: true
     register: kubectl_output # <- Registers the command output.
@@ -72,7 +73,7 @@
       path: "{{ k3s_data_dir }}/agent/images/{{ images_tar }}"
       state: absent
 
-  - name: Extract zst images
+  - name: Extract zst images # noqa: var-naming[no-role-prefix]
     when: k3s_image_dl is success and k3s_image_dl is not skipped
     register: unzstd_output # <- Registers the command output.
     changed_when: unzstd_output.rc != 0

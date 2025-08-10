@@ -1,7 +1,12 @@
+---
+- name: Update pacman package cache
+  become: true
+  community.general.pacman:
+    update_cache: true
+  tags:
+  - molecule-idempotence-notest
+
 - name: Gather the package facts ArchLinux
   become: true
   ansible.builtin.package_facts:
-    manager: auto
-
-# - debug:
-#     var: ansible_facts.packages
+    manager: pacman

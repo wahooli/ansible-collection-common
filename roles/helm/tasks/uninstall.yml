@@ -1,15 +1,59 @@
+---
 - name: Check if helm exists
   become: true
   ansible.builtin.command: "which helm"
-  register: which_helm_command
+  register: helm_command_which
   changed_when: false
   failed_when: false
 
-- name: Uninstall helm-diff plugin
-  when: which_helm_command.rc == 0
-  kubernetes.core.helm_plugin:
-    plugin_name: helm-diff
-    state: absent
+- name: Get current user name
+  ansible.builtin.command: whoami
+  register: helm_current_user_name
+  changed_when: helm_current_user_name.rc != 0
+  when: ansible_user is undefined or ansible_user == ""
+
+- name: Install helm-diff plugin in python venv
+  when: helm_diff_install | default(true)
+  vars:
+    venv_user: "{{ ansible_user | default(helm_current_user_name.stdout) | default(omit) }}"
+    virtualenv_command: "{{ 'python -m venv' if ansible_facts['os_family'] == 'Archlinux' else 'virtualenv' }}"
+  block:
+  - name: "Install debian packages"
+    become: true
+    ansible.builtin.apt:
+      pkg:
+      - python3-pip
+      - virtualenv
+      update_cache: true
+      cache_valid_time: 3600
+    when: ansible_facts['os_family'] == "Debian"
+  - name: Get user home path
+    ansible.builtin.shell:
+      executable: /bin/bash
+      cmd: |-
+        set -o pipefail
+        grep -E {{ venv_user | default('root') }}: /etc/passwd | awk -F: '{ print $6 }'
+    failed_when: helm_user_home_path.rc != 0
+    changed_when: false
+    register: helm_user_home_path
+
+  - name: Ensure the virtual environment exists
+    ansible.builtin.pip:
+      name: packaging
+      virtualenv: "{{ helm_user_home_path.stdout }}/.ansible-venv"
+      virtualenv_command: "{{ virtualenv_command }}"
+
+  - name: Run commands in venv
+    vars:
+      ansible_python_interpreter: "{{ venv_python }}"
+      venv_dir: "{{ helm_user_home_path.stdout }}/.ansible-venv"
+      venv_python: "{{ venv_dir }}/bin/python"
+    block:
+    - name: Uninstall helm-diff plugin
+      when: helm_command_which.rc == 0
+      kubernetes.core.helm_plugin:
+        plugin_name: helm-diff
+        state: absent
 
 - name: Remove helm
   become: true

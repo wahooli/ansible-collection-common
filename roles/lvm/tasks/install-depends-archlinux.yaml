@@ -1,3 +1,4 @@
+---
 - name: Pacman install LVM dependencies
   become: true
   community.general.pacman:

@@ -7,7 +7,7 @@ driver:
 platforms:
 - name: multi-server-cluster-server-01
   image: debian:12
-  dockerfile: Dockerfile.debian.j2
+  dockerfile: ../../molecule-shared/Dockerfile.debian-systemd.j2
   groups:
   - k3s_servers
   - k3s_hosts
@@ -24,7 +24,7 @@ platforms:
 
 - name: multi-server-cluster-server-02
   image: debian:12
-  dockerfile: Dockerfile.debian.j2
+  dockerfile: ../../molecule-shared/Dockerfile.debian-systemd.j2
   groups:
   - k3s_servers
   - k3s_hosts
@@ -41,7 +41,7 @@ platforms:
 
 - name: multi-server-cluster-server-03
   image: archlinux:base
-  dockerfile: Dockerfile.arch.j2
+  dockerfile: ../../molecule-shared/Dockerfile.archlinux-systemd.j2
   groups:
   - k3s_servers
   - k3s_hosts
@@ -58,7 +58,7 @@ platforms:
 
 - name: multi-server-cluster-agent-01
   image: debian:12
-  dockerfile: Dockerfile.debian.j2
+  dockerfile: ../../molecule-shared/Dockerfile.debian-systemd.j2
   groups:
   - k3s_agents
   - k3s_hosts

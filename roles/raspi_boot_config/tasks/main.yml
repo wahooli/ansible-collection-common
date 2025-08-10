@@ -5,7 +5,7 @@
 - name: "Stat file {{ raspi_boot_config_path }}"
   ansible.builtin.stat:
     path: "{{ raspi_boot_config_path }}"
-  register: boot_config_file_stat
+  register: boot_config_file_stat # noqa: var-naming[no-role-prefix]
 
 - name: "Modify {{ raspi_boot_config_path }}"
   ansible.builtin.lineinfile:
@@ -14,7 +14,7 @@
     regexp: '{{ "^" ~ item.key | string ~ "=" ~ ("\S+" if ((item.replace | default(true)) or (item.remove | default(false))) else item.value | string) }}'
     state: '{{ "absent" if (item.remove is defined and item.remove | bool) else "present" }}'
   with_items: '{{ raspi_boot_config_vars }}'
-  register: boot_config_file
+  register: boot_config_file # noqa: var-naming[no-role-prefix]
   become: true
   when:
   - raspi_boot_config_vars is defined
@@ -29,7 +29,7 @@
 - name: "Stat file {{ raspi_boot_config_cmdline_path }}"
   ansible.builtin.stat:
     path: "{{ raspi_boot_config_cmdline_path }}"
-  register: boot_cmdline_file_stat
+  register: boot_cmdline_file_stat # noqa: var-naming[no-role-prefix]
 
 - name: Repeat block of tasks for each item in the array
   ansible.builtin.include_tasks: cmdline.yaml

@@ -1,3 +1,4 @@
+---
 - name: Create systemd zfs trim timer
   become: true
   ansible.builtin.copy:

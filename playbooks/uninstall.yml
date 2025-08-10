@@ -1,3 +1,4 @@
+---
 - name: Run uninstall procedure on all nodes
   hosts: all
   tasks:

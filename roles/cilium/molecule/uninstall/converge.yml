@@ -2,7 +2,7 @@
 - name: Converge
   hosts: all
   tasks:
-    - name: "Include cilium"
-      ansible.builtin.include_role:
-        name: "cilium"
-        tasks_from: uninstall
+  - name: "Include cilium"
+    ansible.builtin.include_role:
+      name: "cilium"
+      tasks_from: uninstall

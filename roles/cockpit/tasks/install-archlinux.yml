@@ -1,3 +1,4 @@
+---
 - name: Install arch linux packages for cockpit
   become: true
   community.general.pacman:
@@ -22,7 +23,7 @@
   tags:
   - molecule-idempotence-notest
 
-- name: Check installed packages
+- name: Check installed packages # noqa: var-naming[no-role-prefix]
   become: true
   ansible.builtin.command: pacman -Qm
   register: installed_packages
