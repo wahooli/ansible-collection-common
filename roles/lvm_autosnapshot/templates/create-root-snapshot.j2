@@ -1,0 +1,80 @@
+#!/bin/bash
+set -e
+
+# --- Configuration (from Ansible) ---
+VG_NAME="{{ lvm_autosnapshot_target_vg }}"
+ROOT_LV_NAME="{{ lvm_autosnapshot_target_lv }}"
+SNAPSHOT_NAME="{{ lvm_autosnapshot_name }}"
+SNAPSHOT_SUFFIX="{{ lvm_autosnapshot_suffix }}"
+
+# --- Derived Variables ---
+SNAPSHOT_LV_PATH="${VG_NAME}/${SNAPSHOT_NAME}"
+SNAPSHOT_DEVICE="/dev/mapper/${VG_NAME}-${SNAPSHOT_NAME}"
+
+# 1. Pre-flight Check
+if lvs "${SNAPSHOT_LV_PATH}" &>/dev/null; then
+    echo "ERROR: Snapshot '${SNAPSHOT_NAME}' already exists." >&2
+    exit 1
+fi
+
+# 2. Create and activate LVM snapshot
+echo "--> Creating LVM snapshot: ${SNAPSHOT_LV_PATH}"
+lvcreate -s -kn -n "${SNAPSHOT_NAME}" "${VG_NAME}/${ROOT_LV_NAME}"
+lvchange -ay "${SNAPSHOT_LV_PATH}"
+
+{% if lvm_autosnapshot_bootloader == "systemd-boot" %}
+BOOT_ENTRIES_DIR="{{ lvm_autosnapshot_systemd_boot_path.rstrip('/') }}"
+
+# 3. Discover and process all boot entries
+echo "--> Discovering and processing boot entries in ${BOOT_ENTRIES_DIR}"
+if ! ls ${BOOT_ENTRIES_DIR}/*.conf > /dev/null 2>&1; then
+    echo "ERROR: No boot entries found in ${BOOT_ENTRIES_DIR}. Nothing to do." >&2
+    exit 1
+fi
+
+for original_entry in ${BOOT_ENTRIES_DIR}/*.conf; do
+    if [[ "$original_entry" == *"$SNAPSHOT_SUFFIX.conf" ]]; then
+        continue
+    fi
+
+    echo "    - Processing entry: $(basename "$original_entry")"
+
+    # Find and strip leading slashes from boot file paths
+    boot_files=($(grep -E '^\s*(linux|initrd)\s+' "$original_entry" | awk '{print $2}' | sed 's|^/||'))
+
+    # Copy boot files
+    for file_path in "${boot_files[@]}"; do
+        original_boot_file="/boot/${file_path}"
+        new_boot_file="/boot/$(basename "${file_path}")${SNAPSHOT_SUFFIX}"
+        if [[ "$original_boot_file" == *.img ]]; then
+            new_boot_file="/boot/$(basename "${file_path}" .img)${SNAPSHOT_SUFFIX}.img"
+        fi
+
+        if [ -f "$original_boot_file" ]; then
+            echo "      - Copying $(basename "$original_boot_file") -> $(basename "$new_boot_file")"
+            cp "$original_boot_file" "$new_boot_file"
+        fi
+    done
+
+    # Create the new snapshot boot entry
+    new_entry_file="$(basename "$original_entry" .conf)${SNAPSHOT_SUFFIX}.conf"
+    new_entry_path="${BOOT_ENTRIES_DIR}/${new_entry_file}"
+    echo "      - Creating new entry: ${new_entry_file}"
+    cp "$original_entry" "$new_entry_path"
+
+    # Modify the new entry
+    sed -i "s/^\s*title.*/& (Snapshot)/" "$new_entry_path"
+    sed -i "s|root=[^ ]*|root=${SNAPSHOT_DEVICE}|" "$new_entry_path"
+
+    # Update linux/initrd lines to point to the copied files
+    for file_path in "${boot_files[@]}"; do
+        original_filename=$(basename "$file_path")
+        new_filename=$(basename "$file_path")${SNAPSHOT_SUFFIX}
+        if [[ "$original_filename" == *.img ]]; then
+            new_filename=$(basename "$original_filename" .img)${SNAPSHOT_SUFFIX}.img
+        fi
+        sed -i "s|/${original_filename}|/${new_filename}|g" "$new_entry_path"
+    done
+done
+{% endif %}
+echo "--> Snapshot preparation complete."

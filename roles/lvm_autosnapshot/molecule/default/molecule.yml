@@ -1,0 +1,29 @@
+---
+dependency:
+  name: galaxy
+driver:
+  name: docker
+platforms:
+- name: lvm_autosnapshot-archlinux
+  image: archlinux:base
+  pre_build_image: false
+  groups:
+  - resolved_hosts
+  - networkd_hosts
+  dockerfile: ../../../../molecule-shared/Dockerfile.archlinux-systemd.j2
+  tmpfs:
+  - /run
+  - /tmp
+  tty: true
+  privileged: true
+
+provisioner:
+  name: ansible
+  env:
+    ANSIBLE_ROLES_PATH: ../../..
+  inventory:
+    group_vars:
+      all:
+        ansible_user: molecule
+verifier:
+  name: ansible

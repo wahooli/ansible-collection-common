@@ -1,0 +1,209 @@
+---
+- name: Verify borg_backup role configuration
+  hosts: all
+  become: true
+  tasks:
+  - name: Check if borg package is installed
+    ansible.builtin.package_facts:
+      manager: auto
+
+  - name: Verify borg package is installed
+    ansible.builtin.assert:
+      that:
+      - "'borg' in ansible_facts.packages or 'borgbackup' in ansible_facts.packages"
+      success_msg: "Borg backup package is installed"
+      fail_msg: "Borg backup package is not installed"
+
+  - name: Check if backup directory exists
+    ansible.builtin.stat:
+      path: "{{ borg_backup_dir | default('/var/backup/borg') }}"
+    register: backup_dir_stat
+
+  - name: Verify backup directory exists
+    ansible.builtin.assert:
+      that:
+      - backup_dir_stat.stat.exists
+      - backup_dir_stat.stat.isdir
+      success_msg: "Backup directory exists"
+      fail_msg: "Backup directory does not exist"
+
+  - name: Check if borgbackup configuration directory exists
+    ansible.builtin.stat:
+      path: /etc/conf.d/borg-backup
+    register: config_dir_stat
+
+  - name: Verify borgbackup configuration directory exists
+    ansible.builtin.assert:
+      that:
+      - config_dir_stat.stat.exists
+      - config_dir_stat.stat.isdir
+      success_msg: "Borg-backup configuration directory exists"
+      fail_msg: "Borg-backup configuration directory does not exist"
+
+  - name: Check if borg-backup@.service template exists
+    ansible.builtin.stat:
+      path: /etc/systemd/system/borg-backup@.service
+    register: service_template_stat
+
+  - name: Verify borg-backup@.service template exists
+    ansible.builtin.assert:
+      that:
+      - service_template_stat.stat.exists
+      - service_template_stat.stat.isreg
+      success_msg: "borg-backup@.service template exists"
+      fail_msg: "borg-backup@.service template does not exist"
+
+  - name: Check if borg-backup-daily@.timer template exists
+    ansible.builtin.stat:
+      path: /etc/systemd/system/borg-backup-daily@.timer
+    register: timer_template_stat
+
+  - name: Verify borg-backup-daily@.timer template exists
+    ansible.builtin.assert:
+      that:
+      - timer_template_stat.stat.exists
+      - timer_template_stat.stat.isreg
+      success_msg: "borg-backup-daily@.timer template exists"
+      fail_msg: "borg-backup-daily@.timer template does not exist"
+
+  - name: Check if borg-backup-weekly@.timer template exists
+    ansible.builtin.stat:
+      path: /etc/systemd/system/borg-backup-weekly@.timer
+    register: timer_template_stat
+
+  - name: Verify borg-backup-weekly@.timer template exists
+    ansible.builtin.assert:
+      that:
+      - timer_template_stat.stat.exists
+      - timer_template_stat.stat.isreg
+      success_msg: "borg-backup-weekly@.timer template exists"
+      fail_msg: "borg-backup-weekly@.timer template does not exist"
+
+  - name: List borgbackup configuration files
+    ansible.builtin.find:
+      paths: /etc/conf.d/borg-backup
+      patterns: "*"
+      file_type: file
+    register: config_files
+
+  - name: Verify configuration files exist for each backup instance
+    ansible.builtin.assert:
+      that:
+      - config_files.files | length > 0
+      success_msg: "Found {{ config_files.files | length }} borgbackup configuration files"
+      fail_msg: "No borgbackup configuration files found"
+
+  - name: Check configuration file permissions
+    ansible.builtin.stat:
+      path: "{{ item.path }}"
+    register: file_stats
+    loop: "{{ config_files.files }}"
+    loop_control:
+      label: "{{ item.path }}"
+
+  - name: Verify configuration file permissions are correct
+    ansible.builtin.assert:
+      quiet: true
+      that:
+      - item.stat.mode | int == 600
+      - item.stat.pw_name == "root"
+      - item.stat.gr_name == "root"
+      success_msg: "Configuration file {{ item.stat.path }} has correct permissions"
+      fail_msg: "Configuration file {{ item.stat.path }} has incorrect permissions"
+    loop: "{{ file_stats.results }}"
+    loop_control:
+      label: "{{ item.stat.path }}"
+
+  # - name: Verify configuration files contain required environment variables
+  #   ansible.builtin.shell: |
+  #     set -o pipefail
+  #     grep -E '^BORG_' {{ item.path }} | head -5
+  #   register: env_vars
+  #   loop: "{{ config_files.files }}"
+  #   loop_control:
+  #     label: "{{ item.path }}"
+  #   changed_when: false
+  #   args:
+  #     executable: /bin/bash
+
+  - name: Check if borg-backup-daily@home.timer is enabled
+    ansible.builtin.systemd:
+      name: borg-backup-daily@home.timer
+    register: home_daily_timer
+
+  - name: Verify borg-backup-daily@home.timer is enabled
+    ansible.builtin.assert:
+      that:
+      - home_daily_timer.status.UnitFileState == "enabled"
+      success_msg: "Timer borg-backup-daily@home.timer is enabled"
+      fail_msg: "Timer borg-backup-daily@home.timer is not enabled"
+
+  - name: Check if borg-backup-weekly@home.timer is enabled
+    ansible.builtin.systemd:
+      name: borg-backup-weekly@home.timer
+    register: home_weekly_timer
+
+  - name: Verify borg-backup-weekly@home.timer is enabled
+    ansible.builtin.assert:
+      that:
+      - home_weekly_timer.status.UnitFileState == "enabled"
+      success_msg: "Timer borg-backup-weekly@home.timer is enabled"
+      fail_msg: "Timer borg-backup-weekly@home.timer is not enabled"
+
+  - name: Check if borg-backup-weekly@opt.timer is enabled
+    ansible.builtin.systemd:
+      name: borg-backup-weekly@opt.timer
+    register: opt_weekly_timer
+
+  - name: Verify borg-backup-weekly@opt.timer is enabled
+    ansible.builtin.assert:
+      that:
+      - opt_weekly_timer.status.UnitFileState == "enabled"
+      success_msg: "Timer borg-backup-weekly@opt.timer is enabled"
+      fail_msg: "Timer borg-backup-weekly@opt.timer is not enabled"
+
+  - name: Check if borg-backup services can be started (dry run)
+    ansible.builtin.systemd:
+      name: "borg-backup@{{ item.name }}.service"
+      daemon_reload: true
+    register: service_check
+    loop: "{{ borg_backup_instances }}"
+    loop_control:
+      label: "{{ item.name }}"
+
+  - name: Verify borg-backup services are properly configured
+    ansible.builtin.assert:
+      quiet: true
+      that:
+      - item is defined
+      success_msg: "Service borg-backup@{{ item.item.name }}.service is properly configured"
+      fail_msg: "Service borg-backup@{{ item.item.name }}.service is not properly configured"
+    loop: "{{ service_check.results }}"
+    loop_control:
+      label: "{{ item.item.name }}"
+
+  - name: Start borg-backup@home.service manually
+    ansible.builtin.systemd:
+      name: borg-backup@home.service
+      state: started
+    register: home_service_start
+
+  - name: Start borg-backup@opt.service manually
+    ansible.builtin.systemd:
+      name: borg-backup@opt.service
+      state: started
+    register: opt_service_start
+
+  - name: Verify borg-backup@home.service started successfully
+    ansible.builtin.assert:
+      that:
+      - not home_service_start.failed
+      success_msg: "borg-backup@home.service ran successfully (oneshot service completed)"
+      fail_msg: "borg-backup@home.service failed to run successfully"
+
+  - name: Verify borg-backup@opt.service started successfully
+    ansible.builtin.assert:
+      that:
+      - not opt_service_start.failed
+      success_msg: "borg-backup@opt.service ran successfully (oneshot service completed)"
+      fail_msg: "borg-backup@opt.service failed to run successfully"

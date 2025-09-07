@@ -1,0 +1,76 @@
+---
+- name: Prepare archlinux host
+  hosts: networkd-archlinux
+  gather_facts: false
+  tasks:
+  - name: Ensure systemd-resoved is installed, by reinstalling systemd
+    become: true
+    ansible.builtin.command: pacman -Syy --noconfirm systemd
+    changed_when: false
+
+- name: Prepare debian-12 and ubuntu-22.04 hosts
+  hosts: networkd-debian-12, networkd-ubuntu-22.04
+  gather_facts: false
+  tasks:
+  - name: Install dbus-user-session and libpam-systemd packages
+    become: true
+    ansible.builtin.apt:
+      name:
+      - dbus-user-session
+      - libpam-systemd
+      state: present
+      update_cache: true
+
+  - name: Start and enable systemd-logind for Debian 12 and Ubuntu 22.04 hosts
+    become: true
+    ansible.builtin.systemd:
+      name: systemd-logind
+      state: started
+      enabled: true
+
+- name: Run configuration for ubuntu-22.04 host before converge, to test cleanup mode
+  hosts: networkd-ubuntu-22.04
+  gather_facts: true
+  tasks:
+  - name: Include systemd_networkd role
+    ansible.builtin.include_role:
+      name: systemd_networkd
+    vars:
+      systemd_networkd_networks:
+        00-default-dhcp:
+          match:
+            Name: "*"
+          network:
+            DHCP: "yes"
+            LinkLocalAddressing: "ipv4"
+            MulticastDNS: "yes"
+      systemd_networkd_netdevs:
+        vlan200:
+          NetDev:
+            Name: "vlan200"
+            Kind: "vlan"
+            Description: "Test VLAN 200 interface"
+          VLAN:
+            Id: 200
+
+  - name: Assert /etc/systemd/network/00-default-dhcp.network exists
+    ansible.builtin.stat:
+      path: /etc/systemd/network/00-default-dhcp.network
+    register: default_dhcp_network_file
+
+  - name: Assert /etc/systemd/network/vlan200.netdev exists
+    ansible.builtin.stat:
+      path: /etc/systemd/network/vlan200.netdev
+    register: vlan200_netdev_file
+
+  - name: Fail if /etc/systemd/network/00-default-dhcp.network does not exist
+    ansible.builtin.assert:
+      that:
+        - default_dhcp_network_file.stat.exists
+      fail_msg: "/etc/systemd/network/00-default-dhcp.network does not exist"
+
+  - name: Fail if /etc/systemd/network/vlan200.netdev does not exist
+    ansible.builtin.assert:
+      that:
+        - vlan200_netdev_file.stat.exists
+      fail_msg: "/etc/systemd/network/vlan200.netdev does not exist"

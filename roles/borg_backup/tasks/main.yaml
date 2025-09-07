@@ -1,0 +1,47 @@
+---
+- name: Include OS-specific tasks
+  ansible.builtin.include_tasks: "setup_{{ ansible_os_family }}.yaml"
+  when: ansible_os_family in ['Debian', 'RedHat', 'Archlinux']
+
+- name: Ensure config directory exists
+  become: true
+  ansible.builtin.file:
+    path: "{{ borg_backup_config_dir }}"
+    state: directory
+    mode: "0755"
+    owner: root
+    group: root
+
+- name: Create borg-backup systemd service template file
+  become: true
+  ansible.builtin.template:
+    src: borg-backup@.service.j2
+    dest: /etc/systemd/system/borg-backup@.service
+    mode: "0644"
+  notify: Reload systemd
+
+- name: Create borg-backup-daily systemd timer template file
+  become: true
+  ansible.builtin.template:
+    src: borg-backup-daily@.timer.j2
+    dest: /etc/systemd/system/borg-backup-daily@.timer
+    mode: "0644"
+  notify: Reload systemd
+
+- name: Create borg-backup-weekly systemd timer template file
+  become: true
+  ansible.builtin.template:
+    src: borg-backup-weekly@.timer.j2
+    dest: /etc/systemd/system/borg-backup-weekly@.timer
+    mode: "0644"
+  notify: Reload systemd
+
+- name: Flush handlers to reload systemd if needed
+  ansible.builtin.meta: flush_handlers
+
+- name: Configure each borg backup instance
+  ansible.builtin.include_tasks: configure.yaml
+  loop: "{{ borg_backup_instances }}"
+  loop_control:
+    loop_var: backup_config
+    label: "{{ backup_config.name }}"

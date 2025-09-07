@@ -1,0 +1,126 @@
+---
+# SPDX-License-Identifier: MIT-0
+# Tasks file for lvm_autosnapshot
+
+- name: Collect package facts
+  become: true
+  when:
+  - ansible_facts.packages is not defined
+  block:
+  - name: Collect package facts
+    ansible.builtin.package_facts:
+      manager: auto
+  rescue:
+  - name: Update pacman database after package facts collection failed
+    community.general.pacman:
+      update_cache: true
+    tags:
+    - molecule-idempotence-notest
+  - name: Retry collecting package facts after pacman cache update
+    ansible.builtin.package_facts:
+      manager: auto
+
+- name: Ensure lvm2 is installed (Arch/Manjaro)
+  become: true
+  when: "'lvm2' not in ansible_facts.packages"
+  block:
+  - name: Install lvm2
+    community.general.pacman:
+      name: lvm2
+      state: present
+  rescue:
+  - name: Update pacman database after lvm2 install failed
+    community.general.pacman:
+      update_cache: true
+    tags:
+    - molecule-idempotence-notest
+  - name: Retry installing lvm2 after pacman cache update
+    community.general.pacman:
+      name: lvm2
+      state: present
+
+- name: Ensure script install directory exists
+  become: true
+  ansible.builtin.file:
+    path: "{{ lvm_autosnapshot_script_install_path }}"
+    state: directory
+    mode: '0755'
+    owner: root
+    group: root
+
+- name: Deploy create-root-snapshot script
+  become: true
+  ansible.builtin.template:
+    src: "templates/create-root-snapshot.j2"
+    dest: "{{ lvm_autosnapshot_script_install_path.rstrip('/') }}/create-root-snapshot"
+    owner: root
+    group: root
+    mode: '0500'
+
+- name: Deploy remove-root-snapshot script
+  become: true
+  ansible.builtin.template:
+    src: "templates/remove-root-snapshot.j2"
+    dest: "{{ lvm_autosnapshot_script_install_path.rstrip('/') }}/remove-root-snapshot"
+    owner: root
+    group: root
+    mode: '0500'
+
+- name: Deploy rollback-root-snapshot script
+  become: true
+  ansible.builtin.template:
+    src: "templates/rollback-root-snapshot.j2"
+    dest: "{{ lvm_autosnapshot_script_install_path.rstrip('/') }}/rollback-root-snapshot"
+    owner: root
+    group: root
+    mode: '0500'
+
+- name: Deploy check-root-snapshot script
+  become: true
+  ansible.builtin.template:
+    src: "templates/check-root-snapshot.j2"
+    dest: "{{ lvm_autosnapshot_script_install_path.rstrip('/') }}/check-root-snapshot"
+    owner: root
+    group: root
+    mode: '0550'
+
+- name: Allow passwordless sudo for check-root-snapshot script
+  become: true
+  ansible.builtin.blockinfile:
+    path: /etc/sudoers.d/99-snapshot-motd-status
+    create: true
+    mode: '0440'
+    owner: root
+    group: root
+    validate: 'visudo -cf %s'
+    block: |
+      Defaults !requiretty
+      ALL ALL=(root) NOPASSWD: {{ lvm_autosnapshot_script_install_path.rstrip('/') }}/check-root-snapshot
+    marker: "# {mark} ANSIBLE MANAGED BLOCK lvm_autosnapshot_check_root_snapshot"
+
+- name: Deploy motd-snapshot-status.sh to /etc/profile.d/
+  become: true
+  ansible.builtin.template:
+    src: "templates/motd-snapshot-status.sh.j2"
+    dest: /etc/profile.d/motd-snapshot-status.sh
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: Ensure Pacman hook directory exists
+  become: true
+  ansible.builtin.file:
+    path: /etc/pacman.d/hooks
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: Deploy Pacman hook to trigger snapshot creation
+  become: true
+  ansible.builtin.template:
+    src: snapshot.hook.j2
+    dest: /etc/pacman.d/hooks/99-lvm-snapshot.hook
+    owner: root
+    group: root
+    mode: '0644'

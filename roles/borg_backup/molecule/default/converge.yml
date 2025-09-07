@@ -1,0 +1,8 @@
+---
+- name: Converge
+  hosts: all
+  gather_facts: true
+  tasks:
+  - name: Include borg_backup role
+    ansible.builtin.include_role:
+      name: borg_backup

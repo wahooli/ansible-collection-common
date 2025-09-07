@@ -1,0 +1,80 @@
+---
+# SPDX-License-Identifier: MIT-0
+# Archlinux-specific tasks for systemd_networkd
+
+- name: Update pacman database
+  become: true
+  failed_when: false
+  community.general.pacman:
+    update_cache: true
+  tags:
+  - molecule-idempotence-notest
+  when: systemd_networkd_chroot_path is not defined
+
+- name: Gather the package facts
+  become: true
+  ansible.builtin.package_facts:
+    manager: auto
+  when:
+  - ansible_facts.packages is not defined
+  - systemd_networkd_chroot_path is not defined
+
+- name: Install required packages (Archlinux)
+  become: true
+  community.general.pacman:
+    name:
+    - systemd
+    state: "present"
+  when:
+  - systemd_networkd_chroot_path is not defined
+  - "'systemd' not in ansible_facts.packages or ('systemd-resolvconf' not in ansible_facts.packages and systemd_networkd_configure_resolved | default(false))"
+  notify: Reload systemd daemon
+  tags:
+  - molecule-idempotence-notest
+
+- name: Install required packages (Archlinux)
+  become: true
+  community.general.pacman:
+    name:
+    - systemd-resolvconf
+    state: "present"
+  when:
+  - systemd_networkd_configure_resolved | default(false)
+  - systemd_networkd_chroot_path is not defined
+  - "'systemd-resolvconf' not in ansible_facts.packages"
+  notify: Reload systemd daemon
+  tags:
+  - molecule-idempotence-notest
+
+- name: Install required packages in chroot (Archlinux)
+  become: true
+  ansible.builtin.command:
+    argv:
+    - arch-chroot
+    - "{{ systemd_networkd_chroot_path }}"
+    - pacman
+    - -S
+    - systemd
+    - --noconfirm
+  failed_when: systemd_networkd_chroot_install.rc != 0
+  changed_when: false
+  register: systemd_networkd_chroot_install
+  when:
+  - systemd_networkd_chroot_path is defined
+
+- name: Install required packages in chroot (Archlinux)
+  become: true
+  ansible.builtin.command:
+    argv:
+    - arch-chroot
+    - "{{ systemd_networkd_chroot_path }}"
+    - pacman
+    - -S
+    - systemd-resolvconf
+    - --noconfirm
+  failed_when: systemd_networkd_chroot_install.rc != 0
+  changed_when: false
+  register: systemd_networkd_chroot_install
+  when:
+  - systemd_networkd_configure_resolved | default(false)
+  - systemd_networkd_chroot_path is defined

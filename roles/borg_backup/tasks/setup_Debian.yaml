@@ -1,0 +1,29 @@
+---
+# SPDX-License-Identifier: MIT-0
+# Debian-specific tasks for borg_backup
+
+- name: Update apt cache
+  become: true
+  failed_when: false
+  ansible.builtin.apt:
+    update_cache: true
+    cache_valid_time: 3600
+  tags:
+  - molecule-idempotence-notest
+
+- name: Gather the package facts
+  become: true
+  ansible.builtin.package_facts:
+    manager: auto
+  when:
+  - ansible_facts.packages is not defined
+
+- name: Install required packages (Debian)
+  become: true
+  ansible.builtin.apt:
+    name:
+    - borgbackup
+    - openssh-client
+    state: "present"
+  when:
+  - "'borgbackup' not in ansible_facts.packages or 'openssh-client' not in ansible_facts.packages"

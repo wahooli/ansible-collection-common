@@ -1,0 +1,41 @@
+[Unit]
+Description=Borg Backup Service for %i
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+EnvironmentFile={{ borg_backup_config_dir }}/%i.conf
+Environment="BORG_CACHE_DIR={{ borg_backup_cache_dir }}/%i"
+Environment="BORG_CONFIG_DIR={{ borg_backup_base_config_dir }}/%i"
+# --- Command Chain ---
+# 1. Create the backup archive
+ExecStart=/bin/sh -c '/usr/bin/borg create ${BORG_CREATE_ARGS} "${BORG_REPO}::${BORG_ARCHIVE_NAME}" ${BORG_BACKUP_SOURCE_DIRS}'
+
+# 2. Check the repository (optional but recommended)
+ExecStartPost=-/bin/sh -c '/usr/bin/borg check ${BORG_CHECK_ARGS} "${BORG_REPO}"'
+
+# 3. Prune old archives according to the policy in the config file
+ExecStartPost=-/bin/sh -c '/usr/bin/borg prune ${BORG_PRUNE_ARGS} "${BORG_REPO}"'
+
+# --- Execution Context and Logging ---
+User=root
+Group=root
+# Explicitly send all output to the systemd journal
+StandardOutput=journal
+StandardError=journal
+
+# --- Resource Control ---
+Nice=19
+IOSchedulingClass=best-effort
+IOSchedulingPriority=7
+
+# --- Security Hardening ---
+ProtectSystem=full
+ProtectHome=read-only
+PrivateTmp=true
+PrivateDevices=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+NoNewPrivileges=true

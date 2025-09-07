@@ -1,0 +1,188 @@
+---
+- name: Create automation user
+  become: true
+  ansible.builtin.user:
+    name: "{{ automation_user_name }}"
+    system: true
+    shell: "{{ automation_user_shell }}"
+    home: "{{ automation_user_home | default('/var/lib/' + automation_user_name, true) }}"
+    create_home: false
+    state: present
+    # Security: Prevent other users from switching to this account
+    password_lock: true
+    # Security: Ensure no password is set (additional safety)
+    password: "!"
+
+- name: Create home directory for automation user
+  become: true
+  ansible.builtin.file:
+    path: "{{ automation_user_home | default('/var/lib/' + automation_user_name, true) }}"
+    state: directory
+    owner: "{{ automation_user_name }}"
+    group: "{{ automation_user_name }}"
+    mode: "0700"
+
+- name: Create .ssh directory for automation user
+  become: true
+  ansible.builtin.file:
+    path: "{{ (automation_user_home | default('/var/lib/' + automation_user_name, true)) + '/.ssh' }}"
+    state: directory
+    owner: "{{ automation_user_name }}"
+    group: "{{ automation_user_name }}"
+    mode: "0700"
+
+- name: Add SSH public keys to authorized_keys
+  become: true
+  ansible.posix.authorized_key:
+    user: "{{ automation_user_name }}"
+    key: "{{ ssh_pub_key }}"
+    state: present
+  loop: "{{ automation_user_ssh_keys }}"
+  loop_control:
+    loop_var: ssh_pub_key
+    extended: true
+    label: "SSH key {{ ansible_loop.index }}/{{ ansible_loop.length }}"
+  when: automation_user_ssh_keys is defined and automation_user_ssh_keys | length > 0
+
+- name: Ensure authorized_keys file has correct permissions
+  become: true
+  ansible.builtin.file:
+    path: "{{ (automation_user_home | default('/var/lib/' + automation_user_name, true)) + '/.ssh/authorized_keys' }}"
+    owner: "{{ automation_user_name }}"
+    group: "{{ automation_user_name }}"
+    mode: "0600"
+  when: automation_user_ssh_keys is defined and automation_user_ssh_keys | length > 0
+
+- name: Ensure Runas_Alias LOGIN_DISABLED is present in /etc/sudoers
+  become: true
+  ansible.builtin.blockinfile:
+    path: /etc/sudoers
+    block: |
+      Runas_Alias LOGIN_DISABLED = {{ automation_user_name }}
+    insertafter: '^\s?Defaults'
+    validate: 'visudo -cf %s'
+    marker: "# {mark} ANSIBLE MANAGED BLOCK - LOGIN_DISABLED for {{ automation_user_name }}"
+
+- name: Update sudoers group lines to restrict LOGIN_DISABLED for all relevant groups
+  become: true
+  ansible.builtin.replace:
+    path: /etc/sudoers
+    regexp: '^(%(?:wheel|sudo|admin)\s+ALL=)\(.*?\)(.*)$'
+    replace: '\1(ALL, !LOGIN_DISABLED:ALL)\2'
+    validate: 'visudo -cf %s'
+
+- name: Configure sudo access for automation user
+  become: true
+  ansible.builtin.blockinfile:
+    path: /etc/sudoers.d/{{ automation_user_name }}
+    block: |
+      {{ automation_user_name }} ALL=(ALL) NOPASSWD: ALL
+    create: true
+    mode: "0440"
+    validate: "visudo -cf %s"
+    marker: "# {mark} ANSIBLE MANAGED BLOCK - {{ automation_user_name }} sudoers"
+  when: automation_user_sudo_access | default(false)
+
+- name: Disable su command for sudo groups
+  become: true
+  ansible.builtin.blockinfile:
+    path: /etc/sudoers.d/99_disable_su_command
+    block: |
+      Cmnd_Alias    USER_SWITCH_CMDS = /bin/su, /usr/bin/su, /bin/runuser, /usr/bin/runuser
+      %wheel        ALL = !USER_SWITCH_CMDS
+      %sudo         ALL = !USER_SWITCH_CMDS
+      %admin        ALL = !USER_SWITCH_CMDS
+    create: true
+    mode: "0440"
+    validate: "visudo -cf %s"
+    marker: "# {mark} ANSIBLE MANAGED BLOCK - {{ automation_user_name }} sudoers"
+  when: automation_user_sudo_access | default(false)
+
+- name: Ensure su disabled for automation user
+  block:
+  - name: Ensure /etc/security directory exists
+    become: true
+    ansible.builtin.file:
+      path: /etc/security
+      state: directory
+      mode: "0755"
+      owner: root
+      group: root
+
+  - name: Ensure /etc/security/su_disabled_users exists and contains automation user
+    become: true
+    ansible.builtin.lineinfile:
+      path: /etc/security/su_disabled_users
+      line: "{{ automation_user_name }}"
+      create: true
+      owner: root
+      group: root
+      mode: "0644"
+      state: present
+
+  - name: Ensure pam_listfile.so line is present in /etc/pam.d/su after first non-comment line (first match only, using lineinfile)
+    become: true
+    ansible.builtin.lineinfile:
+      path: /etc/pam.d/su
+      line: 'auth required pam_listfile.so item=user sense=deny file=/etc/security/su_disabled_users onerr=succeed'
+      insertbefore: '^[^#\s]'
+      firstmatch: true
+      create: false
+      owner: root
+      group: root
+      mode: "0644"
+      state: present
+
+- name: Ensure SSH config directory exists
+  become: true
+  ansible.builtin.file:
+    path: /etc/ssh/sshd_config.d
+    state: directory
+    mode: "0755"
+
+- name: Configure SSH restrictions for automation user
+  become: true
+  vars:
+    allowed_networks_csv: "10.0.0.0/8,172.16.0.0/12,192.168.0.0/16"
+  ansible.builtin.copy:
+    dest: /etc/ssh/sshd_config.d/{{ automation_user_name }}.conf
+    content: |
+      # Security: Restrict automation user to local networks only
+      Match User {{ automation_user_name }} Address {{ allowed_networks_csv }}
+        PasswordAuthentication {{ 'no' if automation_user_disable_password_auth | default(true) else 'yes' }}
+        PubkeyAuthentication yes
+        AuthorizedKeysFile .ssh/authorized_keys
+        # Security: Strict command execution with whitelist
+        # Security: Disable port forwarding
+        AllowTcpForwarding no
+        # Security: Disable X11 forwarding
+        X11Forwarding no
+        # Security: Disable agent forwarding
+        AllowAgentForwarding no
+        # Security: Disable TTY allocation
+        PermitTTY no
+        # Security: Disable TTY allocation (global setting, not in Match block)
+        # RequestTTY no
+        # Security: Disable user environment (global setting, not in Match block)
+        # PermitUserEnvironment no
+
+      Match User {{ automation_user_name }} Address *,!{{ allowed_networks_csv | replace(',', ',!') }}
+        ForceCommand /usr/sbin/nologin
+    mode: "0644"
+    owner: root
+    group: root
+  notify: Restart sshd
+
+- name: Remove user-specific SSH configuration if password auth is enabled
+  become: true
+  notify: Restart sshd
+  when: not automation_user_disable_password_auth | default(true)
+  block:
+  - name: Remove SSH config file
+    ansible.builtin.file:
+      path: /etc/ssh/sshd_config.d/{{ automation_user_name }}.conf
+      state: absent
+  - name: Remove command filter script
+    ansible.builtin.file:
+      path: /usr/local/bin/automation_user_command_filter
+      state: absent

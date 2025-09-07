@@ -1,0 +1,163 @@
+---
+# SPDX-License-Identifier: MIT-0
+# Tasks file for systemd-networkd
+
+- name: Create systemd-networkd configuration directory
+  become: true
+  ansible.builtin.file:
+    path: "{{ systemd_networkd_config_dir }}"
+    state: directory
+    mode: '0755'
+    owner: root
+    group: root
+
+- name: Find existing network configuration files
+  when: (systemd_networkd_backup | bool) or (systemd_networkd_cleanup_orphan_config | bool)
+  ansible.builtin.find:
+    paths: "{{ systemd_networkd_config_dir }}"
+    file_type: file
+  register: systemd_networkd_existing_config_files
+
+- name: Backup existing network configuration files
+  when: systemd_networkd_backup | bool
+  block:
+  - name: Ensure backup directory exists
+    become: true
+    ansible.builtin.file:
+      path: "{{ systemd_networkd_backup_dir }}"
+      state: directory
+      mode: '0755'
+      owner: root
+      group: root
+
+  - name: Copy network configuration files to backup directory
+    become: true
+    ansible.builtin.copy:
+      src: "{{ item.path }}"
+      dest: "{{ systemd_networkd_backup_dir }}/{{ item.path | basename }}"
+      remote_src: true
+      mode: '0644'
+      owner: root
+      group: root
+    loop: "{{ systemd_networkd_existing_config_files.files }}"
+    loop_control:
+      label: "{{ item.path }}"
+    tags:
+    - molecule-idempotence-notest
+# END BLOCK Backup existing network configuration files
+
+- name: Cleanup Ansible-managed network configuration files
+  when: systemd_networkd_cleanup_orphan_config | bool
+  block:
+  - name: Check files managed by Ansible
+    become: true
+    ansible.builtin.slurp:
+      path: "{{ item.path }}"
+    loop: "{{ systemd_networkd_existing_config_files.files }}"
+    register: systemd_networkd_file_contents
+    loop_control:
+      label: "{{ item.path }}"
+
+  - name: Remove Ansible-managed network configuration files
+    become: true
+    ansible.builtin.file:
+      path: "{{ item.item.path }}"
+      state: absent
+    loop: "{{ systemd_networkd_file_contents.results }}"
+    when:
+    - item.content is defined
+    - (item.content | b64decode | regex_search('^# Managed by Ansible', multiline=True)) is not none
+    # Exclude files that are currently defined in variables for idempotence
+    - not (item.item.path | basename | regex_replace('\.(network|netdev|link)$', '') in (systemd_networkd_networks.keys() | default([]) + systemd_networkd_netdevs.keys() | default([]) + systemd_networkd_links.keys() | default([])))
+    loop_control:
+      label: "{{ item.item.path }}"
+    notify: Restart systemd-networkd
+
+- name: Configure netdev interfaces using dynamic template
+  become: true
+  ansible.builtin.template:
+    src: networkd.ini.j2
+    dest: "{{ systemd_networkd_config_dir }}/{{ netdev_config.key }}.netdev"
+    mode: '0644'
+    owner: root
+    group: root
+  loop: "{{ systemd_networkd_netdevs | default({}) | dict2items }}"
+  loop_control:
+    loop_var: netdev_config
+    label: "{{ netdev_config.key }}"
+  vars:
+    network_config: "{{ netdev_config.value }}"
+  when:
+  - systemd_networkd_netdevs is defined
+  - systemd_networkd_netdevs is mapping
+  - systemd_networkd_netdevs | length > 0
+  notify: Restart systemd-networkd
+
+- name: Configure network interfaces using dynamic template
+  become: true
+  ansible.builtin.template:
+    src: networkd.ini.j2
+    dest: "{{ systemd_networkd_config_dir }}/{{ interface_config.key }}.network"
+    mode: '0644'
+    owner: root
+    group: root
+  loop: "{{ systemd_networkd_networks | default({}) | dict2items }}"
+  loop_control:
+    loop_var: interface_config
+    label: "{{ interface_config.key }}"
+  vars:
+    network_config: "{{ interface_config.value }}"
+  when:
+  - systemd_networkd_networks is defined
+  - systemd_networkd_networks is mapping
+  - systemd_networkd_networks | length > 0
+  notify: Restart systemd-networkd
+
+- name: Configure link settings using dynamic template
+  become: true
+  ansible.builtin.template:
+    src: networkd.ini.j2
+    dest: "{{ systemd_networkd_config_dir }}/{{ link_config.key }}.link"
+    mode: '0644'
+    owner: root
+    group: root
+  loop: "{{ systemd_networkd_links | default({}) | dict2items }}"
+  loop_control:
+    loop_var: link_config
+    label: "{{ link_config.key }}"
+  vars:
+    network_config: "{{ link_config.value }}"
+  when:
+  - systemd_networkd_links is defined
+  - systemd_networkd_links is mapping
+  - systemd_networkd_links | length > 0
+  notify: Restart systemd-networkd
+
+- name: Disable and stop NetworkManager if running
+  become: true
+  ansible.builtin.systemd:
+    name: NetworkManager
+    state: stopped
+    enabled: false
+  when:
+  - systemd_networkd_networkmanager_in_services
+  - systemd_networkd_chroot_path is not defined
+
+- name: Enable and start systemd-networkd service
+  become: true
+  ansible.builtin.systemd:
+    name: systemd-networkd
+    state: started
+    enabled: true
+  when:
+  - not systemd_networkd_in_services
+  - systemd_networkd_chroot_path is not defined
+
+- name: Enable systemd-networkd service in chroot
+  become: true
+  ansible.builtin.command:
+    cmd: "arch-chroot {{ systemd_networkd_chroot_path }} systemctl enable systemd-networkd.service"
+  failed_when: systemd_networkd_enable_chroot.rc != 0
+  changed_when: false
+  register: systemd_networkd_enable_chroot
+  when: systemd_networkd_chroot_path is defined

@@ -1,0 +1,28 @@
+---
+# Default values for backup instances
+borg_backup_default_schedule: daily
+borg_backup_cache_dir: /var/cache/borg-backup
+borg_backup_base_config_dir: /var/lib/borg-backup/security
+borg_backup_config_dir: /etc/conf.d/borg-backup
+borg_backup_default_create_args: "--verbose --stats --show-rc --compression zstd,3 --one-file-system"
+borg_backup_default_prune_args: "--keep-daily 7 --keep-weekly 4 --keep-monthly 3"
+borg_backup_default_check_args: "--verbose"
+borg_backup_default_archive_name: "{now}"
+# List of backup instances to configure
+# Each instance will create a separate systemd service and timer
+borg_backup_instances: []
+# - name: home
+#   source_dir: /home
+#   schedule:
+#   - daily
+#   - weekly
+#   repository: /var/backup/borg/home-backup
+#   compression: lz4
+#   stats: true
+# - name: opt
+#   source_dir: /opt
+#   schedule:
+#   - weekly
+#   repository: ssh://borg@borg-server.example.com/opt-backup
+#   compression: lz4
+#   stats: true

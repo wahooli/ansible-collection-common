@@ -1,0 +1,26 @@
+---
+- name: Collect SSH keys from client hosts
+  hosts: client_hosts
+  gather_facts: false
+  tasks:
+  - name: Read generated public key
+    ansible.builtin.slurp:
+      src: /home/molecule/.ssh/id_rsa.pub
+    register: client_public_key
+
+  - name: Set fact for client public key
+    ansible.builtin.set_fact:
+      client_ssh_pub_key: "{{ client_public_key.content | b64decode | trim }}"
+
+- name: Converge
+  hosts: "!client_hosts"
+  tasks:
+  - name: Merge client SSH keys into automation_user_ssh_keys
+    ansible.builtin.set_fact:
+      automation_user_ssh_keys: "{{ (automation_user_ssh_keys | default([])) + client_ssh_keys }}"
+    vars:
+      client_ssh_keys: "{{ hostvars | dict2items(key_name='hostname', value_name='vars') | selectattr('vars.client_ssh_pub_key', 'defined') | map(attribute='vars.client_ssh_pub_key') | list }}"
+
+  - name: Include automation_user role
+    ansible.builtin.include_role:
+      name: automation_user

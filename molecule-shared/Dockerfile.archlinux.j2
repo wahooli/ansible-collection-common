@@ -3,7 +3,7 @@ FROM {{ item.image }}
 ENV container=docker \
     ANSIBLE_USER=molecule \
     DEPLOY_GROUP=deployer \
-    SUDO_GROUP={{'sudo' if 'debian' in item.image else 'wheel' }}
+    SUDO_GROUP=wheel
 
 RUN pacman -Sy --noconfirm \
     && pacman --noconfirm -S \

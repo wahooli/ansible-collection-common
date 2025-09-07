@@ -1,0 +1,99 @@
+---
+# This task creates a single mdadm array based on the current loop iteration
+# Supports three ways to identify members:
+# - device: Direct device path (e.g., /dev/sda1)
+# - label: Partition label (e.g., ROOTRAID)
+# - uuid: Partition UUID (e.g., 0f49b047-5ff0-4886-9cb5-14940f405faa)
+#
+# This task is included in a loop from main.yaml, so 'md' contains the current array config
+
+- name: Initialize member devices list # noqa: var-naming[no-role-prefix]
+  ansible.builtin.set_fact:
+    member_devices_list: []
+
+- name: Process label members
+  become: true
+  block:
+  - name: Get devices by label # noqa: var-naming[no-role-prefix]
+    ansible.builtin.command: "blkid -t PARTLABEL={{ item.label }} -o device"
+    loop: "{{ md.members }}"
+    register: label_devices
+    changed_when: false
+    when: item.label is defined
+
+  - name: Add label devices to member list # noqa: var-naming[no-role-prefix]
+    ansible.builtin.set_fact:
+      member_devices_list: "{{ member_devices_list + (item.stdout_lines | default([])) }}"
+    loop: "{{ label_devices.results }}"
+    when:
+    - item.stdout_lines is defined
+    - item.stdout_lines | length > 0
+
+- name: Process UUID members
+  block:
+  - name: Get devices by UUID # noqa: var-naming[no-role-prefix]
+    ansible.builtin.command: "blkid -t PARTUUID={{ item.uuid }} -o device"
+    loop: "{{ md.members }}"
+    register: uuid_devices
+    changed_when: false
+    when: item.uuid is defined
+
+  - name: Add UUID devices to member list # noqa: var-naming[no-role-prefix]
+    ansible.builtin.set_fact:
+      member_devices_list: "{{ member_devices_list + (item.stdout_lines | default([])) }}"
+    loop: "{{ uuid_devices.results }}"
+    when:
+    - item.stdout_lines is defined
+    - item.stdout_lines | length > 0
+
+- name: Process direct device members
+  become: true
+  block:
+  - name: Add direct device paths to member list # noqa: var-naming[no-role-prefix]
+    ansible.builtin.set_fact:
+      member_devices_list: "{{ member_devices_list + [item.device] }}"
+    loop: "{{ md.members }}"
+    when: item.device is defined
+
+- name: Check if mdadm array already exists # noqa: var-naming[no-role-prefix]
+  become: true
+  ansible.builtin.stat:
+    path: "{{ md.device }}"
+  register: md_device_stat
+
+- name: Stop existing mdadm array if force is true
+  become: true
+  ansible.builtin.command: "mdadm --stop {{ md.device }}"
+  changed_when: false
+  when:
+  - md_device_stat.stat.exists
+  - md.force | default(false)
+
+- name: Remove existing mdadm array if force is true
+  become: true
+  ansible.builtin.command: "mdadm --remove {{ md.device }}"
+  changed_when: false
+  when:
+  - md_device_stat.stat.exists
+  - md.force | default(false)
+  failed_when: false
+
+- name: Create mdraid array {{ md.device }}
+  become: true
+  ansible.builtin.command: "mdadm --create {{ md.device }} --level={{ md.level }}{% if md.name is defined %} --name={{ md.name }}{% endif %}{% if md.metadata is defined %} --metadata={{ md.metadata }}{% endif %} --raid-devices={{ member_devices_list | length }} --force --assume-clean --run {{ member_devices_list | join(' ') }}"
+  when:
+  - not md_device_stat.stat.exists or md.force | default(false)
+  args:
+    creates: "{{ md.device }}"
+  changed_when: false
+  environment:
+    MDADM_NO_COLOR: "1"
+    MDADM_NO_WARNINGS: "1"
+
+- name: Wait for mdraid array to be ready
+  become: true
+  ansible.builtin.wait_for:
+    path: "{{ md.device }}"
+    timeout: 30
+  when:
+  - not md_device_stat.stat.exists or md.force | default(false)

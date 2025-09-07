@@ -1,0 +1,52 @@
+---
+- name: Converge
+  hosts: all
+  tasks:
+  - name: Read loop device 0 from disk
+    ansible.builtin.slurp:
+      src: /loopdev0.txt
+    register: loopdev0_b64
+
+  - name: Read loop device 1 from disk
+    ansible.builtin.slurp:
+      src: /loopdev1.txt
+    register: loopdev1_b64
+
+  - name: "Include archlinux_install role"
+    vars:
+      # Decode the device names into variables
+      loopdev0: "{{ loopdev0_b64.content | b64decode }}" # noqa: var-naming[no-role-prefix]
+      loopdev1: "{{ loopdev1_b64.content | b64decode }}" # noqa: var-naming[no-role-prefix]
+      archlinux_install_disks:
+      - device: "{{ loopdev0 }}"
+        wipe: false
+        partitions:
+        - name: ESP
+          # start: 0%
+          end: 512MiB
+          flags:
+          - boot
+          - esp
+          type: primary
+        - name: ROOTRAID
+          start: 512MiB
+          end: '100%'
+          flags:
+          - raid
+          type: primary
+      - device: "{{ loopdev1 }}"
+        wipe: false
+        partitions:
+        - name: ESP
+          # start: 0%
+          end: 512MiB
+          flags:
+          - boot
+          - esp
+        - name: ROOTRAID
+          start: 512MiB
+          end: '100%'
+          flags:
+          - raid
+    ansible.builtin.include_role:
+      name: "archlinux_install"

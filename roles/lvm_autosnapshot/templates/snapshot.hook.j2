@@ -1,0 +1,17 @@
+[Trigger]
+# Trigger on any package installation, removal, or upgrade.
+Operation = Upgrade
+Operation = Install
+Operation = Remove
+Type = Package
+Target = *
+
+[Action]
+# This message will be displayed in the terminal when the hook runs.
+Description = Creating LVM snapshot and backing up boot files for system rollback...
+# Run the script *before* the transaction begins.
+When = PreTransaction
+# This is the command to execute.
+Exec = {{ lvm_autosnapshot_script_install_path.rstrip('/') }}/create-root-snapshot
+# CRITICAL: If our script fails for any reason, abort the entire pacman operation.
+AbortOnFail

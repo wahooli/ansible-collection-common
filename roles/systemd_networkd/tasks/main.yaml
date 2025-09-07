@@ -1,0 +1,39 @@
+---
+# SPDX-License-Identifier: MIT-0
+# Tasks file for systemd_networkd
+
+- name: Populate service facts
+  become: true
+  ansible.builtin.service_facts:
+  when: ansible_facts.services is not defined
+
+- name: Set role specific facts
+  ansible.builtin.set_fact:
+    systemd_networkd_configure_resolved: >-
+      {{
+        (
+          systemd_networkd_resolved_confd is defined and
+          systemd_networkd_resolved_confd is mapping and
+          systemd_networkd_resolved_confd | length > 0
+        ) or
+        (
+          systemd_networkd_resolved_conf is defined and
+          systemd_networkd_resolved_conf is mapping and
+          systemd_networkd_resolved_conf | length > 0
+        )
+      }}
+    systemd_networkd_in_services: "{{ ansible_facts.services is defined and 'systemd-networkd' in ansible_facts.services }}"
+    systemd_networkd_resolved_in_services: "{{ ansible_facts.services is defined and 'systemd-resolved' in ansible_facts.services }}"
+    systemd_networkd_networkmanager_in_services: "{{ ansible_facts.services is defined and 'NetworkManager' in ansible_facts.services }}"
+
+- name: Include OS-specific tasks
+  ansible.builtin.include_tasks: "{{ ansible_os_family }}.yaml"
+  when: ansible_os_family in ['Debian', 'RedHat', 'Archlinux']
+
+- name: Configure systemd-resolved
+  ansible.builtin.include_tasks: systemd-resolved.yaml
+  when: systemd_networkd_configure_resolved | default(false)
+
+- name: Configure systemd-networkd
+  ansible.builtin.include_tasks: systemd-networkd.yaml
+  when: systemd_networkd_enabled is not defined or systemd_networkd_enabled | bool

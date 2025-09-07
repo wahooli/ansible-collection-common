@@ -1,0 +1,89 @@
+---
+- name: Cleanup
+  hosts: all
+  gather_facts: false
+  tasks:
+  - name: Wait for docker instances to be created
+    ansible.builtin.wait_for_connection:
+      delay: 1
+      timeout: 2
+    register: wait_for_instances
+    failed_when: false
+    changed_when:
+    - wait_for_instances.msg is defined
+    - '"timed out waiting" in wait_for_instances.msg'
+
+  - name: Cleanup archlinux_install
+    when:
+    - wait_for_instances is not changed
+    block:
+    # 1. Unmount all filesystems recursively. This is more robust than unmounting one by one.
+    - name: Unmount all filesystems under /mnt
+      ansible.builtin.command:
+        cmd: umount -R /mnt
+      failed_when: false
+      changed_when: false
+
+    # 2. Deactivate all swap devices. 'swapoff -a' is generic and handles files/partitions.
+    - name: Deactivate all swap devices
+      ansible.builtin.command:
+        cmd: swapoff -a
+      failed_when: false
+      changed_when: false
+
+    # 3. Deactivate LVM Volume Groups (if any were created in a test).
+    - name: Deactivate LVM Volume Groups
+      ansible.builtin.command:
+        cmd: vgchange -an
+      failed_when: false
+      changed_when: false
+
+    - name: Remove all logical volumes
+      become: true
+      ansible.builtin.command:
+        cmd: lvremove -fy
+      failed_when: false
+      changed_when: false
+
+    - name: Remove all volume groups
+      become: true
+      ansible.builtin.command:
+        cmd: vgremove -fy
+      failed_when: false
+      changed_when: false
+
+    # 4. Close LUKS containers (if any were created in a test).
+    - name: Close LUKS devices
+      ansible.builtin.command:
+        cmd: cryptsetup close {{ item }}
+      loop:
+      - cryptroot
+      failed_when: false
+      changed_when: false
+
+    # 5. Stop any active MDADM arrays. This is CRITICAL before detaching loop devices.
+    - name: Stop MDADM arrays
+      ansible.builtin.command:
+        cmd: mdadm --stop --scan
+      failed_when: false
+      changed_when: false
+
+    # 6. Remove all loop devices.
+    - name: Remove all loop devices
+      ansible.builtin.command:
+        cmd: losetup -D
+      changed_when: true
+      failed_when: false
+
+    # 7. Clean up temporary files created by prepare.yml.
+    - name: Remove temporary disk images and device info files
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: absent
+      loop:
+      - /fakedisk0.img
+      - /fakedisk1.img
+      - /loopdev0.txt
+      - /loopdev1.txt
+      failed_when: false
+      changed_when: false

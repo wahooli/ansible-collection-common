@@ -1,0 +1,47 @@
+---
+# SPDX-License-Identifier: MIT-0
+# RedHat-specific tasks for systemd_networkd
+
+- name: Update package cache
+  become: true
+  failed_when: false
+  ansible.builtin.dnf:
+    update_cache: true
+  tags:
+  - molecule-idempotence-notest
+
+- name: Gather the package facts
+  become: true
+  ansible.builtin.package_facts:
+    manager: auto
+  when: ansible_facts.packages is not defined
+
+- name: Check if systemd-resolved package is available
+  become: true
+  ansible.builtin.dnf:
+    list: systemd-resolved
+  register: systemd_networkd_resolved_available
+  when: systemd_networkd_configure_resolved | default(false)
+  failed_when: false
+  changed_when: false
+
+- name: Install systemd package (RedHat)
+  become: true
+  ansible.builtin.dnf:
+    name:
+    - systemd
+    - dbus-broker
+    - "{{ 'systemd-resolved' if systemd_resolved_package_available else omit }}"
+    state: present
+  when: "'systemd' not in ansible_facts.packages or ('systemd-resolved' not in ansible_facts.packages and systemd_networkd_configure_resolved | default(false))"
+  notify: Reload systemd daemon
+  vars:
+    systemd_resolved_package_available: "{{ systemd_networkd_configure_resolved | default(false) and systemd_networkd_resolved_available.results | length > 0 }}"
+
+- name: Enable and start dbus-broker service
+  become: true
+  ansible.builtin.systemd:
+    name: dbus-broker
+    state: started
+    enabled: true
+  when: "'dbus-broker' not in ansible_facts.services"

@@ -19,10 +19,21 @@
 
 - name: Import CachyOS pacman key
   when: archlinux_install_cachyos_key_exists.stdout == ''
-  community.general.pacman_key:
-    id: "{{ archlinux_install_cachyos_key_id }}"
-    keyserver: "{{ archlinux_install_cachyos_key_server }}"
-    force_update: true
+  block:
+  - name: Import CachyOS pacman key
+    community.general.pacman_key:
+      id: "{{ archlinux_install_cachyos_key_id }}"
+      keyserver: "{{ archlinux_install_cachyos_key_server }}"
+      force_update: true
+  rescue:
+  - name: Initialize pacman-key
+    ansible.builtin.command: pacman-key --init
+    changed_when: false
+  - name: Retry importing CachyOS pacman key
+    community.general.pacman_key:
+      id: "{{ archlinux_install_cachyos_key_id }}"
+      keyserver: "{{ archlinux_install_cachyos_key_server }}"
+      force_update: true
 
 - name: Install CachyOS mirrorlists
   when: "pacman_conf | default('/etc/pacman.conf') == '/etc/pacman.conf'"
@@ -138,4 +149,5 @@
     archlinux_install_additional_packages: "{{ (archlinux_install_additional_packages | default([])) + ['cachyos-zfs', archlinux_install_kernel + '-zfs', 'zfs-utils'] }}"
   when:
   - "pacman_conf | default('/etc/pacman.conf') == '/etc/pacman.conf'"
-  - archlinux_install_root_fstype == 'zfs'
+  - archlinux_install_zfs_root is defined
+  - archlinux_install_zfs_root | bool

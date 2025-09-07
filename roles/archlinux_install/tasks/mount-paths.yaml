@@ -1,0 +1,25 @@
+---
+- name: Create directory for mountpoint {{ mount.path }}
+  ansible.builtin.file:
+    path: "{{ mount.path }}"
+    state: directory
+    mode: "{{ mount.mode | default('0755') }}"
+
+- name: Ensure source directory exists for bind mount
+  ansible.builtin.file:
+    path: "{{ mount.src }}"
+    state: directory
+    mode: "{{ mount.mode | default('0755') }}"
+  when:
+  - mount.fstype is defined
+  - mount.fstype == 'none'
+  - mount.opts is defined
+  - "'bind' in mount.opts"
+
+- name: Mount {{ mount.src }}
+  ansible.posix.mount:
+    path: "{{ mount.path }}"
+    src: "{{ mount.src }}"
+    fstype: "{{ mount.fstype }}"
+    opts: "{{ mount.opts | default(omit) }}"
+    state: mounted

@@ -1,0 +1,19 @@
+# Managed by Ansible
+
+{% for configKey, configValues in network_config.items() %}
+[{{- configKey | to_pascal_case -}}]
+{% for key, _value in configValues.items() -%}
+{%- set value = _value -%}
+{%- if value is boolean -%}
+  {%- set value = 'yes' if _value else 'no' -%}
+{%- endif -%}
+{%- if value is iterable and value is not string and (value | length) > 0 -%}
+    {%- for item in value %}
+{{ key | to_pascal_case }}={{ item }}
+    {% endfor -%}
+{% else %}
+{{ key | to_pascal_case }}={{ value }}
+{% endif %}
+{% endfor %}
+
+{% endfor %}

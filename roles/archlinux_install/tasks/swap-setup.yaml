@@ -1,0 +1,45 @@
+---
+- name: "Process swap item: {{ swap_item }}"
+  when: swap_item.file is defined
+  block:
+  - name: "Create swapfile {{ swap_item.file }}"
+    block:
+    - name: "Ensure parent directory exists for {{ swap_item.file }}"
+      ansible.builtin.file:
+        path: "{{ swap_item.file | dirname }}"
+        state: directory
+        mode: "0755"
+        owner: root
+        group: root
+
+    - name: "Create a swapfile at {{ swap_item.file }}"
+      community.general.filesize:
+        path: "{{ swap_item.file }}"
+        size: "{{ swap_item.size }}"
+        owner: root
+        group: root
+        mode: "0600"
+
+    - name: "Disable CoW for swapfile {{ swap_item.file }}"
+      ansible.builtin.file:
+        path: "{{ swap_item.file }}"
+        attributes: C
+
+  - name: "Run mkswap on {{ swap_device }}" # noqa: var-naming[no-role-prefix]
+    ansible.builtin.command:
+      cmd: "mkswap {{ swap_device }}"
+    failed_when: swap_mkswap.rc != 0
+    changed_when: false
+    register: swap_mkswap
+    vars:
+      swap_device: "{{ swap_item.file | default(swap_item.partition) }}"
+
+  - name: "Run swapon on {{ swap_device }}" # noqa: var-naming[no-role-prefix]
+    ansible.builtin.command:
+      cmd: "swapon {{ swap_device }}"
+    failed_when: swap_swapon.rc != 0
+    changed_when: false
+    register: swap_swapon
+    when: swap_mkswap is not skipped
+    vars:
+      swap_device: "{{ swap_item.file | default(swap_item.partition) }}"

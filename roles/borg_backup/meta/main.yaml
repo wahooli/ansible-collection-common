@@ -1,0 +1,22 @@
+---
+dependencies: []
+
+galaxy_info:
+  author: wahooli
+  description: Installs and configures borg backup using systemd instance units (borg-backup@)
+  license: MIT
+  min_ansible_version: "2.10"
+  platforms:
+  - name: ArchLinux
+    versions:
+    - all
+  - name: Debian
+    versions:
+    - all
+  - name: Ubuntu
+    versions:
+    - all
+  galaxy_tags:
+  - backup
+  - borg
+  - systemd

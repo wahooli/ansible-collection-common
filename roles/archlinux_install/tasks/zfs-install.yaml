@@ -40,7 +40,8 @@
   ansible.builtin.fail:
     msg: "zfs_zpools can have only one zpool defined during install process!"
   when:
-  - archlinux_install_root_fstype == 'zfs'
+  - archlinux_install_zfs_root is defined
+  - archlinux_install_zfs_root | bool
   - zfs_zpools | length != 1
 
 - name: Verify archlinux_install_zfs_root_volume variable
@@ -54,7 +55,8 @@
   ansible.builtin.fail:
     msg: "Root zfs pool has to have name!"
   when:
-  - archlinux_install_root_fstype == 'zfs'
+  - archlinux_install_zfs_root is defined
+  - archlinux_install_zfs_root | bool
   - zfs_zpools[0].name is undefined or zfs_zpools[0].name | length < 1
 
 - name: Create directory for zfs cache file
@@ -82,7 +84,8 @@
 
 - name: Modify root zpool parameters # noqa: var-naming[no-role-prefix]
   when:
-  - archlinux_install_root_fstype == 'zfs'
+  - archlinux_install_zfs_root is defined
+  - archlinux_install_zfs_root | bool
   ansible.builtin.set_fact:
     root_zfs_zpool: "{{ [new_zpool] }}"
   vars:
@@ -101,7 +104,8 @@
   ansible.builtin.include_role:
     name: "zfs"
   when:
-  - archlinux_install_root_fstype == 'zfs'
+  - archlinux_install_zfs_root is defined
+  - archlinux_install_zfs_root | bool
   vars:
     zfs_zpools: "{{ root_zfs_zpool }}"
     zfs_archiso: true

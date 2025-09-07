@@ -8,6 +8,7 @@
 
 - name: Install archlinux-keyring
   ansible.builtin.command:
-    cmd: pacstrap -K /mnt archlinux-keyring
+    cmd: >-
+      pacstrap -K /mnt archlinux-keyring{%- if ansible_architecture is search("arm") or ansible_architecture is search("aarch64") %} archlinuxarm-keyring{%- endif %}
   failed_when: false
   changed_when: false

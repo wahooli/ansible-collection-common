@@ -1,0 +1,73 @@
+---
+dependency:
+  name: galaxy
+driver:
+  name: docker
+platforms:
+- name: borg-debian-12
+  image: debian:12
+  pre_build_image: false
+  dockerfile: ../../../../molecule-shared/Dockerfile.debian-systemd.j2
+  tmpfs:
+  - /run
+  - /tmp
+  tty: true
+  privileged: true
+
+- name: borg-ubuntu-22.04
+  image: ubuntu:22.04
+  pre_build_image: false
+  dockerfile: ../../../../molecule-shared/Dockerfile.debian-systemd.j2
+  tmpfs:
+  - /run
+  - /tmp
+  tty: true
+  privileged: true
+
+- name: borg-archlinux
+  image: archlinux:base
+  pre_build_image: false
+  dockerfile: ../../../../molecule-shared/Dockerfile.archlinux-systemd.j2
+  tmpfs:
+  - /run
+  - /tmp
+  tty: true
+  privileged: true
+
+# - name: borg-rocky
+#   image: rockylinux:9
+#   # image: redhat/ubi9-init
+#   pre_build_image: false
+#   dockerfile: ../../../../molecule-shared/Dockerfile.rhel-systemd.j2
+#   tmpfs:
+#   - /run
+#   - /tmp
+#   tty: true
+#   privileged: true
+
+provisioner:
+  name: ansible
+  env:
+    ANSIBLE_ROLES_PATH: ../../..
+  inventory:
+    group_vars:
+      all:
+        ansible_user: molecule
+        borg_backup_instances:
+        - name: home
+          source_dirs:
+          - /home
+          - /etc
+          schedule:
+          - daily
+          - weekly
+          repository: /var/backup/borg/home-backup
+        - name: opt
+          passphrase: "very-secret-passphrase"
+          source_dirs:
+          - /opt
+          schedule:
+          - weekly
+          repository: /var/backup/borg/opt-backup
+verifier:
+  name: ansible

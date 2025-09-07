@@ -1,0 +1,155 @@
+---
+# SPDX-License-Identifier: MIT-0
+# Tasks file for systemd_boot
+
+- name: Collect package facts
+  become: true
+  when:
+  - ansible_facts.packages is not defined
+  - systemd_boot_chroot_path is not defined
+  block:
+  - name: Collect package facts
+    ansible.builtin.package_facts:
+      manager: auto
+  rescue:
+  - name: Update pacman database after package facts collection failed
+    community.general.pacman:
+      update_cache: true
+    tags:
+    - molecule-idempotence-notest
+  - name: Retry collecting package facts after pacman cache update
+    ansible.builtin.package_facts:
+      manager: auto
+
+- name: Ensure systemd-boot package is installed
+  become: true
+  when:
+  - systemd_boot_chroot_path is not defined
+  - ansible_facts.packages is defined
+  - "('systemd' not in ansible_facts.packages) or ('efibootmgr' not in ansible_facts.packages)"
+  community.general.pacman:
+    name:
+    - systemd
+    - efibootmgr
+    state: present
+
+
+- name: Install required packages in chroot (Archlinux)
+  become: true
+  ansible.builtin.command:
+    argv:
+    - arch-chroot
+    - "{{ systemd_boot_chroot_path }}"
+    - pacman
+    - -S
+    - systemd
+    - efibootmgr
+    - --noconfirm
+  failed_when: systemd_boot_chroot_install.rc != 0
+  changed_when: false
+  register: systemd_boot_chroot_install
+  when: systemd_boot_chroot_path is defined
+
+- name: Ensure systemd_boot_path is not world readable
+  become: true
+  ansible.builtin.file:
+    path: "{{ (systemd_boot_chroot_path | default('')) + systemd_boot_path }}"
+    state: directory
+    mode: "0700"
+    owner: root
+    group: root
+
+- name: Ensure systemd_boot_entries_path exists
+  become: true
+  ansible.builtin.file:
+    path: "{{ (systemd_boot_chroot_path | default('')) + systemd_boot_entries_path }}"
+    state: directory
+    mode: "0700"
+    owner: root
+    group: root
+
+- name: Install systemd-boot to EFI partition
+  become: true
+  ansible.builtin.command:
+    cmd: "{{ 'arch-chroot ' + systemd_boot_chroot_path + ' ' if systemd_boot_chroot_path is defined else '' }}bootctl install --path={{ systemd_boot_path }} {{ '--no-variables' if ansible_connection in ['container', 'docker', 'community.docker.docker'] else '' }}"
+    creates: "{{ (systemd_boot_chroot_path | default('')) + systemd_boot_path }}/EFI/BOOT/{{ efi_bin }}"
+  vars:
+    efi_bin: "{{ 'BOOTAA64.EFI' if ansible_architecture in ['aarch64', 'arm64'] else 'BOOTX64.EFI' }}"
+  register: systemd_boot_bootctl_install
+  changed_when: not (systemd_boot_bootctl_install.stdout is defined and systemd_boot_bootctl_install.stdout.startswith('skipped'))
+  failed_when: systemd_boot_bootctl_install.rc != 0
+
+- name: Deploy systemd-boot loader configuration
+  become: true
+  ansible.builtin.template:
+    src: "templates/loader.conf.j2"
+    dest: "{{ (systemd_boot_chroot_path | default('')) + systemd_boot_loader_path }}/loader.conf"
+    owner: root
+    group: root
+    mode: '0600'
+
+- name: Deploy boot entries
+  become: true
+  ansible.builtin.template:
+    src: "templates/entry.conf.j2"
+    dest: "{{ (systemd_boot_chroot_path | default('')) + systemd_boot_entries_path }}/{{ entry.key }}.conf"
+    owner: root
+    group: root
+    mode: '0600'
+  vars:
+    entry_config: "{{ entry.value }}"
+  loop: "{{ systemd_boot_entries | dict2items }}"
+  loop_control:
+    loop_var: entry
+    label: "{{ entry.value.title | default(entry.key) }}"
+
+- name: Deploy fallback boot entries
+  become: true
+  ansible.builtin.template:
+    src: "templates/entry.conf.j2"
+    dest: "{{ (systemd_boot_chroot_path | default('')) + systemd_boot_entries_path }}/{{ entry.key }}-fallback.conf"
+    owner: root
+    group: root
+    mode: '0600'
+  vars:
+    fallback_overrides:
+      title: "{{ entry.value.title }} (Fallback)"
+      # Only modify 'initrd' if it's actually defined in the source entry.
+      # Otherwise, 'omit' the key entirely from our overrides.
+      initrd: >-
+        {%- if entry.value.initrd is defined -%}
+          {%- set new_list = [] -%}
+          {%- for item in entry.value.initrd -%}
+            {%- if 'initramfs' in item and item.endswith('.img') -%}
+              {%- set _ = new_list.append(item | replace('.img', '-fallback.img')) -%}
+            {%- else -%}
+              {%- set _ = new_list.append(item) -%}
+            {%- endif -%}
+          {%- endfor -%}
+          {{- new_list -}}
+        {%- else -%}
+          {{- omit -}}
+        {%- endif -%}
+    # Create the final config by combining the original entry with our overrides.
+    entry_config: "{{ entry.value | combine(fallback_overrides) }}"
+  loop: "{{ systemd_boot_entries | dict2items | selectattr('value.create_fallback', 'defined') | selectattr('value.create_fallback') | list }}"
+  loop_control:
+    loop_var: entry
+    label: "{{ entry.value.title | default(entry.key) }}"
+
+- name: Update bootloader configuration
+  become: true
+  when: not systemd_boot_bootctl_install.changed
+  ansible.builtin.command:
+    cmd: "{{ 'arch-chroot ' + systemd_boot_chroot_path + ' ' if systemd_boot_chroot_path is defined else '' }}bootctl update"
+  register: systemd_boot_bootctl_update
+  changed_when: false
+  failed_when: ('version in place' not in systemd_boot_bootctl_update.stderr) and systemd_boot_bootctl_update.rc != 0 and systemd_boot_chroot_path is undefined
+
+- name: Verify systemd-boot installation
+  become: true
+  ansible.builtin.command:
+    cmd: "{{ 'arch-chroot ' + systemd_boot_chroot_path + ' ' if systemd_boot_chroot_path is defined else '' }}bootctl status"
+  register: systemd_boot_bootctl_status
+  changed_when: false
+  failed_when: systemd_boot_bootctl_status.rc != 0

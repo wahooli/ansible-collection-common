@@ -1,0 +1,72 @@
+#!/bin/bash
+set -e
+
+# --- Configuration ---
+VG_NAME="{{ lvm_autosnapshot_target_vg }}"
+SNAPSHOT_NAME="{{ lvm_autosnapshot_name }}"
+SNAPSHOT_SUFFIX="{{ lvm_autosnapshot_suffix }}"
+SNAPSHOT_LV_PATH="${VG_NAME}/${SNAPSHOT_NAME}"
+
+# --- Automation Flag Check ---
+AUTOMATED_RUN=false
+if [[ "$1" == "--yes" || "$1" == "-y" ]]; then
+    AUTOMATED_RUN=true
+    echo "--> Running in non-interactive mode (--yes flag detected)."
+fi
+
+# 1. Find all files to be deleted first
+if [ -z "$SNAPSHOT_SUFFIX" ]; then
+    echo "CRITICAL ERROR: SNAPSHOT_SUFFIX variable is empty. Aborting." >&2
+    exit 1
+fi
+{% if lvm_autosnapshot_bootloader == "systemd-boot" %}
+declare -a files_to_delete
+mapfile -t files_to_delete < <(find /boot {{ lvm_autosnapshot_systemd_boot_path.rstrip('/') }} -maxdepth 1 \( -name "*${SNAPSHOT_SUFFIX}.img" -o -name "*${SNAPSHOT_SUFFIX}.conf" -o -name "*${SNAPSHOT_SUFFIX}" \))
+
+# 2. Check if the LVM snapshot exists
+snapshot_exists=false
+if lvs "${SNAPSHOT_LV_PATH}" &>/dev/null; then
+    snapshot_exists=true
+fi
+{% raw %}
+# 3. If there's nothing to do, exit
+if [ "$snapshot_exists" = false ] && [ ${#files_to_delete[@]} -eq 0 ]; then
+    echo "--> No active snapshot or related boot files found. Nothing to do."
+    exit 0
+fi
+
+# 4. Confirmation Prompt
+if [ "$AUTOMATED_RUN" = true ]; then
+    echo "--> Automatically confirming cleanup."
+else
+    echo "The following actions will be taken:"
+    if [ "$snapshot_exists" = true ]; then
+        echo "  - The LVM snapshot '${SNAPSHOT_NAME}' will be removed."
+    fi
+    if [ ${#files_to_delete[@]} -gt 0 ]; then
+        echo "  - The following boot files will be permanently deleted:"
+        printf "    %s\n" "${files_to_delete[@]}"
+    fi
+    echo
+    read -p "Proceed with cleanup? [y/N]: " confirmation
+    if [[ "$confirmation" != "y" && "$confirmation" != "Y" ]]; then
+        echo "Cleanup aborted."
+        exit 1
+    fi
+fi
+
+# 5. Execute cleanup
+echo "--> Starting cleanup..."
+if [ "$snapshot_exists" = true ]; then
+    echo "--> Removing LVM snapshot..."
+    lvremove -f "${SNAPSHOT_LV_PATH}"
+fi
+
+if [ ${#files_to_delete[@]} -gt 0 ]; then
+    echo "--> Removing boot files..."
+    rm -vf "${files_to_delete[@]}"
+fi
+{% endraw %}
+{% endif %}
+
+echo "--> Cleanup successful."

@@ -1,78 +1,46 @@
 ---
-- name: Unmount and wipe partitions
-  when: archlinux_install_wipe_drive
+- name: "Wipe disk {{ disk.device }}"
+  when: disk.wipe | default(false)
   block:
-  - name: Check if mounted # noqa: var-naming[no-role-prefix]
+  - name: "Check if is mounted before wiping" # noqa: var-naming[no-role-prefix]
     ansible.builtin.command:
-      cmd: "findmnt /mnt"
+      cmd: "findmnt {{ disk.device }}"
     changed_when: false
     failed_when: false
     register: partitioning_findmnt
 
-  - name: Unmount recursive # noqa: var-naming[no-role-prefix]
+  - name: "Unmount all filesystems on {{ disk.device }}"
     ansible.builtin.command:
-      cmd: "umount -A --recursive /mnt"
-    failed_when: partitioning_umount_recursive.rc != 0
-    changed_when: false
-    register: partitioning_umount_recursive
+      cmd: "umount -A --recursive {{ disk.device }}"
     when: partitioning_findmnt.rc == 0
+    changed_when: false
+    failed_when: false
 
-  - name: Remove filesystem from boot partition # noqa: var-naming[no-role-prefix]
-    community.general.filesystem:
-      dev: '{{ archlinux_install_boot_partition }}'
-      state: absent
-    register: partitioning_wipe_boot
-    retries: 10
-    delay: 5
-    until: partitioning_wipe_boot is not failed
-
-  - name: Remove filesystem from root partition # noqa: var-naming[no-role-prefix]
-    community.general.filesystem:
-      dev: '{{ archlinux_install_root_partition }}'
-      state: absent
-    register: partitioning_wipe_root
-    retries: 10
-    delay: 5
-    until: partitioning_wipe_root is not failed
-
-  - name: Wipe partitions # noqa: var-naming[no-role-prefix]
+  - name: "Wipe partition table and filesystem signatures from {{ disk.device }}"
     ansible.builtin.command:
-      cmd: "wipefs -a {{ archlinux_install_drive }}"
-    failed_when: partitioning_wipefs.rc != 0
-    changed_when: not partitioning_wipefs is skipped
-    register: partitioning_wipefs
-# end block Unmount and wipe partitions
+      cmd: "wipefs -a {{ disk.device }}"
+    changed_when: true
+    failed_when: false
+# end block
 
-- name: Create partitions
+# This single task replaces the three separate, static tasks from the old file.
+# It loops over the 'partitions' list for the current 'disk'.
+- name: "Create partitions on {{ disk.device }}"
   community.general.parted:
-    device: '{{ archlinux_install_drive }}'
-    label: gpt
-    number: 1
-    part_end: "{{ archlinux_install_boot_partition_size | default('512MB') }}"
-    name: boot
-    flags: [boot, esp]
-    state: present
-
-- name: Create root partition
-  community.general.parted:
-    device: '{{ archlinux_install_drive }}'
-    label: gpt
-    number: 2
-    part_start: "{{ archlinux_install_boot_partition_size | default('512MB') }}"
-    part_end: "{{ '-' + archlinux_install_swap_size if archlinux_install_swap_partition | default(false) and archlinux_install_swap_size | length > 1 else '100%' }}"
-    name: root
-    state: present
-
-- name: Create swap partition
-  when:
-  - archlinux_install_swap_partition | default(false)
-  - archlinux_install_swap_size is defined
-  - archlinux_install_swap_size | length > 1
-  community.general.parted:
-    device: '{{ archlinux_install_drive }}'
-    label: gpt
-    name: swap
-    fs_type: linux-swap
-    number: 3
-    part_start: "-{{ archlinux_install_swap_size }}"
-    state: present
+    device: "{{ disk.device }}"
+    align: "{{ partition.align | default(omit) }}"
+    label: "{{ partition.label | default('gpt') }}"
+    number: "{{ partition_index + 1 }}" # Partition number is the loop index (1, 2, 3...)
+    name: "{{ partition.name }}" # This sets the GPT partition name/label
+    fs_type: "{{ partition.fs_type | default(omit) }}" # The filesystem type (e.g., fat32, ext4, xfs)
+    part_start: "{{ partition.start | default(omit) }}"
+    part_end: "{{ partition.end | default(omit) }}"
+    part_type: "{{ partition.type | default('primary') }}"
+    resize: "{{ partition.resize | default(omit) }}"
+    flags: "{{ partition.flags | default(omit) }}" # Add flags if defined in the data
+    state: "{{ partition.state | default('present') }}"
+    unit: "{{ partition.unit | default(omit) }}"
+  loop: "{{ disk.partitions }}"
+  loop_control:
+    loop_var: partition
+    index_var: partition_index

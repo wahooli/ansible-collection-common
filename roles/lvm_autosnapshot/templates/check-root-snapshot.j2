@@ -1,0 +1,21 @@
+#!/bin/bash
+# Runs as root to check LVM status and write to a world-readable file.
+
+# --- Configuration ---
+VG_NAME="{{ lvm_autosnapshot_target_vg }}"
+SNAPSHOT_NAME="{{ lvm_autosnapshot_name }}"
+STATUS_FILE="{{ lvm_autosnapshot_status_file }}"
+
+# --- Logic ---
+SNAPSHOT_LV_PATH="${VG_NAME}/${SNAPSHOT_NAME}"
+ROOT_DEVICE=$(findmnt -n -o SOURCE /)
+
+SYSTEM_STATE="CLEAN" # Default state
+
+if [[ "${ROOT_DEVICE}" == *"${SNAPSHOT_NAME}"* ]]; then
+    SYSTEM_STATE="BOOTED_FROM_SNAPSHOT"
+elif lvs "${SNAPSHOT_LV_PATH}" &>/dev/null; then
+    SYSTEM_STATE="SNAPSHOT_EXISTS"
+fi
+
+echo "${SYSTEM_STATE}" > "${STATUS_FILE}"

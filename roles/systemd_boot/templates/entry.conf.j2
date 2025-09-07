@@ -1,0 +1,36 @@
+# Ansible managed systemd-boot entry configuration
+
+{% if entry_config.title is defined %}
+title {{ entry_config.title }}
+{% endif %}
+{% if entry_config.options is defined %}
+options {{ entry_config.options }}
+{% endif %}
+{% if entry_config.machine_id is defined %}
+machine-id {{ entry_config.machine_id }}
+{% endif %}
+{% if entry_config.version is defined %}
+version {{ entry_config.version }}
+{% endif %}
+{% if entry_config.linux is defined %}
+linux {{ entry_config.linux }}
+{% endif %}
+{% if entry_config.devicetree is defined %}
+devicetree {{ entry_config.devicetree }}
+{% endif %}
+{% if entry_config.devicetree_overlay is defined %}
+devicetree-overlay {{ entry_config.devicetree_overlay }}
+{% endif %}
+{% if entry_config.architecture is defined %}
+architecture {{ entry_config.architecture }}
+{% endif %}
+{% if entry_config.efi is defined %}
+efi {{ entry_config.efi }}
+{% endif %}
+{% if entry_config.initrd is defined and entry_config.initrd is iterable and entry_config.initrd is not string %}
+{% for initrd_file in entry_config.initrd %}
+initrd {{ initrd_file }}
+{% endfor %}
+{% elif entry_config.initrd is defined and entry_config.initrd is string %}
+initrd {{ entry_config.initrd }}
+{% endif %}

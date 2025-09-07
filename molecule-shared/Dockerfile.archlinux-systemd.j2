@@ -3,7 +3,7 @@ FROM {{ item.image }}
 ENV container=docker \
     ANSIBLE_USER=molecule \
     DEPLOY_GROUP=deployer \
-    SUDO_GROUP={{'sudo' if 'debian' in item.image else 'wheel' }}
+    SUDO_GROUP=wheel
 
 RUN rm -rf /usr/lib/initcpio/* \
     && pacman -Sy --noconfirm \
@@ -47,18 +47,22 @@ RUN mkdir -p /etc/modules-load.d/ ; \
 
 RUN touch /docker-entrypoint.sh && chmod a+x /docker-entrypoint.sh && \
 echo -e '#!/bin/bash\n\
-mkdir -p /sys/fs/cgroup\n\
-mount -t cgroup2 none /sys/fs/cgroup\n\
-mount --make-shared /sys/fs/cgroup\n\
-mkdir -p /var/run/netns\n\
-mount -t tmpfs tmpfs /var/run/netns\n\
-mount --make-shared /var/run/netns\n\
-mkdir -p /sys/fs/bpf\n\
-mount bpffs /sys/fs/bpf -t bpf || echo "(already mounted)"\n\
-mount --make-shared /sys/fs/bpf || true\n\
-touch /dev/kmsg\n\
+set -e\n\
+# Try to create and mount cgroup, but continue if it fails\n\
+mkdir -p /sys/fs/cgroup || echo "Failed to create cgroup directory"\n\
+mount -t cgroup2 none /sys/fs/cgroup || echo "Failed to mount cgroup2"\n\
+mount --make-shared /sys/fs/cgroup || echo "Failed to make cgroup shared"\n\
+# Try to create and mount netns, but continue if it fails\n\
+mkdir -p /var/run/netns || echo "Failed to create netns directory"\n\
+mount -t tmpfs tmpfs /var/run/netns || echo "Failed to mount netns tmpfs"\n\
+mount --make-shared /var/run/netns || echo "Failed to make netns shared"\n\
+# Try to create and mount bpf, but continue if it fails\n\
+mkdir -p /sys/fs/bpf || echo "Failed to create bpf directory"\n\
+mount bpffs /sys/fs/bpf -t bpf || echo "Failed to mount bpf"\n\
+mount --make-shared /sys/fs/bpf || echo "Failed to make bpf shared"\n\
+touch /dev/kmsg || echo "Failed to touch kmsg"\n\
+echo "Entrypoint setup complete, starting systemd..."\n\
 exec "$@"'\
->> /docker-entrypoint.sh
-# ENTRYPOINT [ "/lib/systemd/systemd", "log-level=info", "unit=sysinit.target" ]
+> /docker-entrypoint.sh
+
 ENTRYPOINT [ "/docker-entrypoint.sh", "/lib/systemd/systemd", "log-level=info", "unit=sysinit.target" ]
-# ENTRYPOINT [ "/lib/systemd/systemd", "log-level=info", "unit=sysinit.target" ]

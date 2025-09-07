@@ -1,0 +1,241 @@
+---
+- name: Verify systemd_boot configuration
+  hosts: all
+  become: true
+  tasks:
+  - name: Verify systemd package is installed
+    ansible.builtin.package_facts:
+      manager: auto
+
+  - name: Check systemd package is present
+    ansible.builtin.assert:
+      that:
+      - "'systemd' in ansible_facts.packages"
+      fail_msg: "systemd package is not installed"
+      success_msg: "systemd package is installed"
+
+  - name: Verify efibootmgr package is installed
+    ansible.builtin.package_facts:
+      manager: auto
+
+  - name: Check efibootmgr package is present
+    ansible.builtin.assert:
+      that:
+      - "'efibootmgr' in ansible_facts.packages"
+      fail_msg: "efibootmgr package is not installed"
+      success_msg: "efibootmgr package is installed"
+
+  - name: Verify systemd-boot installation directory exists
+    ansible.builtin.stat:
+      path: /boot/EFI/systemd
+    register: systemd_boot_dir
+
+  - name: Check systemd-boot directory exists
+    ansible.builtin.assert:
+      that:
+      - systemd_boot_dir.stat.exists
+      - systemd_boot_dir.stat.isdir
+      fail_msg: "systemd-boot installation directory does not exist"
+      success_msg: "systemd-boot installation directory exists"
+
+  - name: Verify loader directory exists
+    ansible.builtin.stat:
+      path: /boot/loader
+    register: loader_dir
+
+  - name: Check loader directory exists and has correct permissions
+    ansible.builtin.assert:
+      that:
+      - loader_dir.stat.exists
+      - loader_dir.stat.isdir
+      - loader_dir.stat.pw_name == 'root'
+      - loader_dir.stat.gr_name == 'root'
+      fail_msg: "Loader directory does not exist or has incorrect permissions"
+      success_msg: "Loader directory exists with correct permissions"
+
+  - name: Verify entries directory exists
+    ansible.builtin.stat:
+      path: /boot/loader/entries
+    register: entries_dir
+
+  - name: Check entries directory exists and has correct permissions
+    ansible.builtin.assert:
+      that:
+      - entries_dir.stat.exists
+      - entries_dir.stat.isdir
+      - entries_dir.stat.pw_name == 'root'
+      - entries_dir.stat.gr_name == 'root'
+      fail_msg: "Entries directory does not exist or has incorrect permissions"
+      success_msg: "Entries directory exists with correct permissions"
+
+  - name: Verify loader.conf exists
+    ansible.builtin.stat:
+      path: /boot/loader/loader.conf
+    register: loader_conf
+
+  - name: Check loader.conf exists and has correct permissions
+    ansible.builtin.assert:
+      that:
+      - loader_conf.stat.exists
+      - loader_conf.stat.isreg
+      - loader_conf.stat.pw_name == 'root'
+      - loader_conf.stat.gr_name == 'root'
+      fail_msg: "loader.conf does not exist or has incorrect permissions"
+      success_msg: "loader.conf exists with correct permissions"
+
+  - name: Verify arch.conf entry exists
+    ansible.builtin.stat:
+      path: /boot/loader/entries/arch.conf
+    register: arch_conf
+
+  - name: Check arch.conf exists and has correct permissions
+    ansible.builtin.assert:
+      that:
+      - arch_conf.stat.exists
+      - arch_conf.stat.isreg
+      - arch_conf.stat.pw_name == 'root'
+      - arch_conf.stat.gr_name == 'root'
+      fail_msg: "arch.conf does not exist or has incorrect permissions"
+      success_msg: "arch.conf exists with correct permissions"
+
+  - name: Verify arch-fallback.conf entry exists
+    ansible.builtin.stat:
+      path: /boot/loader/entries/arch-fallback.conf
+    register: arch_fallback_conf
+
+  - name: Check arch-fallback.conf exists and has correct permissions
+    ansible.builtin.assert:
+      that:
+      - arch_fallback_conf.stat.exists
+      - arch_fallback_conf.stat.isreg
+      - arch_fallback_conf.stat.pw_name == 'root'
+      - arch_fallback_conf.stat.gr_name == 'root'
+      fail_msg: "arch-fallback.conf does not exist or has incorrect permissions"
+      success_msg: "arch-fallback.conf exists with correct permissions"
+
+  - name: Verify example.conf entry exists
+    ansible.builtin.stat:
+      path: /boot/loader/entries/example.conf
+    register: example_conf
+
+  - name: Check example.conf exists and has correct permissions
+    ansible.builtin.assert:
+      that:
+      - example_conf.stat.exists
+      - example_conf.stat.isreg
+      - example_conf.stat.pw_name == 'root'
+      - example_conf.stat.gr_name == 'root'
+      fail_msg: "example.conf does not exist or has incorrect permissions"
+      success_msg: "example.conf exists with correct permissions"
+
+  - name: Verify firmware_updater.conf entry exists
+    ansible.builtin.stat:
+      path: /boot/loader/entries/firmware_updater.conf
+    register: firmware_updater_conf
+
+  - name: Check firmware_updater.conf exists and has correct permissions
+    ansible.builtin.assert:
+      that:
+      - firmware_updater_conf.stat.exists
+      - firmware_updater_conf.stat.isreg
+      - firmware_updater_conf.stat.pw_name == 'root'
+      - firmware_updater_conf.stat.gr_name == 'root'
+      fail_msg: "firmware_updater.conf does not exist or has incorrect permissions"
+      success_msg: "firmware_updater.conf exists with correct permissions"
+
+  - name: Verify loader.conf content
+    ansible.builtin.slurp:
+      src: /boot/loader/loader.conf
+    register: loader_conf_content
+
+  - name: Check loader.conf contains required configuration
+    ansible.builtin.assert:
+      that:
+      - "'timeout 10' in (loader_conf_content.content | b64decode)"
+      - "'editor no' in (loader_conf_content.content | b64decode)"
+      - "'auto-entries yes' in (loader_conf_content.content | b64decode)"
+      - "'auto-firmware yes' in (loader_conf_content.content | b64decode)"
+      - "'console-mode max' in (loader_conf_content.content | b64decode)"
+      - "'default @saved' in (loader_conf_content.content | b64decode)"
+      fail_msg: "loader.conf is missing required configuration"
+      success_msg: "loader.conf contains all required configuration"
+
+  - name: Verify arch.conf content
+    ansible.builtin.slurp:
+      src: /boot/loader/entries/arch.conf
+    register: arch_conf_content
+
+  - name: Check arch.conf contains required configuration
+    ansible.builtin.assert:
+      that:
+      - "'title Arch Linux' in (arch_conf_content.content | b64decode)"
+      - "'options root=UUID=auto rw' in (arch_conf_content.content | b64decode)"
+      - "'linux /vmlinuz-linux' in (arch_conf_content.content | b64decode)"
+      - "'initrd /amd-ucode.img' in (arch_conf_content.content | b64decode)"
+      - "'initrd /initramfs-linux.img' in (arch_conf_content.content | b64decode)"
+      fail_msg: "arch.conf is missing required configuration"
+      success_msg: "arch.conf contains all required configuration"
+
+  - name: Verify arch-fallback.conf content
+    ansible.builtin.slurp:
+      src: /boot/loader/entries/arch-fallback.conf
+    register: arch_fallback_conf_content
+
+  - name: Check arch-fallback.conf contains required configuration
+    ansible.builtin.assert:
+      that:
+      - "'title Arch Linux (Fallback)' in (arch_fallback_conf_content.content | b64decode)"
+      - "'options root=UUID=auto rw' in (arch_fallback_conf_content.content | b64decode)"
+      - "'linux /vmlinuz-linux' in (arch_fallback_conf_content.content | b64decode)"
+      - "'initrd /amd-ucode.img' in (arch_fallback_conf_content.content | b64decode)"
+      - "'initrd /initramfs-linux-fallback.img' in (arch_fallback_conf_content.content | b64decode)"
+      fail_msg: "arch-fallback.conf is missing required configuration"
+      success_msg: "arch-fallback.conf contains all required configuration"
+
+  - name: Verify example.conf content
+    ansible.builtin.slurp:
+      src: /boot/loader/entries/example.conf
+    register: example_conf_content
+
+  - name: Check example.conf contains required configuration
+    ansible.builtin.assert:
+      that:
+      - "'title Example' in (example_conf_content.content | b64decode)"
+      - "'options root=UUID=auto rw' in (example_conf_content.content | b64decode)"
+      - "'machine-id 6a9857a393724b7a981ebb5b8495b9ea' in (example_conf_content.content | b64decode)"
+      - "'version 3.8.0-2.fc19.x86_64' in (example_conf_content.content | b64decode)"
+      - "'linux /6a9857a393724b7a981ebb5b8495b9ea/3.8.0-2.fc19.x86_64/linux' in (example_conf_content.content | b64decode)"
+      - "'devicetree /6a9857a393724b7a981ebb5b8495b9ea/3.8.0-2.fc19.x86_64/devicetree' in (example_conf_content.content | b64decode)"
+      - "'devicetree-overlay /6a9857a393724b7a981ebb5b8495b9ea/3.8.0-2.fc19.x86_64/devicetree-overlay' in (example_conf_content.content | b64decode)"
+      - "'architecture x64' in (example_conf_content.content | b64decode)"
+      - "'initrd /amd-ucode.img' in (example_conf_content.content | b64decode)"
+      - "'initrd /initramfs-linux.img' in (example_conf_content.content | b64decode)"
+      fail_msg: "example.conf is missing required configuration"
+      success_msg: "example.conf contains all required configuration"
+
+  - name: Verify firmware_updater.conf content
+    ansible.builtin.slurp:
+      src: /boot/loader/entries/firmware_updater.conf
+    register: firmware_updater_conf_content
+
+  - name: Check firmware_updater.conf contains required configuration
+    ansible.builtin.assert:
+      that:
+      - "'title Firmware updater' in (firmware_updater_conf_content.content | b64decode)"
+      - "'efi /EFI/tools/fwupdx64.efi' in (firmware_updater_conf_content.content | b64decode)"
+      fail_msg: "firmware_updater.conf is missing required configuration"
+      success_msg: "firmware_updater.conf contains all required configuration"
+
+  - name: Verify systemd-boot installation status
+    ansible.builtin.command:
+      cmd: "bootctl status"
+    register: bootctl_status
+    changed_when: false
+    failed_when: bootctl_status.rc != 0
+
+  - name: Check bootctl status command succeeded
+    ansible.builtin.assert:
+      that:
+      - bootctl_status.rc == 0
+      fail_msg: "bootctl status command failed"
+      success_msg: "bootctl status command succeeded"

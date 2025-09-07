@@ -1,0 +1,53 @@
+---
+- name: Check if device is already a LUKS volume # noqa: var-naming[no-role-prefix]
+  ansible.builtin.command: cryptsetup isLuks {{ luks.device }}
+  register: luks_is_luks
+  failed_when: false
+  changed_when: false
+
+- name: Force cleanup when force is true
+  when: luks.force | default(false)
+  block:
+  - name: Close existing LUKS device if open
+    ansible.builtin.command: cryptsetup close {{ luks.name }}
+    failed_when: false
+    changed_when: false
+    when: luks.name is defined
+
+  - name: Unmount any filesystems on the device
+    ansible.builtin.command: umount {{ luks.device }}
+    failed_when: false
+    changed_when: false
+
+  - name: Wait a moment for device to be fully released
+    ansible.builtin.wait_for:
+      timeout: 2
+
+- name: Format device with cryptsetup (LUKS)
+  ansible.builtin.command: >
+    cryptsetup luksFormat {{ luks.device }} {{ luks.options | default('') }}
+    {% if luks.keyfile is defined %} --key-file {{ luks.keyfile }} {% endif %}
+    --batch-mode
+  changed_when: false
+  args:
+    stdin: "{{ luks.password | default(omit) }}"
+  when:
+  - luks.device is defined
+  - luks.force | default(false) or luks_is_luks.rc != 0
+
+- name: Check if device is already opened # noqa: var-naming[no-role-prefix]
+  ansible.builtin.stat:
+    path: "/dev/mapper/{{ luks.name }}"
+  register: luks_mapped
+
+- name: Open LUKS device
+  ansible.builtin.command: >
+    cryptsetup open {{ luks.device }} {{ luks.name }}
+    {{ luks.open_options | default('') }}
+    {% if luks.keyfile is defined %} --key-file {{ luks.keyfile }} {% endif %}
+  changed_when: false
+  args:
+    stdin: "{{ luks.password | default(omit) }}"
+  when:
+  - luks.device is defined
+  - not luks_mapped.stat.exists

@@ -1,0 +1,29 @@
+---
+# SPDX-License-Identifier: MIT-0
+# RedHat-specific tasks for borg_backup
+
+- name: Gather the package facts
+  become: true
+  ansible.builtin.package_facts:
+    manager: auto
+  when:
+  - ansible_facts.packages is not defined
+
+- name: Install EPEL repository (RedHat/CentOS 8+)
+  become: true
+  ansible.builtin.dnf:
+    name: epel-release
+    state: present
+  when:
+  - ansible_distribution_major_version is version("8", ">=")
+  - "'epel-release' not in ansible_facts.packages"
+
+- name: Install required packages (RedHat)
+  become: true
+  ansible.builtin.package:
+    name:
+    - borgbackup
+    - openssh-clients
+    state: "present"
+  when:
+  - "'borgbackup' not in ansible_facts.packages or 'openssh-clients' not in ansible_facts.packages"

@@ -1,0 +1,56 @@
+---
+- name: Prepare
+  hosts: all
+  tasks:
+  - name: Install archiso packages
+    become: true
+    community.general.pacman:
+      name:
+      - sudo
+      - arch-install-scripts
+      - dosfstools
+      - btrfs-progs
+      - glibc
+      - iproute2
+      - parted
+      - python3
+      - mdadm
+      - lvm2
+      - cryptsetup
+      - xfsprogs
+      - fatresize
+      state: present
+      update_cache: true
+
+  - name: Unmount potential leftovers
+    ansible.posix.mount:
+      path: "{{ item }}"
+      state: absent
+    loop:
+    - /mnt/boot
+    - /mnt
+
+  - name: Stop any existing RAID arrays
+    become: true
+    ansible.builtin.command:
+      cmd: mdadm --stop --scan
+    register: mdadm_stop
+    failed_when: mdadm_stop.rc > 1 # rc=1 means no arrays were running
+    changed_when: mdadm_stop.rc == 0
+
+  - name: Remove all loop devices
+    ansible.builtin.command:
+      cmd: losetup -D
+    changed_when: true
+
+  - name: Create and set up fake disks for testing
+    ansible.builtin.include_tasks: tasks/prepare_loop_device.yaml
+    loop: [0, 1]
+    loop_control:
+      loop_var: disk_num
+
+  - name: Ensure the systemd-udevd.service is running for LVM2
+    ansible.builtin.systemd:
+      name: systemd-udevd.service
+      state: started
+      enabled: true

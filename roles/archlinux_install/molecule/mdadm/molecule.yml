@@ -1,0 +1,143 @@
+---
+dependency:
+  name: galaxy
+driver:
+  name: docker
+platforms:
+- name: archlinux_install-install
+  hostname: archiso
+  image: archlinux:base
+  tmpfs:
+  - /run
+  - /tmp
+  volumes:
+  - /dev:/dev
+  dockerfile: ../../../../molecule-shared/Dockerfile.archlinux-systemd.j2
+  pre_build_image: false
+  privileged: true
+  tty: true
+provisioner:
+  name: ansible
+  env:
+    ANSIBLE_ROLES_PATH: ../../..
+  inventory:
+    group_vars:
+      all:
+        ansible_user: root
+        archlinux_install_systemd_boot_entries:
+          arch:
+            title: "Arch Linux"
+            options: "root=UUID=auto rw"
+            linux: /vmlinuz-linux
+            initrd:
+            - /initramfs-linux.img
+            create_fallback: true
+        archlinux_install_mdadm:
+        - device: /dev/md0
+          level: 1
+          metadata: 1.0
+          members:
+          - label: ESP
+          force: false
+        - device: /dev/md1
+          level: 1
+          name: rootraid
+          force: false
+          members:
+          - label: ROOTRAID
+        archlinux_install_dm_crypt:
+        - name: cryptroot
+          device: /dev/md1
+          password: "abc123"
+          options: "--type luks2"
+          force: false
+          open_options: "--perf-no_read_workqueue --perf-no_write_workqueue --allow-discards"
+        archlinux_install_lvm:
+        - vg: vg0
+          devices:
+          - /dev/mapper/cryptroot
+          force: false
+          lvs:
+          # dm_thinpool not loaded in github actions
+          # - thinpool: thin_scratch
+          #   size: 1G
+          #   opts: --zero n
+          # # Thin pool definition
+          # - thinpool: thin_os
+          #   size: 100%FREE
+          #   opts: --zero n
+          #   shrink: false
+          # Thin volumes inside the thin pool
+          - name: root
+            size: 4G
+          - name: scratch
+            size: 1G
+        archlinux_install_filesystems:
+        - dev: /dev/md0
+          fstype: vfat
+          opts: -F32 -n EFI
+          # resizefs: true
+        - dev: /dev/vg0/root
+          fstype: xfs
+          opts: -L ArchLinux
+          resizefs: true
+        - dev: /dev/vg0/scratch
+          fstype: xfs
+          opts: -L k3s_data
+          resizefs: true
+        archlinux_install_mounts:
+        - src: /dev/vg0/root
+          fstype: xfs
+          path: /mnt
+        - src: /dev/md0
+          fstype: vfat
+          opts: "rw,umask=0077"
+          path: /mnt/boot
+          # mode: 0700
+        - src: /dev/vg0/scratch
+          fstype: xfs
+          path: /mnt/opt/k3s_data
+        - src: /mnt/opt/k3s_data/kubelet
+          fstype: "none"
+          opts: "bind"
+          path: /mnt/var/lib/kubelet
+          # mode: 0755
+        - src: /mnt/opt/k3s_data/rancher
+          fstype: "none"
+          opts: "bind"
+          path: /mnt/var/lib/rancher
+          # mode: 0755
+
+        archlinux_install_uefi: false
+        archlinux_install_systemd_networkd: true
+        # archlinux_install_kernel: linux-cachyos-lto
+        archlinux_install_enable_cachyos_repositories: false
+        archlinux_install_ntp_servers:
+        - 0.fi.pool.ntp.org
+        - 1.fi.pool.ntp.org
+        - 2.fi.pool.ntp.org
+        - 3.fi.pool.ntp.org
+        archlinux_install_ntp_fallback_servers:
+        - 0.arch.pool.ntp.org
+        - 1.arch.pool.ntp.org
+        - 2.arch.pool.ntp.org
+        - 3.arch.pool.ntp.org
+        # archlinux_install_swapfile: /swap/swapfile
+        # archlinux_install_swapfile_size: 1G
+        archlinux_install_blacklist_modules:
+        - nouveau
+        # archlinux_install_locale_conf: |
+        #   LANG=en_US.UTF-8
+        #   LC_TIME=fi_FI.UTF-8
+        # archlinux_install_kernel: linux
+        archlinux_install_vconsole_keymap: fi
+        archlinux_install_gen_locales:
+        - en_US.UTF-8
+        # - fi_FI.UTF-8 doesn't work in docker :)
+        # - name: tmp
+        #   path: var/tmp
+        # - name: swap
+        #   path: swap
+        #   disable_cow: true
+verifier:
+  name: ansible
