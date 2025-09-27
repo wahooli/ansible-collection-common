@@ -1,0 +1,43 @@
+#!/usr/bin/env bash
+set -euo pipefail
+{{ ansible_managed | comment }}
+
+KEYLABEL="${1}"
+
+if [ -z "$KEYLABEL" ]; then
+  echo "Usage: $0 <keylabel>"
+  exit 1
+fi
+
+GRACE="${GRACE:-3}"
+LOGGER="logger -t deadman"
+
+# Write a pidfile for safety (best-effort)
+mkdir -p /run/deadman || true
+echo $$ > "/run/deadman/${KEYLABEL}.pid" || true
+
+$LOGGER "Key '$KEYLABEL' removed; shutdown in ${GRACE}s unless another '$KEYLABEL' device is present again."
+
+# Short grace period to tolerate bumps
+sleep "$GRACE"
+
+# Race-safe: if *any* device with the label exists again, abort.
+# -r = raw, -n = no headers
+if lsblk -rno LABEL | grep -qx "$KEYLABEL"; then
+  $LOGGER "Key '$KEYLABEL' detected again during grace; aborting shutdown."
+  rm -f "/run/deadman/${KEYLABEL}.pid" || true
+  exit 0
+fi
+
+$LOGGER "Key '$KEYLABEL' still absent; initiating fast, safe shutdown."
+
+# 1) Remount all filesystems read-only (protect ZFS and friends)
+#    This is the single most important line for avoiding corruption.
+echo u > /proc/sysrq-trigger || $LOGGER "WARNING: sysrq remount-ro failed"
+
+# 2) Drop caches (helps shrink residual buffers; not a security panacea)
+echo 3 > /proc/sys/vm/drop_caches || true
+
+# 3) Kill quickly but still via systemd so it does a minimal teardown.
+#    -i: ignore inhibitors (so k3s etc. can’t stall this path)
+systemctl poweroff -i

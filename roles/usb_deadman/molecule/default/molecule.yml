@@ -1,0 +1,28 @@
+---
+dependency:
+  name: galaxy
+driver:
+  name: docker
+platforms:
+- name: usb_deadman-arch
+  image: archlinux:base
+  tmpfs:
+  - /run
+  - /tmp
+  dockerfile: ../../../../molecule-shared/Dockerfile.archlinux-systemd.j2
+  pre_build_image: false
+  privileged: true
+  tty: true
+provisioner:
+  name: ansible
+  env:
+    ANSIBLE_ROLES_PATH: ../../..
+  inventory:
+    group_vars:
+      all:
+        ansible_user: molecule
+        usb_deadman_monitor_disk_labels:
+        - DO_NOT_REMOVE
+        - PLEASE_REMOVE
+verifier:
+  name: ansible

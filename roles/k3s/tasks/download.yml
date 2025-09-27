@@ -9,8 +9,10 @@
       url: "https://update.k3s.io/v1-release/channels"
       return_content: true
     register: channels_json
+    check_mode: false
     run_once: true
   - name: "Set K3s version from channel {{ k3s_release_channel }}"
+    check_mode: false
     ansible.builtin.set_fact:
       k3s_version: "{{ channels_json.json | community.general.json_query('data[?id==`' ~ k3s_release_channel ~ '`].latest') | first }}"
 # end block Set K3s version fact
@@ -28,8 +30,10 @@
     ansible.builtin.command: "{{ k3s_bin_dir }}/kubectl version --client=true -o json"
     ignore_errors: true
     register: kubectl_output # <- Registers the command output.
+    check_mode: false
     changed_when: kubectl_output.rc != 0
   - name: Set current K3s version
+    check_mode: false
     ansible.builtin.set_fact:
       k3s_current_version: "{{ (kubectl_output.stdout | from_json).clientVersion.gitVersion }}"
     when: kubectl_output is success
@@ -52,10 +56,19 @@
     notify:
     - Restart K3s
 
+  - name: Ensure k3s agent images directory exists
+    ansible.builtin.file:
+      path: "{{ k3s_data_dir }}/agent/images"
+      state: directory
+      owner: root
+      group: root
+      mode: "0755"
+
   - name: "Download K3s images"
     when:
     - k3s_dl is changed # noqa: no-handler
     - k3s_download_images | default(true)
+    - not ansible_check_mode
     ansible.builtin.get_url:
       url: https://github.com/k3s-io/k3s/releases/download/{{ k3s_version }}/{{ images_tar }}.zst
       checksum: sha256:https://github.com/k3s-io/k3s/releases/download/{{ k3s_version }}/{{ shasum_file }}
@@ -87,18 +100,24 @@
     src: "{{ k3s_bin_dir }}/k3s"
     dest: "{{ k3s_bin_dir }}/kubectl"
     state: link
-  when: k3s_dl is success
+  when:
+  - k3s_dl is success
+  - not ansible_check_mode
 
 - name: Create crictl symlink
   ansible.builtin.file:
     src: "{{ k3s_bin_dir }}/k3s"
     dest: "{{ k3s_bin_dir }}/crictl"
     state: link
-  when: k3s_dl is success
+  when:
+  - k3s_dl is success
+  - not ansible_check_mode
 
 - name: Create ctr symlink
   ansible.builtin.file:
     src: "{{ k3s_bin_dir }}/k3s"
     dest: "{{ k3s_bin_dir }}/ctr"
     state: link
-  when: k3s_dl is success
+  when:
+  - k3s_dl is success
+  - not ansible_check_mode

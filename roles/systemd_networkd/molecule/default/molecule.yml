@@ -118,6 +118,17 @@ provisioner:
               IPv6Forwarding: false
               IPv6PrivacyExtensions: "kernel"
               IPv6AcceptRA: true
+            route:
+            - gateway: 1.1.1.1
+              destination: 0.0.0.0/0
+              metric: 100
+              MTUBytes: 1500
+              TCPCongestionControlAlgorithm: bbr
+            - gateway: 1.0.0.1
+              destination: 0.0.0.0/0
+              metric: 100
+              MTUBytes: 1500
+              TCPCongestionControlAlgorithm: bbr
           10-default:
             match:
               Name: "*"

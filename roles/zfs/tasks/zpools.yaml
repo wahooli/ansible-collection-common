@@ -47,33 +47,37 @@
         {%- for vdev in zpool.vdevs -%}
           {% if vdev.disks is defined and vdev.disks | length > 0 -%}
             {%- set _vdev = [vdev.mode] if vdev.mode is defined and vdev.mode | length > 0 else [] -%}
-            {{ _output_vdevs.append((_vdev + [vdev.disks | join(" ")]) | join(" ")) }}
+            {%- set _ = _output_vdevs.append((_vdev + [vdev.disks | join(" ")]) | join(" ")) -%}
           {%- endif -%}
         {%- endfor -%}
       {%- endif -%}
       {{- _output_vdevs | join(" ") -}}
-    zpool_args: "{{ (zpool.args if zpool.args is defined and zpool.args | length > 0 else (lookup('vars', 'zfs_zpool_' + zpool_action + '_default_args', default=[]))) | join(' ') }}"
+    zpool_args: "{{ (zpool.args if zpool.args is defined and zpool.args | length > 0 else (lookup('vars', 'zfs_zpool_' + (zpool_action | default('', true)) + '_default_args', default=[]))) | join(' ') }}"
     zpool_command: |-
-      {% if zpool_action != "" -%}
+      {%- set _zpool_args = zpool_args | default('', true) -%}
+      {%- set _props = props | default('', true) -%}
+      {%- set _fs_props = fs_props | default('', true) -%}
+      {%- set _vdev_args = vdev_args | default('', true) -%}
+      {% if (zpool_action | default('', true)) != "" -%}
         {%- set _commandline = ["zpool", zpool_action] -%}
         {%- if zpool.force | default(false) -%}
-          {{ _commandline.append("-f") }}
+          {%- set _ = _commandline.append("-f") -%}
         {%- endif -%}
         {%- if zpool.mountpoint is defined and zpool.mountpoint != "" -%}
-          {{ _commandline.append("-R " + zpool.mountpoint) }}
+          {%- set _ = _commandline.append("-R " + zpool.mountpoint) -%}
         {%- endif -%}
-        {%- if zpool_args != "" -%}
-          {{ _commandline.append(zpool_args) }}
+        {%- if _zpool_args != "" -%}
+          {%- set _ = _commandline.append(zpool_args) -%}
         {%- endif -%}
-        {%- if props != "" -%}
-          {{ _commandline.append(props) }}
+        {%- if _props != "" -%}
+          {%- set _ = _commandline.append(props) -%}
         {%- endif -%}
-        {%- if fs_props != "" -%}
-          {{ _commandline.append(fs_props) }}
+        {%- if _fs_props != "" -%}
+          {%- set _ = _commandline.append(fs_props) -%}
         {%- endif -%}
-        {{- _commandline.append(zpool.name) -}}
-        {%- if vdev_args != "" -%}
-          {{ _commandline.append(vdev_args) }}
+        {%- set _ = _commandline.append(zpool.name) -%}
+        {%- if _vdev_args != "" -%}
+          {%- set _ = _commandline.append(vdev_args) -%}
         {%- endif -%}
         {{- _commandline | join(" ") -}}
       {%- else -%}
@@ -100,6 +104,6 @@
     when: not zfs_debug | default(false)
     ansible.builtin.include_tasks: "zpool_tasks.yaml"
   - name: Run debug zpool tasks
-    when: zfs_debug | default(false)
+    when: zfs_debug | default(false) or ansible_check_mode | default(false)
     ansible.builtin.include_tasks: "zpool_debug_tasks.yaml"
 # end block Handle zpool

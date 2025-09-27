@@ -21,17 +21,17 @@
   block:
   - name: Run zfs command
     vars:
-       # noqa: jinja[spacing]
+      # noqa: jinja[spacing]
       zfs_props: |-
         {%- if zfs_action in ["create", "set"] and dataset.properties is defined and dataset.properties is mapping -%}
           {%- set _output_props = [] -%}
           {%- set _existing_values = ansible_zfs_datasets | default([]) | selectattr('name', 'match', zfs_name) | list | first | default(dataset.properties) -%}
           {%- for key in dataset.properties.keys() -%}
-            {%- set prop_val = key + "=" + dataset.properties[key]  -%}
+            {%- set prop_val = key + "=" + (dataset.properties[key] | string)  -%}
             {%- if zfs_action == "create" -%}
-              {{- _output_props.append("-o " + prop_val) -}}
-            {%- elif _existing_values[key] != dataset.properties[key] -%}
-              {{- _output_props.append(prop_val) -}}
+              {%- set _ = _output_props.append("-o " + prop_val) -%}
+            {%- elif (_existing_values[key] | string) != (dataset.properties[key] | string) -%}
+              {%- set _ = _output_props.append(prop_val) -%}
             {%- endif -%}
           {%- endfor -%}
           {{- _output_props | join(" ") -}}
@@ -43,15 +43,17 @@
           {{ zfs_name }}
         {%- endif -%}
       zfs_command: |-
-        {%- if zfs_action != "" and not (zfs_action == "set" and zfs_props == "") -%}
+        {%- set _zfs_action = zfs_action | default('', true) -%}
+        {%- set _zfs_props = zfs_props | default('', true) -%}
+        {%- if _zfs_action != "" and not (_zfs_action == "set" and _zfs_props == "") -%}
           {%- set _commandline = ["zfs", zfs_action] -%}
           {%- if dataset.additional_args is defined and dataset.additional_args | length > 0 -%}
-            {{ _commandline.append(dataset.additional_args | join(" ")) }}
+            {%- set _ = _commandline.append(dataset.additional_args | join(" ")) -%}
           {%- endif -%}
-          {%- if zfs_props != "" -%}
-            {{ _commandline.append(zfs_props) }}
+          {%- if _zfs_props != "" -%}
+            {%- set _ = _commandline.append(zfs_props) -%}
           {%- endif -%}
-          {{ _commandline.append(zfs_target_dataset) }}
+          {%- set _ = _commandline.append(zfs_target_dataset) -%}
           {{- _commandline | join(" ") -}}
         {%- else -%}
           true
@@ -60,16 +62,16 @@
         {%- set _output_command_name = [] -%}
         {%- set _zfs_template_name = '"' + zfs_name + '"' -%}
         {%- if zfs_command == "true" -%}
-          {{ _output_command_name.append("skip") }}
+          {%- set _ = _output_command_name.append("skip") -%}
         {%- endif -%}
         {%- if dataset.new_name is defined and dataset.new_name | length > 0 -%}
-          {{ _output_command_name.extend(["rename dataset", _zfs_template_name, "to", '"' + dataset.new_name + '"']) }}
+          {%- set _ = _output_command_name.extend(["rename dataset", _zfs_template_name, "to", '"' + dataset.new_name + '"']) -%}
         {%- elif zfs_action == "create" -%}
-          {{ _output_command_name.extend(["create dataset", _zfs_template_name]) }}
+          {%- set _ = _output_command_name.extend(["create dataset", _zfs_template_name]) -%}
         {%- elif dataset.state | default("present") in ["absent", "destroyed"] -%}
-          {{ _output_command_name.extend(["destroy dataset", _zfs_template_name]) }}
+          {%- set _ = _output_command_name.extend(["destroy dataset", _zfs_template_name]) -%}
         {%- else -%}
-          {{ _output_command_name.extend(["modify dataset", _zfs_template_name]) }}
+          {%- set _ = _output_command_name.extend(["modify dataset", _zfs_template_name]) -%}
         {%- endif -%}
         {{- _output_command_name | join(" ") -}}
     block:
@@ -77,7 +79,7 @@
       when: not zfs_debug | default(false)
       ansible.builtin.include_tasks: "dataset_tasks.yaml"
     - name: Run debug dataset tasks
-      when: zfs_debug | default(false)
+      when: zfs_debug | default(false) or ansible_check_mode | default(false)
       ansible.builtin.include_tasks: "dataset_debug_tasks.yaml"
   # end block Run zfs command
 # end block Handle dataset

@@ -1,0 +1,10 @@
+---
+- name: Prepare
+  hosts: all
+  tasks:
+  - name: Ensure the systemd-udevd.service is running for LVM2
+    become: true
+    ansible.builtin.systemd:
+      name: systemd-udevd.service
+      state: started
+      enabled: true

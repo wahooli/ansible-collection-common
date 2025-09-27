@@ -50,31 +50,34 @@
   when: systemd_networkd_resolved_conf | default(dict) | length > 0
   notify: Restart systemd-resolved
 
-- name: Ensure /etc/systemd/resolved.conf.d directory exists
-  become: true
-  ansible.builtin.file:
-    path: "{{ systemd_networkd_resolved_confd_dir }}"
-    state: directory
-    mode: '0755'
-    owner: root
-    group: root
-
 - name: Configure resolved.conf.d files
-  become: true
-  ansible.builtin.template:
-    src: networkd.ini.j2
-    dest: "{{ systemd_networkd_resolved_confd_dir }}/{{ resolvedconf.key }}.conf"
-    mode: '0644'
-    owner: root
-    group: root
-  loop: "{{ systemd_networkd_resolved_confd | dict2items }}"
-  loop_control:
-    loop_var: resolvedconf
-    label: "{{ resolvedconf.key }}"
-  vars:
-    network_config: "{{ resolvedconf.value }}"
-  when: systemd_networkd_resolved_confd | length > 0
-  notify: Restart systemd-resolved
+  when: systemd_networkd_resolved_confd is defined
+  block:
+  - name: Ensure /etc/systemd/resolved.conf.d directory exists
+    become: true
+    ansible.builtin.file:
+      path: "{{ systemd_networkd_resolved_confd_dir }}"
+      state: directory
+      mode: '0755'
+      owner: root
+      group: root
+
+  - name: Configure resolved.conf.d files
+    become: true
+    ansible.builtin.template:
+      src: networkd.ini.j2
+      dest: "{{ systemd_networkd_resolved_confd_dir }}/{{ resolvedconf.key }}.conf"
+      mode: '0644'
+      owner: root
+      group: root
+    loop: "{{ systemd_networkd_resolved_confd | dict2items }}"
+    loop_control:
+      loop_var: resolvedconf
+      label: "{{ resolvedconf.key }}"
+    vars:
+      network_config: "{{ resolvedconf.value }}"
+    when: systemd_networkd_resolved_confd | length > 0
+    notify: Restart systemd-resolved
 
 - name: Enable and start systemd-resolved service
   become: true

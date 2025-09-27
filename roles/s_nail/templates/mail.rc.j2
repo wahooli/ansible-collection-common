@@ -8,25 +8,29 @@ set v15-compat
 # use only those, do not try to load OpenSSL builtin ones.
 # And use the TLS specific set: see "man 8 update-ca-trust"
 #set ssl-ca-dir=/etc/ssl/certs
-set ssl-ca-file=/etc/ssl/certs/ca-certificates.crt
-set ssl-ca-no-defaults
+#set ssl-ca-file=/etc/ssl/certs/ca-certificates.crt
+#set ssl-ca-no-defaults
+set tls-ca-file=/etc/ssl/certs/ca-certificates.crt
+set tls-ca-no-defaults
 
 # Do not use protocols older than TLS v1.2.
 # Change this only when the remote server does not support it:
 # maybe use ssl-protocol-HOST (or -USER@HOST) syntax to define
 # such explicit exceptions, then, e.g.
 #     ssl-protocol-USER@archlinux.org="-ALL,+TLSv1.2"
-set ssl-protocol=-ALL,+TLSv1.2
+# set ssl-protocol=-ALL,+TLSv1.2
 
 # Explicitly define the list of ciphers, which may improve security,
 # especially with protocols older than TLS v1.2.  See ciphers(1).
 # This is an example: in reality it is possibly best to only use
 # ssl-cipher-list-HOST (or -USER@HOST), as necessary, again..
-set ssl-cipher-list=TLSv1.2:!aNULL:!eNULL:@STRENGTH
+#set ssl-cipher-list=TLSv1.2:!aNULL:!eNULL:@STRENGTH
+set tls-cipher-list=TLSv1.2:!aNULL:!eNULL:@STRENGTH
 #set ssl-cipher-list="ALL:!aNULL:!eNULL:!MEDIUM:!LOW:!MD5:!RC4:!EXPORT"
 
 # Request strict transport security checks
-set ssl-verify=strict
+#set ssl-verify=strict
+set tls-verify=strict
 
 # Essential setting: select allowed character sets
 # (Have a look at the "Character sets" manual section)

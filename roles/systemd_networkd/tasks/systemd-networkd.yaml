@@ -22,6 +22,7 @@
   when: systemd_networkd_backup | bool
   block:
   - name: Ensure backup directory exists
+    check_mode: false
     become: true
     ansible.builtin.file:
       path: "{{ systemd_networkd_backup_dir }}"

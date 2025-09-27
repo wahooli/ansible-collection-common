@@ -1,0 +1,43 @@
+---
+- name: Enable sysrq remount-ro
+  become: true
+  ansible.posix.sysctl:
+    name: kernel.sysrq
+    value: 32
+    sysctl_file: "{{ usb_deadman_sysctl_file }}"
+    state: present
+    reload: true
+
+- name: Deploy USB removal shutdown script
+  become: true
+  ansible.builtin.template:
+    src: deadman-shutdown.j2
+    dest: "{{ usb_deadman_script }}"
+    owner: root
+    group: root
+    mode: '0744'
+
+- name: Deploy systemd unit for USB removal shutdown
+  become: true
+  ansible.builtin.template:
+    src: deadman@.service.j2
+    dest: "{{ usb_deadman_systemd_dir }}/deadman@.service"
+    owner: root
+    group: root
+    mode: '0644'
+  notify:
+  - Systemd daemon reload
+
+- name: Deploy udev rule for USB removal
+  become: true
+  when:
+  - usb_deadman_monitor_disk_labels is defined
+  - usb_deadman_monitor_disk_labels | length > 0
+  ansible.builtin.template:
+    src: udev-rule.j2
+    dest: /etc/udev/rules.d/99-usb-shutdown.rules
+    owner: root
+    group: root
+    mode: '0644'
+  notify:
+  - Reload and trigger udev rules

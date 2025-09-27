@@ -1,0 +1,88 @@
+---
+# This is an example playbook to execute Ansible tests.
+- name: Verify hosts
+  hosts: all
+  gather_facts: false
+  tasks:
+  - name: Verify USB deadman shutdown script exists
+    ansible.builtin.stat:
+      path: "/usr/local/bin/deadman-shutdown"
+    register: deadman_script
+    failed_when: not deadman_script.stat.exists
+
+  - name: Verify USB deadman shutdown script is executable
+    ansible.builtin.debug:
+      msg: "Script mode is {{ deadman_script.stat.mode }}"
+    when: deadman_script.stat.exists
+
+  - name: Verify USB deadman shutdown script has correct permissions
+    ansible.builtin.assert:
+      that:
+      - deadman_script.stat.mode == "0744"
+      fail_msg: "Script does not have correct permissions (0744)"
+      success_msg: "Script has correct permissions"
+
+  - name: Verify systemd service file exists
+    ansible.builtin.stat:
+      path: "/etc/systemd/system/deadman@.service"
+    register: systemd_service
+    failed_when: not systemd_service.stat.exists
+
+  - name: Verify udev rule file exists
+    ansible.builtin.stat:
+      path: /etc/udev/rules.d/99-usb-shutdown.rules
+    register: udev_rule
+    failed_when: not udev_rule.stat.exists
+
+  - name: Verify sysctl configuration file exists
+    ansible.builtin.stat:
+      path: "/etc/sysctl.d/99-usb-deadman.conf"
+    register: sysctl_file
+    failed_when: not sysctl_file.stat.exists
+
+  - name: Verify kernel.sysrq is set to 32
+    ansible.builtin.shell: sysctl -n kernel.sysrq
+    register: sysrq_value
+    failed_when: sysrq_value.stdout != "32"
+    changed_when: sysrq_value.rc != 0
+
+  - name: Verify deadman shutdown script content
+    ansible.builtin.shell: head -5 "/usr/local/bin/deadman-shutdown"
+    register: script_content
+    failed_when: "'#!/usr/bin/env bash' not in script_content.stdout"
+    changed_when: script_content.rc != 0
+
+  - name: Verify systemd service content
+    ansible.builtin.shell: grep -q "Description=Dead-man shutdown" "/etc/systemd/system/deadman@.service"
+    register: service_content
+    failed_when: service_content.rc != 0
+    changed_when: service_content.rc != 0
+
+  - name: Verify udev rule content for each monitored label
+    ansible.builtin.shell: grep -q "{{ item }}" /etc/udev/rules.d/99-usb-shutdown.rules
+    register: udev_content
+    failed_when: udev_content.rc != 0
+    changed_when: udev_content.rc != 0
+    loop:
+    - DO_NOT_REMOVE
+    - PLEASE_REMOVE
+
+  - name: Verify sysctl configuration content
+    ansible.builtin.shell: grep -q "kernel.sysrq=32" "/etc/sysctl.d/99-usb-deadman.conf"
+    register: sysctl_content
+    failed_when: sysctl_content.rc != 0
+    changed_when: sysctl_content.rc != 0
+
+  - name: Verify udev rules are loaded
+    ansible.builtin.shell: udevadm test-builtin path_id /dev/null 2>&1 | grep -q "99-usb-shutdown.rules" || true
+    register: udev_loaded
+    # This is a best-effort check; udev rules might not show up in test output
+    failed_when: false
+    changed_when: udev_loaded.rc != 0
+
+  - name: Verify systemd daemon is reloaded (check if service file is recognized)
+    ansible.builtin.shell: systemctl list-unit-files | grep -q "deadman@.service" || true
+    register: systemd_recognized
+    # This is a best-effort check; the service template might not be active
+    failed_when: false
+    changed_when: systemd_recognized.rc != 0

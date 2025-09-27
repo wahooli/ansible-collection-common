@@ -11,6 +11,7 @@
   when:
   - "'k3s.service' in ansible_facts.services"
   - k3s_systemd_start
+  - not ansible_check_mode
   ansible.builtin.systemd_service:
     name: k3s
     state: restarted

@@ -1,0 +1,22 @@
+[Unit]
+Description=Dead-man shutdown for missing cryptkey (%i)
+DefaultDependencies=no
+# Run early and independently; don’t wait for multi-user targets
+After=basic.target
+Requires=basic.target
+
+[Service]
+Type=oneshot
+# Prevent multiple concurrent runs (e.g., multiple partitions)
+RuntimeDirectory=deadman
+PIDFile=/run/deadman/%i.pid
+ExecStart={{ usb_deadman_script }} "%i"
+# Give the unit a short ceiling; the script does the real timing.
+TimeoutStartSec=15s
+
+# Make the journal entries survive the crash if we get that far.
+# (Optional; comment out if you don’t care.)
+LogRateLimitIntervalSec=0
+
+[Install]
+WantedBy=multi-user.target

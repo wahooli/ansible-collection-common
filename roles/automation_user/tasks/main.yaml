@@ -42,16 +42,28 @@
     loop_var: ssh_pub_key
     extended: true
     label: "SSH key {{ ansible_loop.index }}/{{ ansible_loop.length }}"
+  when:
+  - automation_user_ssh_keys is defined and automation_user_ssh_keys | length > 0
+  - not ansible_check_mode
+
+- name: Check if authorized_keys file exists
+  become: true
+  check_mode: false
+  ansible.builtin.stat:
+    path: "{{ (automation_user_home | default('/var/lib/' + automation_user_name, true)) + '/.ssh/authorized_keys' }}"
+  register: automation_user_authorized_keys_stat
   when: automation_user_ssh_keys is defined and automation_user_ssh_keys | length > 0
 
 - name: Ensure authorized_keys file has correct permissions
+  when:
+  - automation_user_authorized_keys_stat.stat.exists
+  - automation_user_ssh_keys is defined and automation_user_ssh_keys | length > 0
   become: true
   ansible.builtin.file:
     path: "{{ (automation_user_home | default('/var/lib/' + automation_user_name, true)) + '/.ssh/authorized_keys' }}"
     owner: "{{ automation_user_name }}"
     group: "{{ automation_user_name }}"
     mode: "0600"
-  when: automation_user_ssh_keys is defined and automation_user_ssh_keys | length > 0
 
 - name: Ensure Runas_Alias LOGIN_DISABLED is present in /etc/sudoers
   become: true

@@ -1,10 +1,11 @@
 ---
 - name: "Debug: {{ zpool_command_name | capitalize }}"
-  when: zfs_debug | default(false)
+  when: zfs_debug | default(false) or ansible_check_mode | default(false)
   ansible.builtin.debug:
     msg: "{{ 'cmd: ' + zpool_command if zpool_command != 'true' else 'no command executed' }}"
 
 - name: Gather zpool facts from pool
+  check_mode: false
   community.general.zfs_facts:
     name: "{{ zpool.name }}"
     recurse: true

@@ -1,0 +1,16 @@
+---
+# handlers file for usb_deadman
+- name: Systemd daemon reload
+  become: true
+  ansible.builtin.systemd_service:
+    daemon_reload: true
+
+- name: Reload and trigger udev rules
+  become: true
+  ansible.builtin.shell: |
+    set -o pipefail
+    udevadm control --reload-rules
+    udevadm trigger
+  changed_when: true
+  args:
+    executable: /bin/bash

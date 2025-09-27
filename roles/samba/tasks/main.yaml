@@ -2,6 +2,7 @@
 # tasks file for samba
 - name: Populate service facts
   become: true
+  check_mode: false
   when: ansible_facts.services is not defined
   ansible.builtin.service_facts:
 
@@ -81,6 +82,7 @@
     name: smb
     state: started
     enabled: true
+  when: not ansible_check_mode
 
 - name: Enable and start nmbd
   become: true
@@ -88,6 +90,7 @@
   - samba_config['global']['netbios name'] is defined
   - samba_config['global']['netbios name'] is string
   - samba_config['global']['netbios name'] | length > 0
+  - not ansible_check_mode
   ansible.builtin.systemd_service:
     name: nmb
     state: started
@@ -95,7 +98,9 @@
 
 - name: Enable and start avahi-daemon
   become: true
-  when: samba_enable_avahi_discovery | default(false)
+  when:
+  - samba_enable_avahi_discovery | default(false)
+  - not ansible_check_mode
   ansible.builtin.systemd_service:
     name: avahi-daemon
     state: started
@@ -103,7 +108,9 @@
 
 - name: Enable and start wsdd
   become: true
-  when: samba_enable_wsdd_discovery | default(false)
+  when:
+  - samba_enable_wsdd_discovery | default(false)
+  - not ansible_check_mode
   ansible.builtin.systemd_service:
     name: wsdd
     state: started
@@ -111,7 +118,9 @@
 
 - name: Enable and start wsdd2
   become: true
-  when: samba_enable_wsdd2_discovery | default(false)
+  when:
+  - samba_enable_wsdd2_discovery | default(false)
+  - not ansible_check_mode
   ansible.builtin.systemd_service:
     name: wsdd2
     state: started

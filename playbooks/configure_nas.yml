@@ -1,11 +1,4 @@
 ---
-- name: Configure ansible user
-  hosts: arch_linux_hosts
-  roles:
-  - role: "automation_user"
-  tags:
-  - archlinux_configure
-
 - name: Setup zfs pools
   hosts: zfs_hosts
   tasks:
@@ -14,6 +7,33 @@
       name: "zfs"
   tags:
   - zfs
+  vars:
+    ansible_user: "{{ automation_user_name | default('ansible') }}"
+
+- name: Configure network
+  hosts: arch_linux_hosts
+  roles:
+  - role: "systemd_networkd"
+  tags:
+  - systemd_networkd
+  vars:
+    ansible_user: "{{ automation_user_name | default('ansible') }}"
+
+- name: Set up backups
+  hosts: arch_linux_hosts
+  roles:
+  - role: "borg_backup"
+  tags:
+  - borg_backup
+  vars:
+    ansible_user: "{{ automation_user_name | default('ansible') }}"
+
+- name: Set up deadman key
+  hosts: arch_linux_hosts
+  roles:
+  - role: "usb_deadman"
+  tags:
+  - usb_deadman
   vars:
     ansible_user: "{{ automation_user_name | default('ansible') }}"
 
@@ -65,5 +85,14 @@
   - role: "fluxcd"
   tags:
   - fluxcd
+  vars:
+    ansible_user: "{{ automation_user_name | default('ansible') }}"
+
+- name: Set up lvm autosnapshot
+  hosts: arch_linux_hosts
+  roles:
+  - role: "lvm_autosnapshot"
+  tags:
+  - lvm_autosnapshot
   vars:
     ansible_user: "{{ automation_user_name | default('ansible') }}"
