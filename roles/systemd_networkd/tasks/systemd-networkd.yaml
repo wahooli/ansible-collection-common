@@ -67,7 +67,7 @@
     loop: "{{ systemd_networkd_file_contents.results }}"
     when:
     - item.content is defined
-    - (item.content | b64decode | regex_search('^# Managed by Ansible', multiline=True)) is not none
+    - (item.content | b64decode | regex_search('^#\s+#\s+Ansible managed', multiline=True)) is not none
     # Exclude files that are currently defined in variables for idempotence
     - not (item.item.path | basename | regex_replace('\.(network|netdev|link)$', '') in (systemd_networkd_networks.keys() | default([]) + systemd_networkd_netdevs.keys() | default([]) + systemd_networkd_links.keys() | default([])))
     loop_control:
