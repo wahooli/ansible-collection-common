@@ -9,6 +9,7 @@ platforms:
   image: archlinux:base
   dockerfile: ../../molecule-shared/Dockerfile.archlinux-systemd.j2
   groups:
+  - automation_hosts
   - arch_linux_hosts
   - k3s_servers
   - cilium_hosts
