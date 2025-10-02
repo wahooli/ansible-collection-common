@@ -1,0 +1,93 @@
+---
+- name: Prepare client host environment
+  hosts: client_hosts
+  become: true
+  gather_facts: true
+  tasks:
+  - name: Update package cache
+    ansible.builtin.apt:
+      update_cache: true
+      cache_valid_time: 3600
+
+  - name: Install openssh-client
+    ansible.builtin.apt:
+      name: openssh-client
+      state: present
+
+  - name: Create SSH directory
+    ansible.builtin.file:
+      path: /home/molecule/.ssh
+      state: directory
+      mode: '0700'
+      owner: molecule
+      group: molecule
+
+  - name: Generate SSH key pair
+    ansible.builtin.openssh_keypair:
+      path: /home/molecule/.ssh/id_rsa
+      type: rsa
+      size: 2048
+      owner: molecule
+      group: molecule
+      mode: '0600'
+
+- name: Prepare debian host environment
+  hosts: debian_hosts
+  become: true
+  gather_facts: false
+  tasks:
+  - name: Update package cache
+    ansible.builtin.apt:
+      update_cache: true
+      cache_valid_time: 3600
+
+  - name: Install required packages
+    ansible.builtin.apt:
+      name:
+      - openssh-server
+      - sudo
+      - python3
+      state: present
+
+- name: Prepare archlinux host environment
+  hosts: automation-user-archlinux
+  become: true
+  gather_facts: false
+  tasks:
+  - name: Install dependencies
+    become: true
+    community.general.pacman:
+      name: openssh
+      update_cache: true
+      state: present
+
+- name: Prepare test environment
+  hosts: "!client_hosts"
+  become: true
+  gather_facts: false
+  tasks:
+  - name: Ensure SSH service is running
+    ansible.builtin.service:
+      name: sshd
+      state: started
+      enabled: true
+
+  - name: Ensure /run/nologin is absent
+    ansible.builtin.file:
+      path: /run/nologin
+      state: absent
+
+  # - name: Create test SSH key for testing
+  #   ansible.builtin.command:
+  #     cmd: "ssh-keygen -t rsa -b 4096 -f /tmp/test_key -N ''"
+  #     creates: /tmp/test_key
+  #   changed_when: false
+
+  # - name: Read test public key
+  #   ansible.builtin.slurp:
+  #     src: /tmp/test_key.pub
+  #   register: test_public_key
+
+  # - name: Set fact for test public key
+  #   ansible.builtin.set_fact:
+  #     test_ssh_key: "{{ test_public_key.content | trim }}"

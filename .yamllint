@@ -21,3 +21,4 @@ rules:
 ignore:
 - ".venv/**"
 - ".ansible/**"
+- "**/.ansible/**"

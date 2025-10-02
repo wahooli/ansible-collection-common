@@ -1,0 +1,119 @@
+---
+# SPDX-License-Identifier: MIT-0
+# Tasks file for systemd-resolved
+
+- name: Cleanup Ansible-managed resolved configuration files
+  when: systemd_networkd_cleanup_orphan_config | bool
+  block:
+  - name: Find Ansible-managed resolved configuration files
+    become: true
+    ansible.builtin.find:
+      paths: "{{ systemd_networkd_resolved_confd_dir }}"
+      file_type: file
+      patterns: "*.conf"
+    register: systemd_networkd_resolved_config_files
+
+  - name: Check which resolved files contain Ansible marker
+    become: true
+    ansible.builtin.slurp:
+      path: "{{ item.path }}"
+    loop: "{{ systemd_networkd_resolved_config_files.files }}"
+    register: systemd_networkd_resolved_file_contents
+    loop_control:
+      label: "{{ item.path }}"
+
+  - name: Remove Ansible-managed resolved configuration files
+    become: true
+    ansible.builtin.file:
+      path: "{{ item.item.path }}"
+      state: absent
+    loop: "{{ systemd_networkd_resolved_file_contents.results }}"
+    when:
+    - item.content is defined
+    - (item.content | b64decode | regex_search('^# Managed by Ansible', multiline=True)) is not none
+    # Exclude files that are currently defined in variables for idempotence
+    - not (item.item.path | basename | regex_replace('\.conf$', '') in (systemd_networkd_resolved_confd.keys() | default([])))
+    loop_control:
+      label: "{{ item.item.path }}"
+    notify: Restart systemd-resolved
+
+- name: Configure resolved.conf
+  become: true
+  ansible.builtin.template:
+    src: networkd.ini.j2
+    dest: "{{ systemd_networkd_resolved_conf_file }}"
+    mode: '0644'
+    owner: root
+    group: root
+  vars:
+    network_config: "{{ systemd_networkd_resolved_conf }}"
+  when: systemd_networkd_resolved_conf | default(dict) | length > 0
+  notify: Restart systemd-resolved
+
+- name: Configure resolved.conf.d files
+  when: systemd_networkd_resolved_confd is defined
+  block:
+  - name: Ensure /etc/systemd/resolved.conf.d directory exists
+    become: true
+    ansible.builtin.file:
+      path: "{{ systemd_networkd_resolved_confd_dir }}"
+      state: directory
+      mode: '0755'
+      owner: root
+      group: root
+
+  - name: Configure resolved.conf.d files
+    become: true
+    ansible.builtin.template:
+      src: networkd.ini.j2
+      dest: "{{ systemd_networkd_resolved_confd_dir }}/{{ resolvedconf.key }}.conf"
+      mode: '0644'
+      owner: root
+      group: root
+    loop: "{{ systemd_networkd_resolved_confd | dict2items }}"
+    loop_control:
+      loop_var: resolvedconf
+      label: "{{ resolvedconf.key }}"
+    vars:
+      network_config: "{{ resolvedconf.value }}"
+    when: systemd_networkd_resolved_confd | length > 0
+    notify: Restart systemd-resolved
+
+- name: Enable and start systemd-resolved service
+  become: true
+  ansible.builtin.systemd:
+    name: systemd-resolved
+    state: started
+    enabled: true
+  when:
+  - not systemd_networkd_resolved_in_services
+  - systemd_networkd_chroot_path is not defined
+
+- name: Enable systemd-resolved service in chroot
+  become: true
+  ansible.builtin.command:
+    cmd: "arch-chroot {{ systemd_networkd_chroot_path }} systemctl enable systemd-resolved.service"
+  failed_when: systemd_networkd_enable_resolved_chroot.rc != 0
+  changed_when: false
+  register: systemd_networkd_enable_resolved_chroot
+  when: systemd_networkd_chroot_path is defined
+
+- name: (Molecule specific) Unmount /etc/resolv.conf if it's mounted
+  become: true
+  ansible.posix.mount:
+    path: /etc/resolv.conf
+    state: unmounted
+  when:
+  - ansible_mounts | selectattr('mount', 'equalto', '/etc/resolv.conf') | list | length > 0
+  - ansible_connection in [ 'container', 'docker', 'community.docker.docker' ]
+  - systemd_networkd_chroot_path is not defined
+  failed_when: false
+
+- name: Ensure /etc/resolv.conf is a symlink to /run/systemd/resolve/stub-resolv.conf
+  become: true
+  ansible.builtin.file:
+    src: ../run/systemd/resolve/stub-resolv.conf
+    dest: "{{ systemd_networkd_resolvconf_file }}"
+    state: link
+    force: true
+  notify: Restart systemd-resolved

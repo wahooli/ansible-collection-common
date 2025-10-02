@@ -1,31 +1,56 @@
 ---
-# This is an example playbook to execute Ansible tests.
+# Verify playbook for default scenario: Basic Arch Linux installation with BTRFS filesystem
+# This scenario tests:
+# - Basic disk partitioning (ESP + RootFS)
+# - BTRFS filesystem creation with subvolumes
+# - GRUB bootloader installation
+# - Mount point verification
 
-- name: Verify
+- name: Verify Default Scenario - Basic Arch Linux Installation
   hosts: all
   gather_facts: false
   tasks:
-  - name: Check if /mnt/etc/pacman.conf exists
+  - name: Check if basic system files exist
     ansible.builtin.stat:
       path: "/mnt/etc/pacman.conf"
     register: verify_pacman_conf
 
-  - name: Check if /mnt/etc/pacman.conf exists
+  - name: Check if initramfs configuration exists
     ansible.builtin.stat:
       path: "/mnt/etc/mkinitcpio.conf"
     register: verify_mkinitcpio_conf
 
-  - name: Check if /mnt/home exists
+  - name: Check if home subvolume is mounted
     ansible.builtin.stat:
       path: "/mnt/home"
     register: verify_home
 
-  - name: Check if /mnt/var exists
+  - name: Check if var subvolume is mounted
     ansible.builtin.stat:
       path: "/mnt/var"
     register: verify_var
 
-  - name: Verify custom cmdline
+  - name: Check if BTRFS subvolumes were created correctly
+    ansible.builtin.command: btrfs subvolume list /mnt
+    register: btrfs_subvolumes
+    changed_when: false
+
+  - name: Verify specific BTRFS subvolumes exist
+    ansible.builtin.assert:
+      that:
+      - "'@root' in btrfs_subvolumes.stdout"
+      - "'@home' in btrfs_subvolumes.stdout"
+      - "'@log' in btrfs_subvolumes.stdout"
+      - "'@cache' in btrfs_subvolumes.stdout"
+      - "'.snapshots' in btrfs_subvolumes.stdout"
+      msg: "Expected BTRFS subvolumes were not created correctly"
+
+  - name: Check if GRUB configuration was created
+    ansible.builtin.stat:
+      path: "/mnt/etc/default/grub"
+    register: verify_grub_config
+
+  - name: Verify custom GRUB cmdline was applied
     become: true
     when: archlinux_install_grub_cmdline is defined
     ansible.builtin.lineinfile:
@@ -37,11 +62,13 @@
       line: 'GRUB_CMDLINE_LINUX_DEFAULT="loglevel=3 quiet testing"'
     register: grub_cmdline
 
-  - name: Run assertions
+  - name: Run assertions for default scenario
     ansible.builtin.assert:
       that:
       - verify_pacman_conf.stat.exists
       - verify_mkinitcpio_conf.stat.exists
       - verify_home.stat.exists
       - verify_var.stat.exists
+      - verify_grub_config.stat.exists
       - not grub_cmdline.changed
+      msg: "Default scenario verification failed - basic Arch Linux installation incomplete"

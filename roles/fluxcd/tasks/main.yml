@@ -1,5 +1,12 @@
 ---
 # tasks file for fluxcd
+- name: Gather facts if needed
+  ansible.builtin.setup:
+  check_mode: false
+  when:
+  - ansible_check_mode
+  - ansible_facts is undefined
+
 - name: Determine fluxcd_kubeconfig fact if not set
   when:
   - fluxcd_kubeconfig | default("") == ""
@@ -45,6 +52,7 @@
   ansible.builtin.stat:
     path: "{{ fluxcd_cli_install_path }}/flux"
   register: flux_cli_binary
+  check_mode: false
 
 - name: Get installed flux cli version # noqa: var-naming[no-role-prefix]
   ansible.builtin.shell:
@@ -55,8 +63,10 @@
   failed_when: false
   changed_when: flux_cli_version.rc != 0
   register: flux_cli_version
+  check_mode: false
 
 - name: Resolve latest FluxCD version
+  check_mode: false
   when:
   - fluxcd_version | default("latest") == "latest"
   block:
@@ -78,6 +88,7 @@
   block:
   - name: Detect CPU arch
     when: not fluxcd_cli_arch | default(false)
+    check_mode: false
     ansible.builtin.set_fact:
       fluxcd_cli_arch: |-
         {%- if (ansible_facts.architecture is search("arm") and ansible_facts.userspace_bits == "64") or ansible_facts.architecture is search("aarch64") -%}
@@ -94,6 +105,7 @@
     ansible.builtin.tempfile:
       state: directory
     register: flux_cli_tmp
+    check_mode: false
   - name: Download flux cli # noqa: var-naming[no-role-prefix]
     ansible.builtin.get_url:
       url: https://github.com/{{ fluxcd_github_repo }}/releases/download/v{{ fluxcd_version }}/flux_{{ fluxcd_version }}_{{ fluxcd_cli_os }}_{{ fluxcd_cli_arch }}.tar.gz
@@ -107,14 +119,17 @@
       src: "{{ flux_cli_tmp.path }}/flux_{{ fluxcd_version }}_{{ fluxcd_cli_os }}_{{ fluxcd_cli_arch }}.tar.gz"
       dest: "{{ fluxcd_cli_install_path }}"
       remote_src: true
-    when: flux_cli_dl is success
+    when: flux_cli_dl is success and not ansible_check_mode
   always:
   - name: Delete flux cli temp path
+    check_mode: false
+    diff: false
     ansible.builtin.file:
       state: absent
       path: "{{ flux_cli_tmp.path }}"
 
 - name: Check if FluxCD is bootstrapped
+  check_mode: false
   when:
   - inventory_hostname in fluxcd_bootstrap_hosts | default([])
   # - flux_cli_dl is undefined or not flux_cli_dl.changed
@@ -136,6 +151,7 @@
   # when: fluxcd_key_names is undefined
 
 - name: "Create list of fluxcd key names across hosts"
+  check_mode: false
   ansible.builtin.set_fact:
     fluxcd_key_names: "{{ fluxcd_key_names + [hostvars[item].fluxcd_bootstrap_key_name] }}"
   when: hostvars[item].fluxcd_bootstrap_key_name is defined

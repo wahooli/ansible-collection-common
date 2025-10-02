@@ -6,4 +6,5 @@
     name: nfs-server
     state: restarted
   when:
+  - not ansible_check_mode
   - "'nfs-server.service' in ansible_facts.services"

@@ -26,8 +26,53 @@ provisioner:
         ansible_user: root
         archlinux_install_grub_cmdline: "loglevel=3 quiet testing"
         archlinux_install_uefi: false
-        # archlinux_install_kernel: linux-cachyos-lto
-        archlinux_install_enable_cachyos_repositories: true
+        archlinux_install_filesystems:
+        - part_label: ESP
+          fstype: vfat
+          opts: -F32 -n EFI
+          # resizefs: true
+        - part_label: RootFS
+          fstype: btrfs
+          opts: -L ArchLinux
+          resizefs: true
+        archlinux_install_mounts:
+        - src: LABEL=ArchLinux
+          fstype: btrfs
+          path: /mnt
+          opts: "compress=zstd,subvol=@root"
+        - src: LABEL=ArchLinux
+          fstype: btrfs
+          path: /mnt/home
+          opts: "compress=zstd,subvol=@home"
+        - src: LABEL=ArchLinux
+          fstype: btrfs
+          path: /mnt/var/log
+          opts: "compress=zstd,subvol=@log"
+        - src: LABEL=ArchLinux
+          fstype: btrfs
+          path: /mnt/var/cache
+          opts: "compress=zstd,subvol=@cache"
+        - src: LABEL=EFI
+          fstype: vfat
+          opts: "rw,umask=0077"
+          path: /mnt/boot
+          # mode: 0700
+        archlinux_install_btrfs_subvolumes:
+        - src: LABEL=ArchLinux
+          path: /btrfs-root
+          subvols:
+          - label: ArchLinux
+            name: .snapshots
+          - label: ArchLinux
+            name: "@root"
+          - label: ArchLinux
+            name: "@home"
+          - label: ArchLinux
+            name: "@log"
+          - label: ArchLinux
+            name: "@cache"
+            disable_cow: true
+        archlinux_install_enable_cachyos_repositories: false
         archlinux_install_rankmirrors_countries:
         - DE
         - FI
@@ -46,6 +91,19 @@ provisioner:
         - 1.arch.pool.ntp.org
         - 2.arch.pool.ntp.org
         - 3.arch.pool.ntp.org
+        # archlinux_install_swap:
+        # - file: /mnt/swap/swapfile
+        #   size: 200M
+        archlinux_install_additional_packages:
+        - grub-btrfs
+        - grub
+        - sudo
+        - archlinux-keyring
+        - efibootmgr
+        - man-db
+        - openssh
+        - pacman-contrib
+        - vim
         archlinux_install_rankmirrors_count: 2
         # archlinux_install_swapfile: /swap/swapfile
         # archlinux_install_swapfile_size: 1G
@@ -58,16 +116,6 @@ provisioner:
         archlinux_install_gen_locales:
         - en_US.UTF-8
         # - fi_FI.UTF-8 doesn't work in docker :)
-        archlinux_install_btrfs_subvolumes:
-        - name: snapshots
-          path: .snapshots
-        - name: home
-          path: home
-        - name: log
-          path: var/log
-        - name: cache
-          path: var/cache
-        # - name: tmp
         #   path: var/tmp
         # - name: swap
         #   path: swap

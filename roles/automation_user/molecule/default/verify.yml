@@ -1,0 +1,644 @@
+---
+- name: Verify automation_user role
+  hosts: "!client_hosts"
+  gather_facts: true
+  tasks:
+  - name: Get user information
+    become: true
+    ansible.builtin.getent:
+      database: passwd
+      key: "{{ automation_user_name | default('testuser') }}"
+    register: user_check
+
+  - name: Check if user exists
+    become: true
+    ansible.builtin.assert:
+      that:
+      - user_check.ansible_facts.getent_passwd is defined
+      - (automation_user_name | default('testuser')) in user_check.ansible_facts.getent_passwd
+      fail_msg: "User {{ automation_user_name | default('testuser') }} does not exist"
+      success_msg: "User {{ automation_user_name | default('testuser') }} exists"
+
+  - name: Check user UID
+    become: true
+    ansible.builtin.assert:
+      that:
+      - user_check.ansible_facts.getent_passwd[(automation_user_name | default('testuser'))][1] | int < 1000
+      fail_msg: "User UID is not less than 1000 (not a system user)"
+      success_msg: "User UID is less than 1000 (system user)"
+
+  - name: Check user shell
+    become: true
+    ansible.builtin.assert:
+      that:
+      - user_check.ansible_facts.getent_passwd[(automation_user_name | default('testuser'))][5] == automation_user_shell
+      fail_msg: "User shell is not {{ automation_user_shell }}"
+      success_msg: "User shell is correctly set to {{ automation_user_shell }}"
+
+  - name: Check if .ssh directory exists
+    become: true
+    ansible.builtin.stat:
+      path: "/var/lib/{{ automation_user_name | default('testuser') }}/.ssh"
+    register: ssh_dir_check
+
+  - name: Verify .ssh directory exists and has correct permissions
+    become: true
+    ansible.builtin.assert:
+      that:
+      - ssh_dir_check.stat.exists
+      - ssh_dir_check.stat.isdir
+      - ssh_dir_check.stat.mode | int == 700  # 0700 in decimal
+      fail_msg: ".ssh directory does not exist or has incorrect permissions"
+      success_msg: ".ssh directory exists with correct permissions"
+
+  - name: Check if authorized_keys file exists
+    become: true
+    ansible.builtin.stat:
+      path: "/var/lib/{{ automation_user_name | default('testuser') }}/.ssh/authorized_keys"
+    register: auth_keys_check
+
+  - name: Verify authorized_keys file exists and has correct permissions
+    become: true
+    ansible.builtin.assert:
+      that:
+      - auth_keys_check.stat.exists
+      - auth_keys_check.stat.isreg
+      - auth_keys_check.stat.mode | int == 600  # 0600 in decimal
+      fail_msg: "authorized_keys file does not exist or has incorrect permissions"
+      success_msg: "authorized_keys file exists with correct permissions"
+
+  - name: Check SSH configuration file
+    become: true
+    ansible.builtin.stat:
+      path: "/etc/ssh/sshd_config.d/{{ automation_user_name | default('testuser') }}.conf"
+    register: ssh_config_check
+
+  - name: Verify SSH configuration file exists
+    become: true
+    ansible.builtin.assert:
+      that:
+      - ssh_config_check.stat.exists
+      - ssh_config_check.stat.isreg
+      fail_msg: "SSH configuration file does not exist"
+      success_msg: "SSH configuration file exists"
+
+  - name: Check SSH configuration content
+    become: true
+    ansible.builtin.slurp:
+      src: "/etc/ssh/sshd_config.d/{{ automation_user_name | default('testuser') }}.conf"
+    register: ssh_config_content
+
+  # - name: Verify SSH configuration content
+  #   become: true
+  #   ansible.builtin.assert:
+  #     that:
+  #     - "'Match User testuser' in (ssh_config_content.content | b64decode)"
+  #     - "'PasswordAuthentication no' in (ssh_config_content.content | b64decode)"
+  #     - "'PubkeyAuthentication yes' in (ssh_config_content.content | b64decode)"
+  #     - "'ForceCommand /usr/local/bin/automation_user_command_filter' in (ssh_config_content.content | b64decode)"
+  #     fail_msg: "SSH configuration file does not contain expected content"
+  #     success_msg: "SSH configuration file contains expected content"
+
+  # - name: Check command filter script exists
+  #   become: true
+  #   ansible.builtin.stat:
+  #     path: "/usr/local/bin/automation_user_command_filter"
+  #   register: cmd_filter_check
+
+  # - name: Verify command filter script exists and has correct permissions
+  #   become: true
+  #   ansible.builtin.assert:
+  #     that:
+  #     - cmd_filter_check.stat.exists
+  #     - cmd_filter_check.stat.isreg
+  #     - cmd_filter_check.stat.mode | int == 755  # 0755 in decimal
+  #     fail_msg: "Command filter script does not exist or has incorrect permissions"
+  #     success_msg: "Command filter script exists with correct permissions"
+
+  # - name: Test command filter script functionality
+  #   become: true
+  #   block:
+  #   - name: Test allowed command
+  #     ansible.builtin.command:
+  #       cmd: "/usr/local/bin/automation_user_command_filter"
+  #     environment:
+  #       SSH_ORIGINAL_COMMAND: "whoami"
+  #     register: cmd_filter_test_allowed
+  #     failed_when: false
+  #     changed_when: false
+
+  #   - name: Test blocked command (interactive shell)
+  #     ansible.builtin.command:
+  #       cmd: "/usr/local/bin/automation_user_command_filter"
+  #     environment:
+  #       SSH_ORIGINAL_COMMAND: "bash"
+  #     register: cmd_filter_test_blocked
+  #     failed_when: false
+  #     changed_when: false
+
+  #   - name: Test no command specified
+  #     ansible.builtin.command:
+  #       cmd: "/usr/local/bin/automation_user_command_filter"
+  #     register: cmd_filter_test_no_cmd
+  #     failed_when: false
+  #     changed_when: false
+
+  # - name: Verify command filter script functionality
+  #   become: true
+  #   ansible.builtin.assert:
+  #     that:
+  #     - cmd_filter_test_allowed.rc == 0
+  #     - cmd_filter_test_blocked.rc != 0
+  #     - cmd_filter_test_no_cmd.rc != 0
+  #     fail_msg: "Command filter script is not functioning correctly"
+  #     success_msg: "Command filter script is functioning correctly"
+
+  - name: Check sudo configuration
+    become: true
+    ansible.builtin.stat:
+      path: "/etc/sudoers.d/{{ automation_user_name | default('testuser') }}"
+    register: sudo_config_check
+
+  - name: Verify sudo configuration exists
+    become: true
+    ansible.builtin.assert:
+      that:
+      - sudo_config_check.stat.exists
+      - sudo_config_check.stat.isreg
+      fail_msg: "Sudo configuration file does not exist"
+      success_msg: "Sudo configuration file exists"
+
+  - name: Check sudo configuration content
+    become: true
+    ansible.builtin.slurp:
+      src: "/etc/sudoers.d/{{ automation_user_name | default('testuser') }}"
+    register: sudo_config_content
+
+  - name: Verify sudo configuration content
+    become: true
+    ansible.builtin.assert:
+      that:
+      - "'testuser ALL=(ALL) NOPASSWD: ALL' in (sudo_config_content.content | b64decode)"
+      fail_msg: "Sudo configuration file does not contain expected content"
+      success_msg: "Sudo configuration file contains expected content"
+
+  - name: Test SSH key authentication (dry run)
+    become: true
+    ansible.builtin.command:
+      cmd: "ssh -o BatchMode=yes -o ConnectTimeout=5 {{ automation_user_name | default('testuser') }}@localhost echo 'SSH test successful'"
+      chdir: /tmp
+    register: ssh_test
+    failed_when: false
+    changed_when: false
+
+  - name: Verify PAM configuration for su access restriction
+    become: true
+    ansible.builtin.slurp:
+      src: /etc/pam.d/su
+    register: pam_su_config
+
+  - name: Verify su access is properly restricted via PAM configuration
+    become: true
+    ansible.builtin.assert:
+      that:
+      - "'pam_listfile.so item=user sense=deny file=/etc/security/su_disabled_users onerr=succeed' in (pam_su_config.content | b64decode)"
+      fail_msg: "SU access restriction PAM configuration is not properly set up for {{ automation_user_name | default('testuser') }}"
+      success_msg: "SU access restriction PAM configuration is properly set up for {{ automation_user_name | default('testuser') }}"
+
+  - name: Verify automation user is in su_disabled_users file
+    become: true
+    ansible.builtin.slurp:
+      src: /etc/security/su_disabled_users
+    register: su_disabled_users_content
+
+  - name: Verify automation user is in su_disabled_users file
+    become: true
+    ansible.builtin.assert:
+      that:
+      - automation_user_name | default('testuser') in (su_disabled_users_content.content | b64decode).split('\n')
+      fail_msg: "User {{ automation_user_name | default('testuser') }} is not in su_disabled_users file"
+      success_msg: "User {{ automation_user_name | default('testuser') }} is properly listed in su_disabled_users file"
+
+  - name: Create test files in automation user's directory
+    become: true
+    ansible.builtin.file:
+      path: "/var/lib/{{ automation_user_name | default('testuser') }}/{{ item }}"
+      state: touch
+      owner: "{{ automation_user_name | default('testuser') }}"
+      group: "{{ automation_user_name | default('testuser') }}"
+      mode: '0644'
+    loop:
+    - safe_rm_test.txt
+    - testfile.txt
+
+# - name: Verify SSH connectivity from client
+#   hosts: client_hosts
+#   gather_facts: true
+#   vars:
+#     ssh_opts: "-i /home/molecule/.ssh/id_rsa -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=10"
+#   tasks:
+#   - name: Test SSH connectivity to each target host
+#     become: true
+#     ansible.builtin.command:
+#       cmd: "ssh {{ ssh_opts }} {{ automation_user_name | default('testuser') }}@{{ item }} echo 'SSH connection successful to {{ item }}'"
+#       chdir: /home/molecule
+#     register: ssh_connectivity_test
+#     loop: "{{ groups['ssh_hosts'] | list }}"
+#     failed_when: false
+#     changed_when: false
+
+#   - name: Verify SSH connectivity succeeded to all hosts
+#     ansible.builtin.assert:
+#       quiet: true
+#       that:
+#       - item.rc == 0
+#       fail_msg: "SSH connectivity failed to {{ item.item }}"
+#       success_msg: "SSH connectivity successful to {{ item.item }}"
+#     loop: "{{ ssh_connectivity_test.results }}"
+#     loop_control:
+#       label: "{{ item.item }}"
+
+# - name: Verify SSH security restrictions for automation user
+#   hosts: none
+#   gather_facts: false
+#   vars:
+#     ssh_opts: "-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -i /home/molecule/.ssh/id_rsa"
+#   tasks:
+#   # Test 1: Interactive shell access should be blocked
+#   - name: Test interactive shell access blocking
+#     ansible.builtin.command: >
+#       ssh {{ ssh_opts }}
+#       {{ automation_user_name }}@{{ item }}
+#       "bash"
+#     register: interactive_shell_test
+#     failed_when: false
+#     changed_when: false
+#     loop: "{{ groups['ssh_hosts'] | list }}"
+
+#   - name: Verify interactive shell access is blocked
+#     ansible.builtin.assert:
+#       quiet: true
+#       that:
+#       - item.rc != 0
+#       fail_msg: "Interactive shell access was not properly blocked to {{ item.item }}"
+#       success_msg: "Interactive shell access is properly blocked to {{ item.item }}"
+#     loop: "{{ interactive_shell_test.results }}"
+#     loop_control:
+#       label: "{{ item.item }}"
+
+#   # Test 2: Sudo with blocked command should be blocked
+#   - name: Test sudo with blocked command blocking
+#     ansible.builtin.command: >
+#       ssh {{ ssh_opts }}
+#       {{ automation_user_name }}@{{ item }}
+#       "sudo rm /tmp/test"
+#     register: sudo_blocked_test
+#     failed_when: false
+#     changed_when: false
+#     loop: "{{ groups['ssh_hosts'] | list }}"
+
+#   - name: Verify sudo with blocked command is blocked
+#     ansible.builtin.assert:
+#       quiet: true
+#       that:
+#       - item.rc != 0
+#       fail_msg: "Sudo with blocked command was not properly blocked to {{ item.item }}"
+#       success_msg: "Sudo with blocked command is properly blocked to {{ item.item }}"
+#     loop: "{{ sudo_blocked_test.results }}"
+#     loop_control:
+#       label: "{{ item.item }}"
+
+#   # Test 3: Sudo with allowed command should work
+#   - name: Test sudo with allowed command functionality
+#     ansible.builtin.command: >
+#       ssh {{ ssh_opts }}
+#       {{ automation_user_name }}@{{ item }}
+#       "sudo ls /var/lib/{{ automation_user_name }}"
+#     register: sudo_allowed_test
+#     failed_when: false
+#     changed_when: false
+#     loop: "{{ groups['ssh_hosts'] | list }}"
+
+#   - name: Verify sudo with allowed command works
+#     ansible.builtin.assert:
+#       quiet: true
+#       that:
+#       - item.rc == 0
+#       fail_msg: "Sudo with allowed command did not work to {{ item.item }}"
+#       success_msg: "Sudo with allowed command works correctly to {{ item.item }}"
+#     loop: "{{ sudo_allowed_test.results }}"
+#     loop_control:
+#       label: "{{ item.item }}"
+
+#   # Test 4: Authorized command should work
+#   - name: Test authorized command functionality
+#     ansible.builtin.command: >
+#       ssh {{ ssh_opts }}
+#       {{ automation_user_name }}@{{ item }}
+#       "whoami"
+#     register: authorized_cmd_test
+#     failed_when: false
+#     changed_when: false
+#     loop: "{{ groups['ssh_hosts'] | list }}"
+
+#   - name: Verify authorized command works
+#     ansible.builtin.assert:
+#       quiet: true
+#       that:
+#       - item.rc == 0
+#       - item.stdout.strip() == automation_user_name
+#       fail_msg: "Authorized command 'whoami' did not work to {{ item.item }}"
+#       success_msg: "Authorized command 'whoami' works correctly to {{ item.item }}"
+#     loop: "{{ authorized_cmd_test.results }}"
+#     loop_control:
+#       label: "{{ item.item }}"
+
+#   # Test 5: No command specified should be blocked
+#   - name: Test no command specified blocking
+#     ansible.builtin.command: >
+#       ssh {{ ssh_opts }}
+#       {{ automation_user_name }}@{{ item }}
+#     register: no_cmd_test
+#     failed_when: false
+#     changed_when: false
+#     loop: "{{ groups['ssh_hosts'] | list }}"
+
+#   - name: Verify no command specified is blocked
+#     ansible.builtin.assert:
+#       quiet: true
+#       that:
+#       - item.rc != 0
+#       fail_msg: "No command specified was not properly blocked to {{ item.item }}"
+#       success_msg: "No command specified is properly blocked to {{ item.item }}"
+#     loop: "{{ no_cmd_test.results }}"
+#     loop_control:
+#       label: "{{ item.item }}"
+
+#   - name: Test safe rm functionality
+#     ansible.builtin.command: >
+#       ssh {{ ssh_opts }}
+#       {{ automation_user_name }}@{{ item }}
+#       "rm /var/lib/{{ automation_user_name }}/safe_rm_test.txt"
+#     register: safe_rm_test
+#     changed_when: false
+#     loop: "{{ groups['ssh_hosts'] | list }}"
+
+#   - name: Verify safe rm functionality works
+#     ansible.builtin.assert:
+#       quiet: true
+#       that:
+#       - item.rc == 0
+#       fail_msg: "Safe rm functionality did not work correctly to {{ item.item }}"
+#       success_msg: "Safe rm functionality works correctly to {{ item.item }}"
+#     loop: "{{ safe_rm_test.results }}"
+#     loop_control:
+#       label: "{{ item.item }}"
+
+#   - name: Verify test file was moved to trash
+#     ansible.builtin.command: >
+#       ssh {{ ssh_opts }}
+#       {{ automation_user_name }}@{{ item }} "ls /var/lib/{{ automation_user_name }}/"
+#     register: verify_file_moved
+#     changed_when: false
+#     loop: "{{ groups['ssh_hosts'] | list }}"
+
+#   - name: Verify file is no longer in home directory
+#     ansible.builtin.assert:
+#       quiet: true
+#       that:
+#       - "'safe_rm_test.txt' not in item.stdout"
+#       - "'testfile.txt' in item.stdout"
+#       fail_msg: "Test file was not properly moved from home directory on {{ item.item }}"
+#       success_msg: "Test file was properly moved from home directory on {{ item.item }}"
+#     loop: "{{ verify_file_moved.results }}"
+#     loop_control:
+#       label: "{{ item.item }}"
+
+#   # - name: Verify file exists in trash directory
+#   #   ansible.builtin.command: >
+#   #     ssh {{ ssh_opts }}
+#   #     {{ automation_user_name }}@{{ item }}
+#   #     "ls /var/lib/{{ automation_user_name }}/.Trash/ | grep safe_rm_test"
+#   #   register: verify_file_in_trash
+#   #   failed_when: false
+#   #   changed_when: false
+#   #   loop: "{{ groups['ssh_hosts'] | list }}"
+
+#   # - name: Verify file is in trash directory
+#   #   ansible.builtin.assert:
+#   #     quiet: true
+#   #     that:
+#   #     - item.rc == 0
+#   #     - "'safe_rm_test' in item.stdout"
+#   #     fail_msg: "Test file was not found in trash directory on {{ item.item }}"
+#   #     success_msg: "Test file was found in trash directory on {{ item.item }}"
+#   #   loop: "{{ verify_file_in_trash.results }}"
+#   #   loop_control:
+#   #     label: "{{ item.item }}"
+
+#   # Note: Sudo rm commands bypass the command filter and use the system rm command
+#   # This is expected behavior for security reasons
+
+#   # Test 7: Sudo RM should also use safe rm functionality
+#   - name: Test sudo rm functionality
+#     ansible.builtin.command: >
+#       ssh {{ ssh_opts }}
+#       {{ automation_user_name }}@{{ item }}
+#       "sudo touch /var/lib/{{ automation_user_name }}/sudo_rm_test.txt"
+#     register: sudo_touch_test
+#     failed_when: false
+#     changed_when: false
+#     loop: "{{ groups['ssh_hosts'] | list }}"
+
+#   - name: Test sudo rm functionality (separate command)
+#     ansible.builtin.command: >
+#       ssh {{ ssh_opts }}
+#       {{ automation_user_name }}@{{ item }}
+#       "sudo rm /var/lib/{{ automation_user_name }}/sudo_rm_test.txt"
+#     register: sudo_rm_test
+#     failed_when: false
+#     changed_when: false
+#     loop: "{{ groups['ssh_hosts'] | list }}"
+
+#   - name: Verify sudo rm functionality works
+#     ansible.builtin.assert:
+#       quiet: true
+#       that:
+#       - item.rc == 0
+#       fail_msg: "Sudo rm functionality did not work correctly to {{ item.item }}"
+#       success_msg: "Sudo rm functionality works correctly to {{ item.item }}"
+#     loop: "{{ sudo_rm_test.results }}"
+#     loop_control:
+#       label: "{{ item.item }}"
+
+#   # Test 8: Block any rm command that bypasses safe_rm parsing
+#   - name: Test comprehensive rm command blocking (find -exec rm)
+#     ansible.builtin.command: >
+#       ssh {{ ssh_opts }}
+#       {{ automation_user_name }}@{{ item }}
+#       "find . -type f -exec rm -rf {} \;"
+#     register: comprehensive_rm_test1
+#     failed_when: false
+#     changed_when: false
+#     loop: "{{ groups['ssh_hosts'] | list }}"
+
+#   - name: Verify comprehensive rm command (find -exec rm) is blocked
+#     ansible.builtin.assert:
+#       quiet: true
+#       that:
+#       - item.rc != 0
+#       fail_msg: "Comprehensive rm command (find -exec rm) was not properly blocked to {{ item.item }}"
+#       success_msg: "Comprehensive rm command (find -exec rm) is properly blocked to {{ item.item }}"
+#     loop: "{{ comprehensive_rm_test1.results }}"
+#     loop_control:
+#       label: "{{ item.item }}"
+
+#   - name: Test comprehensive rm command blocking (xargs rm)
+#     ansible.builtin.command: >
+#       ssh {{ ssh_opts }}
+#       {{ automation_user_name }}@{{ item }}
+#       "ls -la /var/lib/{{ automation_user_name }}/ | xargs rm"
+#     register: comprehensive_rm_test2
+#     failed_when: false
+#     changed_when: false
+#     loop: "{{ groups['ssh_hosts'] | list }}"
+
+#   - name: Verify comprehensive rm command (xargs rm) is blocked
+#     ansible.builtin.assert:
+#       quiet: true
+#       that:
+#       - item.rc != 0
+#       fail_msg: "Comprehensive rm command (xargs rm) was not properly blocked to {{ item.item }}"
+#       success_msg: "Comprehensive rm command (xargs rm) is properly blocked to {{ item.item }}"
+#     loop: "{{ comprehensive_rm_test2.results }}"
+#     loop_control:
+#       label: "{{ item.item }}"
+
+#   - name: Test comprehensive rm command blocking (complex shell construct)
+#     ansible.builtin.command: >
+#       ssh {{ ssh_opts }}
+#       {{ automation_user_name }}@{{ item }}
+#       "if [ -f test.txt ]; then rm test.txt; fi"
+#     register: comprehensive_rm_test3
+#     failed_when: false
+#     changed_when: false
+#     loop: "{{ groups['ssh_hosts'] | list }}"
+
+#   - name: Verify comprehensive rm command (complex shell) is blocked
+#     ansible.builtin.assert:
+#       quiet: true
+#       that:
+#       - item.rc != 0
+#       fail_msg: "Comprehensive rm command (complex shell) was not properly blocked to {{ item.item }}"
+#       success_msg: "Comprehensive rm command (complex shell) is properly blocked to {{ item.item }}"
+#     loop: "{{ comprehensive_rm_test3.results }}"
+#     loop_control:
+#       label: "{{ item.item }}"
+
+#   # Test 9: Block rm commands on root level files/directories (depth 1)
+#   - name: Test rm on root level path blocking
+#     ansible.builtin.command: >
+#       ssh {{ ssh_opts }}
+#       {{ automation_user_name }}@{{ item }}
+#       "rm -rf /etc"
+#     register: root_level_rm_test
+#     failed_when: false
+#     changed_when: false
+#     loop: "{{ groups['ssh_hosts'] | list }}"
+
+#   - name: Verify rm on root level path is blocked
+#     ansible.builtin.assert:
+#       quiet: true
+#       that:
+#       - item.rc != 0
+#       fail_msg: "Rm on root level path was not properly blocked to {{ item.item }}"
+#       success_msg: "Rm on root level path is properly blocked to {{ item.item }}"
+#     loop: "{{ root_level_rm_test.results }}"
+#     loop_control:
+#       label: "{{ item.item }}"
+
+#   - name: Test creating ~/.ansible directory
+#     ansible.builtin.command: >
+#       ssh {{ ssh_opts }}
+#       {{ automation_user_name }}@{{ item }}
+#       "mkdir -p ~/.ansible"
+#     register: create_ansible_dir_test
+#     failed_when: false
+#     changed_when: false
+#     loop: "{{ groups['ssh_hosts'] | list }}"
+
+#   - name: Verify creating ~/.ansible directory is allowed
+#     ansible.builtin.assert:
+#       quiet: true
+#       that:
+#       - item.rc == 0
+#       fail_msg: "Creating ~/.ansible directory was not allowed for {{ item.item }}"
+#       success_msg: "Creating ~/.ansible directory is allowed for {{ item.item }}"
+#     loop: "{{ create_ansible_dir_test.results }}"
+#     loop_control:
+#       label: "{{ item.item }}"
+
+#   - name: Test removing ~/.ansible directory
+#     ansible.builtin.command: >
+#       ssh {{ ssh_opts }}
+#       {{ automation_user_name }}@{{ item }}
+#       "rm -rf ~/.ansible"
+#     register: remove_ansible_dir_test
+#     failed_when: false
+#     changed_when: false
+#     loop: "{{ groups['ssh_hosts'] | list }}"
+
+#   - name: Verify removing ~/.ansible directory is allowed
+#     ansible.builtin.assert:
+#       quiet: true
+#       that:
+#       - item.rc == 0
+#       fail_msg: "Removing ~/.ansible directory was not allowed for {{ item.item }}"
+#       success_msg: "Removing ~/.ansible directory is allowed for {{ item.item }}"
+#     loop: "{{ remove_ansible_dir_test.results }}"
+#     loop_control:
+#       label: "{{ item.item }}"
+
+#   # Test 10: Ensure Ansible temporary directory creation works (exact command from error)
+#   - name: Test Ansible temporary directory creation command
+#     ansible.builtin.command: >
+#       ssh {{ ssh_opts }}
+#       {{ automation_user_name }}@{{ item }}
+#       "( umask 77 && mkdir -p \"` echo ~/.ansible/tmp `\"&& mkdir \"` echo ~/.ansible/tmp/ansible-tmp-$(date +%s).$(date +%N | cut -c1-6)-$(shuf -i 100000-999999 -n 1)-$(shuf -i 100000000000000000-999999999999999999 -n 1) `\" && echo ansible-tmp-$(date +%s).$(date +%N | cut -c1-6)-$(shuf -i 100000-999999 -n 1)-$(shuf -i 100000000000000000-999999999999999999 -n 1)=\"` echo ~/.ansible/tmp/ansible-tmp-$(date +%s).$(date +%N | cut -c1-6)-$(shuf -i 100000-999999 -n 1)-$(shuf -i 100000000000000000-999999999999999999 -n 1) `\" )"
+#     register: ansible_tmp_dir_test
+#     failed_when: false
+#     changed_when: false
+#     loop: "{{ groups['ssh_hosts'] | list }}"
+
+#   - name: Verify Ansible temporary directory creation command works
+#     ansible.builtin.assert:
+#       quiet: true
+#       that:
+#       - item.rc == 0
+#       fail_msg: "Ansible temporary directory creation command did not work for {{ item.item }}"
+#       success_msg: "Ansible temporary directory creation command works correctly for {{ item.item }}"
+#     loop: "{{ ansible_tmp_dir_test.results }}"
+#     loop_control:
+#       label: "{{ item.item }}"
+
+#   # Test 11: Test simpler mkdir -p command for .ansible directory
+#   - name: Test mkdir -p for .ansible directory
+#     ansible.builtin.command: >
+#       ssh {{ ssh_opts }}
+#       {{ automation_user_name }}@{{ item }}
+#       "mkdir -p ~/.ansible/tmp"
+#     register: mkdir_ansible_tmp_test
+#     failed_when: false
+#     changed_when: false
+#     loop: "{{ groups['ssh_hosts'] | list }}"
+
+#   - name: Verify mkdir -p for .ansible directory works
+#     ansible.builtin.assert:
+#       quiet: true
+#       that:
+#       - item.rc == 0
+#       fail_msg: "mkdir -p for .ansible directory did not work for {{ item.item }}"
+#       success_msg: "mkdir -p for .ansible directory works correctly for {{ item.item }}"
+#     loop: "{{ mkdir_ansible_tmp_test.results }}"
+#     loop_control:
+#       label: "{{ item.item }}"

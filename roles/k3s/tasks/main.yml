@@ -257,6 +257,7 @@
       state: directory
       mode: "0700"
   - name: Copy k3s.yaml into .kube/config
+    when: not ansible_check_mode
     become: true
     ansible.builtin.copy:
       src: /etc/rancher/k3s/k3s.yaml

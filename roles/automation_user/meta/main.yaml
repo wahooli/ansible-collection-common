@@ -1,0 +1,16 @@
+---
+galaxy_info:
+  author: wahooli
+  description: Creates a highly secure system user account for Ansible automation with comprehensive SSH restrictions, command filtering, and security hardening
+  company: wahooli
+  license: MIT
+  min_ansible_version: "2.1"
+  galaxy_tags:
+  - "security"
+  - "automation"
+  - "ssh"
+  - "hardening"
+  - "sudo"
+  - "pam"
+
+dependencies: []

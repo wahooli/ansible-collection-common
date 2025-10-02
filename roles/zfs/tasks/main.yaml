@@ -2,6 +2,7 @@
 # tasks file for zfs
 - name: Populate service facts
   become: true
+  check_mode: false
   when:
   - ansible_facts.services is not defined
   - not zfs_archiso | default(false)
@@ -18,6 +19,7 @@
 
 - name: List active zpools
   become: true
+  check_mode: false
   ansible.builtin.shell:
     executable: /bin/sh
     cmd: |-
@@ -28,6 +30,7 @@
 
 - name: List importable zpools
   become: true
+  check_mode: false
   ansible.builtin.shell:
     executable: /bin/sh
     cmd: |-

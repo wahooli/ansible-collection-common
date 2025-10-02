@@ -1,0 +1,42 @@
+#!/bin/bash
+
+# This script first triggers a privileged update of the snapshot
+# status file and then displays the result to the user.
+
+STATUS_FILE="{{ lvm_autosnapshot_status_file }}"
+UPDATE_SCRIPT="{{ lvm_autosnapshot_script_install_path.rstrip('/') }}/check-root-snapshot"
+
+# --- On-Demand Update ---
+# Trigger the root script via our specific sudoers rule.
+# This ensures the status file is up-to-date at this exact moment.
+# Errors are redirected to /dev/null in case sudo isn't fully configured.
+sudo "${UPDATE_SCRIPT}" &> /dev/null
+
+# --- Display Logic (same as before) ---
+if [ ! -f "$STATUS_FILE" ]; then
+    return
+fi
+
+CURRENT_STATE=$(cat "$STATUS_FILE")
+
+# Set up terminal colors
+COLOR_YELLOW=$(tput setaf 3)
+COLOR_GREEN=$(tput setaf 2)
+COLOR_BOLD=$(tput bold)
+COLOR_RESET=$(tput sgr0)
+
+# Display the appropriate message
+case "$CURRENT_STATE" in
+  "BOOTED_FROM_SNAPSHOT")
+    echo
+    echo "${COLOR_YELLOW}${COLOR_BOLD}*** System is currently booted from a rollback snapshot. ***${COLOR_RESET}"
+    echo "${COLOR_YELLOW}To make this state permanent, a privileged user must run: ${COLOR_GREEN}rollback-root-snapshot${COLOR_RESET}"
+    echo
+    ;;
+  "SNAPSHOT_EXISTS")
+    echo
+    echo "${COLOR_YELLOW}${COLOR_BOLD}*** An LVM snapshot exists from a previous operation. ***${COLOR_RESET}"
+    echo "${COLOR_YELLOW}If the system is working well, a privileged user should run: ${COLOR_GREEN}remove-root-snapshot${COLOR_RESET}"
+    echo
+    ;;
+esac

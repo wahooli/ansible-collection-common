@@ -1,9 +1,9 @@
 {{ ansible_managed | comment }}
 
 # All the examples require v15-compat!
-set v15-compat
 {% if s_nail_configure_gmail | default(false) %}
 account gmail {
+   set v15-compat
    # Localize options, forget them when changing the account
    localopts yes
    # (The plain smtp:// proto is optional)

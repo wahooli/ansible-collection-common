@@ -14,6 +14,7 @@
 
 - name: Detect CPU arch
   when: not helm_arch | default(false)
+  check_mode: false
   ansible.builtin.set_fact:
     helm_arch: |-
       {%- if (ansible_facts.architecture is search("arm") and ansible_facts.userspace_bits == "64") or ansible_facts.architecture is search("aarch64") -%}
@@ -30,6 +31,7 @@
 
 - name: Get latest helm tag
   when: not helm_tag | default(false) or helm_tag | lower == "latest"
+  check_mode: false
   block:
   - name: Get list of helm github releases
     ansible.builtin.uri:
@@ -49,10 +51,12 @@
     or (helm_tag | lower) != (helm_version.stdout | lower)
   block:
   - name: Set helm dist
+    check_mode: false
     ansible.builtin.set_fact:
       helm_dist: "helm-{{ helm_tag | lower }}-{{ helm_os | lower }}-{{ helm_arch | lower }}.tar.gz"
 
   - name: Create temporary download directory
+    check_mode: false
     ansible.builtin.tempfile:
       state: directory
     register: helm_temp
@@ -70,7 +74,7 @@
       src: "{{ helm_temp.path }}/{{ helm_dist }}"
       dest: "{{ helm_temp.path }}"
       remote_src: true
-    when: helm_dl is success
+    when: helm_dl is success and not ansible_check_mode
 
   - name: Copy helm binary to install path
     become: true
@@ -79,9 +83,10 @@
       dest: "{{ helm_install_path }}"
       mode: "0755"
       remote_src: true
-    when: helm_dl is success
-
+    when: helm_dl is success and not ansible_check_mode
+  always:
   - name: Delete helm temp path
+    check_mode: false
     ansible.builtin.file:
       state: absent
       path: "{{ helm_temp.path }}"
@@ -90,6 +95,7 @@
 
 - name: Get current user name
   ansible.builtin.command: whoami
+  check_mode: false
   register: helm_current_user_name
   changed_when: helm_current_user_name.rc != 0
   when: ansible_user is undefined or ansible_user == ""
@@ -124,6 +130,7 @@
     - molecule-idempotence-notest
 
   - name: Get user home path
+    check_mode: false
     ansible.builtin.shell:
       executable: /bin/bash
       cmd: |-
@@ -134,10 +141,25 @@
     register: helm_user_home_path
 
   - name: Ensure the virtual environment exists
-    ansible.builtin.pip:
-      name: packaging
-      virtualenv: "{{ helm_user_home_path.stdout }}/.ansible-venv"
-      virtualenv_command: "{{ virtualenv_command }}"
+    check_mode: false
+    block:
+    - name: Ensure packaging is installed in the virtualenv
+      ansible.builtin.pip:
+        name: packaging
+        virtualenv: "{{ helm_user_home_path.stdout }}/.ansible-venv"
+        virtualenv_command: "{{ virtualenv_command }}"
+    rescue:
+    - name: Ensure pip is installed in the virtualenv
+      ansible.builtin.command: "{{ helm_user_home_path.stdout }}/.ansible-venv/bin/python -m ensurepip --upgrade"
+      # args:
+      #   creates: "{{ helm_user_home_path.stdout }}/.ansible-venv/bin/pip"
+      changed_when: false
+      check_mode: false
+    - name: Ensure the virtual environment exists
+      ansible.builtin.pip:
+        name: packaging
+        virtualenv: "{{ helm_user_home_path.stdout }}/.ansible-venv"
+        virtualenv_command: "{{ virtualenv_command }}"
 
   - name: Run commands in venv
     vars:

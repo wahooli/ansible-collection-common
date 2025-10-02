@@ -1,0 +1,42 @@
+---
+# SPDX-License-Identifier: MIT-0
+# defaults file for systemd_boot
+
+# systemd_boot_chroot_path: /mnt
+systemd_boot_path: /boot
+systemd_boot_loader_path: "{{ systemd_boot_path }}/loader"
+systemd_boot_entries_path: "{{ systemd_boot_loader_path }}/entries"
+
+# Bootloader configuration options
+systemd_boot_timeout: 10
+systemd_boot_editor: false
+systemd_boot_auto_entries: true
+systemd_boot_auto_firmware: true
+systemd_boot_default_entry: "@saved"
+systemd_boot_console_mode: "max" # or 0, 1, 2, auto, keep
+
+systemd_boot_entries: {}
+  # arch:
+  #   title: "Arch Linux"
+  #   options: "root=UUID=auto rw"
+  #   linux: /vmlinuz-linux
+  #   initrd:
+  #   - /amd-ucode.img
+  #   - /initramfs-linux.img
+  #   create_fallback: true
+  # example:
+  #   title: "Example"
+  #   options: "root=UUID=auto rw"
+  #   machine_id: "6a9857a393724b7a981ebb5b8495b9ea"
+  #   version: "3.8.0-2.fc19.x86_64"
+  #   linux: /6a9857a393724b7a981ebb5b8495b9ea/3.8.0-2.fc19.x86_64/linux
+  #   devicetree: /6a9857a393724b7a981ebb5b8495b9ea/3.8.0-2.fc19.x86_64/devicetree
+  #   devicetree_overlay: /6a9857a393724b7a981ebb5b8495b9ea/3.8.0-2.fc19.x86_64/devicetree-overlay
+  #   architecture: x64
+  #   initrd:
+  #   - /amd-ucode.img
+  #   - /initramfs-linux.img
+  #   create_fallback: false
+  # firmware_updater:
+  #   title: "Firmware updater"
+  #   efi: "/EFI/tools/fwupdx64.efi"

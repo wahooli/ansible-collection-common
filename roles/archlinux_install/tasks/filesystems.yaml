@@ -1,0 +1,32 @@
+---
+- name: Initialize devices list # noqa: var-naming[no-role-prefix]
+  ansible.builtin.set_fact:
+    devices_list: "{{ [fs.dev] if fs.dev is defined else [] }}"
+
+- name: Process label members
+  become: true
+  when: fs.part_label is defined
+  block:
+  - name: Get devices by label # noqa: var-naming[no-role-prefix]
+    ansible.builtin.command: "blkid -t PARTLABEL={{ fs.part_label }} -o device"
+    register: label_devices
+    changed_when: false
+
+  - name: Add label devices to member list # noqa: var-naming[no-role-prefix]
+    ansible.builtin.set_fact:
+      devices_list: "{{ devices_list + (label_devices.stdout_lines | default([])) }}"
+    when:
+    - label_devices.stdout_lines is defined
+    - label_devices.stdout_lines | length > 0
+
+- name: Create filesystems
+  community.general.filesystem:
+    dev: '{{ dev }}'
+    fstype: '{{ fs.fstype }}'
+    opts: '{{ fs.opts | default(omit) }}'
+    resizefs: '{{ fs.resizefs | default(omit) }}'
+    uuid: '{{ fs.uuid | default(omit) }}'
+    force: '{{ fs.force | default(omit) }}'
+  loop: "{{ devices_list }}"
+  loop_control:
+    loop_var: dev

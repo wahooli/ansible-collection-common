@@ -1,0 +1,78 @@
+---
+- name: Create configuration files for each backup instance
+  become: true
+  ansible.builtin.template:
+    src: env.j2
+    dest: "{{ borg_backup_config_dir }}/{{ backup_config.name }}.conf"
+    mode: "0600"
+    owner: root
+    group: root
+
+- name: Ensure cache directory exists
+  become: true
+  ansible.builtin.file:
+    path: "{{ borg_backup_cache_dir }}/{{ backup_config.name }}"
+    state: directory
+    mode: "0700"
+    owner: root
+    group: root
+
+- name: Ensure config directory exists
+  become: true
+  ansible.builtin.file:
+    path: "{{ borg_backup_base_config_dir }}/{{ backup_config.name }}"
+    state: directory
+    mode: "0700"
+    owner: root
+    group: root
+
+- name: Create repository directory
+  become: true
+  when:
+  - backup_config.repository is defined
+  - backup_config.repository is string
+  - not (backup_config.repository | regex_search('^([a-z]+://|[a-z]+@)'))
+  block:
+  - name: Ensure local repository path exists
+    ansible.builtin.file:
+      path: "{{ backup_config.repository }}"
+      state: directory
+      mode: "0700"
+      owner: root
+      group: root
+
+  - name: Check if Borg repository is already initialized
+    ansible.builtin.stat:
+      path: "{{ backup_config.repository }}/config"
+    register: borg_backup_repo_stat
+
+  - name: Initialize the Borg repository if it does not exist
+    ansible.builtin.command:
+      cmd: >-
+        borg init
+        --encryption={{ 'repokey' if backup_config.passphrase is defined and backup_config.passphrase else 'none' }}
+        {{ backup_config.repository }}
+    environment:
+      # Pass the passphrase directly to the command's environment
+      BORG_PASSPHRASE: "{{ backup_config.passphrase | default(omit) }}"
+    when: not borg_backup_repo_stat.stat.exists
+    changed_when: true
+    no_log: true # IMPORTANT: Prevents the passphrase from being logged in Ansible output
+
+- name: Enable and start daily borg-backup timer
+  become: true
+  when: |
+    'daily' in (backup_config.schedule | default([borg_backup_default_schedule]))
+  ansible.builtin.systemd:
+    name: "borg-backup-daily@{{ backup_config.name }}.timer"
+    enabled: true
+    state: started
+
+- name: Enable and start weekly borg-backup timer
+  become: true
+  when: |
+    'weekly' in (backup_config.schedule | default([borg_backup_default_schedule]))
+  ansible.builtin.systemd:
+    name: "borg-backup-weekly@{{ backup_config.name }}.timer"
+    enabled: true
+    state: started

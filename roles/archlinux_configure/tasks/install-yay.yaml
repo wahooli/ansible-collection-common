@@ -20,6 +20,7 @@
     chdir: "/tmp/yay-git"
     cmd: "makepkg -sfi --noconfirm"
     creates: /usr/bin/yay
+  when: not ansible_check_mode
 
 - name: Remove temp yay repo
   become: true

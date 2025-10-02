@@ -1,0 +1,6 @@
+---
+# defaults file for usb_deadman
+usb_deadman_systemd_dir: /etc/systemd/system
+usb_deadman_script: /usr/local/bin/deadman-shutdown
+usb_deadman_sysctl_file: /etc/sysctl.d/99-usb-deadman.conf
+# usb_deadman_monitor_disk_labels: []

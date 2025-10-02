@@ -1,0 +1,5 @@
+---
+- name: Configure automation user
+  hosts: automation_hosts
+  roles:
+  - role: "automation_user"

@@ -5,26 +5,26 @@
     msg: "This host is not booted from the Arch install media!"
   when: ansible_nodename != 'archiso'
 
-- name: Abort if archlinux_install_drive is not set
+- name: Abort if archlinux_install_disks is not set
   ansible.builtin.fail:
-    msg: "archlinux_install_drive var is not defined!"
+    msg: "archlinux_install_disks var is not defined!"
   when:
-  - archlinux_install_drive is not defined
-  - archlinux_install_drive | length < 1
+  - archlinux_install_disks is not defined
+  - archlinux_install_disks | length < 1
 
-- name: Abort if archlinux_install_root_partition is not set
-  ansible.builtin.fail:
-    msg: "archlinux_install_boot_partition var is not defined!"
-  when:
-  - archlinux_install_boot_partition is not defined
-  - archlinux_install_boot_partition | length < 1
+# - name: Abort if archlinux_install_root_partition is not set
+#   ansible.builtin.fail:
+#     msg: "archlinux_install_boot_partition var is not defined!"
+#   when:
+#   - archlinux_install_boot_partition is not defined
+#   - archlinux_install_boot_partition | length < 1
 
-- name: Abort if archlinux_install_root_partition is not set
-  ansible.builtin.fail:
-    msg: "archlinux_install_root_partition var is not defined!"
-  when:
-  - archlinux_install_root_partition is not defined
-  - archlinux_install_root_partition | length < 1
+# - name: Abort if archlinux_install_root_partition is not set
+#   ansible.builtin.fail:
+#     msg: "archlinux_install_root_partition var is not defined!"
+#   when:
+#   - archlinux_install_root_partition is not defined
+#   - archlinux_install_root_partition | length < 1
 
 - name: Verify the boot mode # noqa: var-naming[no-role-prefix]
   ansible.builtin.stat:
@@ -45,30 +45,89 @@
 
 - name: Add CachyOS repositories
   ansible.builtin.include_tasks: add-cachyos-repos.yaml
-  when: archlinux_install_enable_cachyos_repositories or archlinux_install_root_fstype == 'zfs'
+  when: archlinux_install_enable_cachyos_repositories or archlinux_install_zfs_root | default(false)
 
 - name: Set up partitions
   ansible.builtin.include_tasks: partitioning.yaml
+  loop: "{{ archlinux_install_disks }}"
+  loop_control:
+    loop_var: disk
 
-- name: Create mountpoint for root volume
-  ansible.builtin.file:
-    path: /mnt
-    state: directory
-    mode: "0755"
+- name: Set up mdadm arrays
+  when: archlinux_install_mdadm is defined and archlinux_install_mdadm | length > 0
+  ansible.builtin.include_tasks: mdadm-setup.yaml
+  loop: "{{ archlinux_install_mdadm }}"
+  loop_control:
+    loop_var: md
 
-- name: Create filesystems
-  ansible.builtin.include_tasks: mkfs-and-mount-root.yaml
+- name: Set up LUKS devices
+  when: archlinux_install_dm_crypt is defined and archlinux_install_dm_crypt | length > 0
+  ansible.builtin.include_tasks: luks-setup.yaml
+  loop: "{{ archlinux_install_dm_crypt }}"
+  loop_control:
+    loop_var: luks
+
+- name: Set up LVM volumes
+  when: archlinux_install_lvm is defined and archlinux_install_lvm | length > 0
+  ansible.builtin.include_tasks: lvm-setup.yaml
+  loop: "{{ archlinux_install_lvm }}"
+  loop_control:
+    loop_var: lvm
+
+- name: Set up filesystems
+  ansible.builtin.include_tasks: filesystems.yaml
+  loop: "{{ archlinux_install_filesystems }}"
+  loop_control:
+    loop_var: fs
+
+- name: Add btrfs-progs into additional packages
+  ansible.builtin.set_fact:
+    archlinux_install_additional_packages: "{{ (archlinux_install_additional_packages | default([])) + ['btrfs-progs'] }}"
+  when:
+  - archlinux_install_btrfs_subvolumes is defined
+  - archlinux_install_btrfs_subvolumes | length > 0
+  - "'btrfs-progs' not in (archlinux_install_additional_packages | default([]))"
 
 - name: Create btrfs subvolumes
   when:
-  - archlinux_install_root_fstype == 'btrfs'
   - archlinux_install_btrfs_subvolumes is defined
   - archlinux_install_btrfs_subvolumes | length > 0
   ansible.builtin.include_tasks: btrfs-subvolumes.yaml
+  loop: "{{ archlinux_install_btrfs_subvolumes }}"
+  loop_control:
+    loop_var: subvolume
+
+- name: Mount filesystems
+  ansible.builtin.include_tasks: mount-paths.yaml
+  loop: "{{ archlinux_install_mounts }}"
+  loop_control:
+    loop_var: mount
+    label: "{{ mount.path }}"
+
+- name: Set up swap (files and partitions)
+  when:
+  - archlinux_install_swap is defined
+  - archlinux_install_swap | length > 0
+  ansible.builtin.include_tasks: swap-setup.yaml
+  loop: "{{ archlinux_install_swap }}"
+  loop_control:
+    loop_var: swap_item
+
+- name: Check if /mnt is mounted # noqa: var-naming[no-role-prefix]
+  ansible.builtin.command: mountpoint -q /mnt
+  register: mnt_mountpoint_check
+  changed_when: false
+  failed_when: false
+
+- name: Abort if /mnt is not mounted
+  ansible.builtin.fail:
+    msg: "/mnt is not mounted! Aborting installation."
+  when: mnt_mountpoint_check.rc != 0
 
 - name: Create zfs rootfs and volumes
   when:
-  - archlinux_install_root_fstype == 'zfs'
+  - archlinux_install_zfs_root is defined
+  - archlinux_install_zfs_root | bool
   - zfs_zpools is defined
   - zfs_zpools | length > 0
   ansible.builtin.include_tasks: zfs-install.yaml
@@ -86,35 +145,6 @@
   tags:
   - molecule-idempotence-notest
 
-- name: "Create mountpoint boot volume in {{ '/mnt/boot/efi' if archlinux_install_uefi else '/mnt/boot' }}"
-  ansible.builtin.file:
-    path: "{{ '/mnt/boot/efi' if archlinux_install_uefi else '/mnt/boot' }}"
-    mode: "0711"
-    state: directory
-
-- name: Mount boot filesystem
-  ansible.posix.mount:
-    path: "{{ '/mnt/boot/efi' if archlinux_install_uefi else '/mnt/boot' }}"
-    src: "{{ archlinux_install_boot_partition }}"
-    fstype: vfat
-    state: mounted
-
-- name: Create swapfile
-  when:
-  - archlinux_install_swapfile is defined
-  - archlinux_install_swapfile | length > 1
-  - archlinux_install_swap_size is defined
-  - archlinux_install_swap_size | length > 1
-  - archlinux_install_root_fstype != 'zfs'
-  ansible.builtin.include_tasks: swapfile.yaml
-
-- name: Create swap partition
-  when:
-  - archlinux_install_swap_size is defined
-  - archlinux_install_swap_size | length > 1
-  - archlinux_install_swap_partition | default(false)
-  ansible.builtin.include_tasks: swap-partition.yaml
-
 - name: Install base system
   ansible.builtin.include_tasks: pacstrap.yaml
 
@@ -124,13 +154,25 @@
 - name: Configure zfs
   ansible.builtin.include_tasks: configure-zfs.yaml
   when:
-  - archlinux_install_root_fstype == 'zfs'
+  - archlinux_install_zfs_root is defined
+  - archlinux_install_zfs_root | bool
   - zfs_zpools is defined
   - zfs_zpools | length > 0
 
 - name: Setup GRUB
   ansible.builtin.include_tasks: grub.yaml
-  when: "'grub' in archlinux_install_packages"
+  when: "'grub' in archlinux_install_additional_packages"
+
+- name: Setup systemd-boot # noqa: var-naming[no-role-prefix]
+  when:
+  - archlinux_install_systemd_boot_entries is defined
+  - archlinux_install_systemd_boot_entries | length > 0
+  ansible.builtin.include_role:
+    name: systemd_boot
+  vars:
+    # Set chroot path for installation
+    systemd_boot_chroot_path: /mnt
+    systemd_boot_entries: "{{ archlinux_install_systemd_boot_entries }}"
 
 - name: Create users
   ansible.builtin.include_tasks: create-user.yaml
@@ -153,6 +195,7 @@
 - name: Zfs post install
   ansible.builtin.include_tasks: export-zfs.yaml
   when:
-  - archlinux_install_root_fstype == 'zfs'
+  - archlinux_install_zfs_root is defined
+  - archlinux_install_zfs_root | bool
   - zfs_zpools is defined
   - zfs_zpools | length > 0

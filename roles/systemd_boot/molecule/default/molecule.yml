@@ -1,0 +1,53 @@
+---
+dependency:
+  name: galaxy
+driver:
+  name: docker
+platforms:
+- name: systemd_boot-archlinux
+  # image: lopsided/archlinux:latest
+  image: archlinux:base
+  pre_build_image: false
+  dockerfile: ../../../../molecule-shared/Dockerfile.archlinux-systemd.j2
+  tmpfs:
+  - /run
+  - /tmp
+  tty: true
+  privileged: true
+
+provisioner:
+  name: ansible
+  env:
+    ANSIBLE_ROLES_PATH: ../../..
+    # DOCKER_HOST: "tcp://192.168.65.3:2375"
+  inventory:
+    group_vars:
+      all:
+        ansible_user: molecule
+        systemd_boot_entries:
+          arch:
+            title: "Arch Linux"
+            options: "root=UUID=auto rw"
+            linux: /vmlinuz-linux
+            initrd:
+            - /amd-ucode.img
+            - /initramfs-linux.img
+            create_fallback: true
+          example:
+            title: "Example"
+            options: "root=UUID=auto rw"
+            machine_id: "6a9857a393724b7a981ebb5b8495b9ea"
+            version: "3.8.0-2.fc19.x86_64"
+            linux: /6a9857a393724b7a981ebb5b8495b9ea/3.8.0-2.fc19.x86_64/linux
+            devicetree: /6a9857a393724b7a981ebb5b8495b9ea/3.8.0-2.fc19.x86_64/devicetree
+            devicetree_overlay: /6a9857a393724b7a981ebb5b8495b9ea/3.8.0-2.fc19.x86_64/devicetree-overlay
+            architecture: x64
+            initrd:
+            - /amd-ucode.img
+            - /initramfs-linux.img
+            create_fallback: false
+          firmware_updater:
+            title: "Firmware updater"
+            efi: "/EFI/tools/fwupdx64.efi"
+verifier:
+  name: ansible

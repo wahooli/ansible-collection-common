@@ -92,7 +92,9 @@
     mkinitcpio_binaries: [btrfs]
     mkinitcpio_conf_path: "/mnt/etc/mkinitcpio.conf"
     mkinitcpio_command: "arch-chroot /mnt mkinitcpio -P"
-  when: archlinux_install_root_fstype == 'btrfs'
+  when:
+  - archlinux_install_btrfs_subvolumes is defined
+  - archlinux_install_btrfs_subvolumes | length > 0
 
 - name: "Add zfs to ramdisk"
   ansible.builtin.include_role:
@@ -114,7 +116,9 @@
     - filesystems
     mkinitcpio_conf_path: "{{ mnt_dir | default('/mnt') }}/etc/mkinitcpio.conf"
     mkinitcpio_command: "arch-chroot {{ mnt_dir | default('/mnt') }} mkinitcpio -P"
-  when: archlinux_install_root_fstype == 'zfs'
+  when:
+  - archlinux_install_zfs_root is defined
+  - archlinux_install_zfs_root | bool
 
 - name: Flush handlers
   ansible.builtin.meta: flush_handlers
@@ -132,6 +136,7 @@
   failed_when: configure_enable_networkmanager.rc != 0
   changed_when: false
   register: configure_enable_networkmanager
+  when: not archlinux_install_systemd_networkd | bool
 
 - name: Enable qemu-guest-agent # noqa: var-naming[no-role-prefix]
   ansible.builtin.command:
@@ -176,3 +181,18 @@
     changed_when: false
     register: configure_enable_systemd_timesyncd
 # end block Configure systemd-timesyncd
+
+- name: Configure systemd-networkd
+  when: archlinux_install_systemd_networkd | bool
+  ansible.builtin.include_role:
+    name: systemd_networkd
+  vars:
+    # Set chroot path for installation
+    systemd_networkd_chroot_path: /mnt
+    systemd_networkd_resolved_confd_dir: /mnt/etc/systemd/resolved.conf.d/
+    systemd_networkd_resolved_conf_file: /mnt/etc/systemd/resolved.conf
+    systemd_networkd_resolvconf_file: /mnt/etc/resolv.conf
+    systemd_networkd_backup: false
+    systemd_networkd_networks: "{{ archlinux_install_systemd_networks | default({}) }}"
+    systemd_networkd_netdevs: "{{ archlinux_install_systemd_netdevs | default({}) }}"
+    systemd_networkd_links: "{{ archlinux_install_systemd_links | default({}) }}"

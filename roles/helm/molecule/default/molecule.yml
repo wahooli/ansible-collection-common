@@ -25,5 +25,6 @@ provisioner:
       all:
         ansible_user: molecule
         helm_tag: v3.12.1
+        helm_diff_install: false
 verifier:
   name: ansible

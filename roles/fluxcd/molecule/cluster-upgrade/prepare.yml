@@ -10,4 +10,4 @@
       name: "fluxcd"
     vars:
       fluxcd_bootstrap_install_only: true
-      fluxcd_tag: "v0.29.5"
+      fluxcd_tag: "v2.6.0"

@@ -34,6 +34,7 @@
   ansible.builtin.command: pacman -Q
   register: archlinux_configure_installed_packages
   changed_when: false
+  check_mode: false
   failed_when: archlinux_configure_installed_packages.rc > 1
 
 - name: Set sysctls

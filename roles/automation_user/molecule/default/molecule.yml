@@ -1,0 +1,84 @@
+---
+dependency:
+  name: galaxy
+driver:
+  name: docker
+platforms:
+- name: client
+  image: "debian:11"
+  tmpfs:
+  - /run
+  - /tmp
+  pre_build_image: false
+  dockerfile: ../../../../molecule-shared/Dockerfile.debian.j2
+  tty: true
+  groups:
+  - client_hosts
+  networks:
+  - name: automation-user
+  docker_networks:
+  - name: automation-user
+- name: automation-user-debian
+  image: debian:12
+  dockerfile: ../../../../molecule-shared/Dockerfile.debian-systemd.j2
+  privileged: true
+  groups:
+  - debian_hosts
+  - ssh_hosts
+  tmpfs:
+  - /sys/fs/cgroup
+  - /tmp
+  - /run
+  pre_build_image: false
+  tty: true
+  networks:
+  - name: automation-user
+  docker_networks:
+  - name: automation-user
+- name: automation-user-ubuntu
+  image: ubuntu:22.04
+  dockerfile: ../../../../molecule-shared/Dockerfile.debian-systemd.j2
+  privileged: true
+  groups:
+  - debian_hosts
+  - ssh_hosts
+  tmpfs:
+  - /sys/fs/cgroup
+  - /tmp
+  - /run
+  pre_build_image: false
+  tty: true
+  networks:
+  - name: automation-user
+  docker_networks:
+  - name: automation-user
+- name: automation-user-archlinux
+  image: archlinux:base
+  dockerfile: ../../../../molecule-shared/Dockerfile.archlinux-systemd.j2
+  groups:
+  - ssh_hosts
+  tmpfs:
+  - /run
+  - /tmp
+  privileged: true
+  pre_build_image: false
+  tty: true
+  networks:
+  - name: automation-user
+  docker_networks:
+  - name: automation-user
+provisioner:
+  name: ansible
+  env:
+    ANSIBLE_ROLES_PATH: ../../..
+  inventory:
+    group_vars:
+      all:
+        ansible_user: molecule
+        automation_user_name: "testuser"
+        automation_user_shell: "/bin/bash"
+        automation_user_ssh_keys:
+        - ecdsa-sha2-nistp521 AAAAE2VjZHNhLXNoYTItbmlzdHA1MjEAAAAIbmlzdHA1MjEAAACFBACWk3poSryYLp+T6/yO9AbPBgOC9xpESlN5nfX/0AkZjqzj6Sw+8Chjr8A1k+PJgxK4mPecdRpHCneoYYd43R2jBgD+pZ8W3o8zfR72UfhCWwUSOkTnZOBV7ketOq+HTKqvJRdrp86Ux6Gk2CExHsAyB+Ky+teUlb1pgcFpEPbXxHp1ig== test@test
+verifier:
+  name: ansible
+

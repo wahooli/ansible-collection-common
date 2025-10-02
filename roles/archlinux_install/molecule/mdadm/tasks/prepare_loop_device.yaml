@@ -1,0 +1,21 @@
+---
+- name: "Create a 6GB file for disk {{ disk_num }}"
+  community.general.filesize:
+    path: "/fakedisk{{ disk_num }}.img"
+    size: 6G
+
+- name: "Find first unused loop device for disk {{ disk_num }}"
+  ansible.builtin.command:
+    cmd: losetup -f
+  register: loop_device
+  changed_when: false
+
+- name: "Store loop device on disk {{ disk_num }}"
+  ansible.builtin.copy:
+    content: "{{ loop_device.stdout }}"
+    dest: "/loopdev{{ disk_num }}.txt"
+
+- name: "Create loop device for disk {{ disk_num }}"
+  ansible.builtin.command:
+    cmd: "losetup {{ loop_device.stdout }} /fakedisk{{ disk_num }}.img"
+  changed_when: true

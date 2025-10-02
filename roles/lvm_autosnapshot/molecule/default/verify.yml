@@ -1,0 +1,144 @@
+---
+- name: Verify lvm_autosnapshot configuration
+  hosts: all
+  become: true
+  tasks:
+  - name: Verify lvm2 package is installed
+    ansible.builtin.package_facts:
+      manager: auto
+
+  - name: Check lvm2 package is present
+    ansible.builtin.assert:
+      that:
+      - "'lvm2' in ansible_facts.packages"
+      fail_msg: "lvm2 package is not installed"
+      success_msg: "lvm2 package is installed"
+
+  - name: Verify script install directory exists
+    ansible.builtin.stat:
+      path: "/usr/local/sbin/"
+    register: script_dir
+
+  - name: Check script directory exists and has correct permissions
+    ansible.builtin.assert:
+      that:
+      - script_dir.stat.exists
+      - script_dir.stat.isdir
+      - script_dir.stat.mode | int == 755
+      - script_dir.stat.pw_name == 'root'
+      - script_dir.stat.gr_name == 'root'
+      fail_msg: "Script directory does not exist or has incorrect permissions"
+      success_msg: "Script directory exists with correct permissions"
+
+  - name: Verify create-root-snapshot script exists
+    ansible.builtin.stat:
+      path: "/usr/local/sbin/create-root-snapshot"
+    register: create_script
+
+  - name: Check create-root-snapshot script permissions
+    ansible.builtin.assert:
+      that:
+      - create_script.stat.exists
+      - create_script.stat.isreg
+      - create_script.stat.mode | int == 500
+      - create_script.stat.pw_name == 'root'
+      - create_script.stat.gr_name == 'root'
+      fail_msg: "create-root-snapshot script does not exist or has incorrect permissions"
+      success_msg: "create-root-snapshot script exists with correct permissions"
+
+  - name: Verify remove-root-snapshot script exists
+    ansible.builtin.stat:
+      path: "/usr/local/sbin/remove-root-snapshot"
+    register: remove_script
+
+  - name: Check remove-root-snapshot script permissions
+    ansible.builtin.assert:
+      that:
+      - remove_script.stat.exists
+      - remove_script.stat.isreg
+      - remove_script.stat.mode | int == 500
+      - remove_script.stat.pw_name == 'root'
+      - remove_script.stat.gr_name == 'root'
+      fail_msg: "remove-root-snapshot script does not exist or has incorrect permissions"
+      success_msg: "remove-root-snapshot script exists with correct permissions"
+
+  - name: Verify rollback-root-snapshot script exists
+    ansible.builtin.stat:
+      path: "/usr/local/sbin/rollback-root-snapshot"
+    register: rollback_script
+
+  - name: Check rollback-root-snapshot script permissions
+    ansible.builtin.assert:
+      that:
+      - rollback_script.stat.exists
+      - rollback_script.stat.isreg
+      - rollback_script.stat.mode | int == 500
+      - rollback_script.stat.pw_name == 'root'
+      - rollback_script.stat.gr_name == 'root'
+      fail_msg: "rollback-root-snapshot script does not exist or has incorrect permissions"
+      success_msg: "rollback-root-snapshot script exists with correct permissions"
+
+  - name: Verify check-root-snapshot script exists
+    ansible.builtin.stat:
+      path: "/usr/local/sbin/check-root-snapshot"
+    register: check_script
+
+  - name: Check check-root-snapshot script permissions
+    ansible.builtin.assert:
+      that:
+        - check_script.stat.exists
+        - check_script.stat.isreg
+        - check_script.stat.mode | int == 550
+        - check_script.stat.pw_name == 'root'
+        - check_script.stat.gr_name == 'root'
+      fail_msg: "check-root-snapshot script does not exist or has incorrect permissions"
+      success_msg: "check-root-snapshot script exists with correct permissions"
+
+  - name: Verify sudoers configuration file exists
+    ansible.builtin.stat:
+      path: /etc/sudoers.d/99-snapshot-motd-status
+    register: sudoers_file
+
+  - name: Check sudoers file permissions
+    ansible.builtin.assert:
+      that:
+      - sudoers_file.stat.exists
+      - sudoers_file.stat.isreg
+      - sudoers_file.stat.mode | int == 440
+      - sudoers_file.stat.pw_name == 'root'
+      - sudoers_file.stat.gr_name == 'root'
+      fail_msg: "Sudoers file does not exist or has incorrect permissions"
+      success_msg: "Sudoers file exists with correct permissions"
+
+  - name: Verify sudoers configuration content
+    ansible.builtin.slurp:
+      src: /etc/sudoers.d/99-snapshot-motd-status
+    register: sudoers_content
+
+  - debug:
+      msg: "{{ sudoers_content.content | b64decode }}"
+
+  - name: Check sudoers configuration contains correct entries
+    ansible.builtin.assert:
+      that:
+      - "'Defaults !requiretty' in (sudoers_content.content | b64decode)"
+      - "'ALL ALL=(root) NOPASSWD: /usr/local/sbin/check-root-snapshot' in (sudoers_content.content | b64decode)"
+      - "'# BEGIN ANSIBLE MANAGED BLOCK lvm_autosnapshot_check_root_snapshot' in (sudoers_content.content | b64decode)"
+      fail_msg: "Sudoers configuration is missing required entries"
+      success_msg: "Sudoers configuration contains all required entries"
+
+  - name: Verify MOTD script is deployed
+    ansible.builtin.stat:
+      path: /etc/profile.d/motd-snapshot-status.sh
+    register: motd_script
+
+  - name: Check MOTD script permissions
+    ansible.builtin.assert:
+      that:
+      - motd_script.stat.exists
+      - motd_script.stat.isreg
+      - motd_script.stat.mode | int == 755
+      - motd_script.stat.pw_name == 'root'
+      - motd_script.stat.gr_name == 'root'
+      fail_msg: "MOTD script does not exist or has incorrect permissions"
+      success_msg: "MOTD script exists with correct permissions"

@@ -1,0 +1,110 @@
+---
+# SPDX-License-Identifier: MIT-0
+# defaults file for systemd_networkd
+
+# Chroot path for installation scenarios (e.g., /mnt for arch-chroot)
+# When set, all operations will target the chroot environment
+# systemd_networkd_chroot_path: /mnt
+
+# Base paths (will be prefixed with chroot_path when chroot_path is defined)
+systemd_networkd_resolved_confd_dir: /etc/systemd/resolved.conf.d/
+systemd_networkd_resolved_conf_file: /etc/systemd/resolved.conf
+# systemd_networkd_resolved_confd: {}
+# systemd_networkd_resolved_conf: {}
+
+systemd_networkd_resolvconf_file: /etc/resolv.conf
+# Network configuration directory
+systemd_networkd_config_dir: /etc/systemd/network
+
+# Network configurations
+systemd_networkd_networks: {}
+# systemd_networkd_networks:
+#   eth0:
+#     match:
+#       name: "eth0"
+#     network:
+#       dhcp: "yes"
+#       dhcp4: true
+#       dhcp6: false
+#       link_local_addressing: "ipv4"
+#       multicast_dns: true
+#       ipv4_accept_ra: true
+#       ipv6_accept_ra: true
+#     address:
+#       - address: "192.168.1.100/24"
+#       - address: "2001:db8::100/64"
+#     route:
+#       - destination: "0.0.0.0/0"
+#         gateway: "192.168.1.1"
+#         metric: 100
+#     dns:
+#       - "8.8.8.8"
+#       - "8.8.4.4"
+#     link:
+#       mtu: 1500
+#       speed: 1000
+#       duplex: "full"
+#       wake_on_lan: true
+#     dhcp:
+#       use_dns: true
+#     extra_sections:
+#       custom_setting:
+#         my_option: "value"
+#         another_option: 42
+
+# NetDev configurations for virtual network devices
+systemd_networkd_netdevs: {}
+# systemd_networkd_netdevs:
+#   br0:
+#     match:
+#       name: "br0"
+#     netdev:
+#       kind: "bridge"
+#       description: "Main bridge interface"
+#     bridge:
+#       stp: true
+#       forward_delay_delay: 4
+#       hello_time: 2
+#       max_age: 20
+#   bond0:
+#     match:
+#       name: "bond0"
+#     netdev:
+#       kind: "bond"
+#       description: "Bond interface"
+#     bond:
+#       mode: "active-backup"
+#       mii_monitor_interval: 100
+#       up_delay: 200
+#       down_delay: 200
+#   vlan100:
+#     match:
+#       name: "vlan100"
+#     netdev:
+#       kind: "vlan"
+#       description: "VLAN 100 interface"
+#     vlan:
+#       id: 100
+
+# Link configuration
+systemd_networkd_links: {}
+# systemd_networkd_links:
+#   - name: "eth0"
+#     match:
+#       name: "eth0"
+#     link:
+#       mtu: 1500
+#       speed: 1000
+#       duplex: "full"
+#       wake_on_lan: true
+#       auto_negotiation: true
+#       flow_control: true
+#       pause_autoneg: true
+#       asymmetric_pause: false
+
+# Backup existing configurations
+systemd_networkd_backup: true
+systemd_networkd_backup_dir: /etc/systemd/network/backup
+
+# Cleanup orphaned configurations - remove Ansible-managed configurations that are no longer defined
+systemd_networkd_cleanup_orphan_config: true

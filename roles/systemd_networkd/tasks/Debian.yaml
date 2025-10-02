@@ -1,0 +1,54 @@
+---
+# SPDX-License-Identifier: MIT-0
+# Debian-specific tasks for systemd_networkd
+
+- name: Update package cache
+  become: true
+  failed_when: false
+  ansible.builtin.apt:
+    update_cache: true
+    cache_valid_time: 3600
+  tags:
+  - molecule-idempotence-notest
+
+- name: Gather the package facts
+  become: true
+  ansible.builtin.package_facts:
+    manager: auto
+  when: ansible_facts.packages is not defined
+
+- name: Install systemd package (Debian)
+  become: true
+  ansible.builtin.apt:
+    name:
+    - systemd
+    state: present
+  when: "'systemd' not in ansible_facts.packages"
+  notify: Reload systemd daemon
+  tags:
+  - molecule-idempotence-notest
+
+- name: Install systemd package (Debian)
+  become: true
+  ansible.builtin.apt:
+    name:
+    - systemd-resolved
+    state: present
+  when:
+  - "'systemd-resolved' not in ansible_facts.packages"
+  - ansible_distribution != 'Ubuntu'
+  - systemd_networkd_configure_resolved | default(false)
+  notify: Reload systemd daemon
+  tags:
+  - molecule-idempotence-notest
+
+- name: Ensure systemd-resolved user and group exist
+  become: true
+  ansible.builtin.user:
+    name: systemd-resolve
+    system: true
+    create_home: false
+    shell: /usr/sbin/nologin
+  when:
+  - systemd_networkd_configure_resolved | default(false)
+  - "'systemd-resolve' not in ansible_facts.get('getent_passwd', {})"

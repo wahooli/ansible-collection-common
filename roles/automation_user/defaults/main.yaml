@@ -1,0 +1,18 @@
+---
+# Required: Name of the automation user to create
+automation_user_name: "ansible"
+
+# Required: List of SSH public keys to add to authorized_keys
+automation_user_ssh_keys: []
+
+# Optional: Whether to grant sudo access (default: true)
+automation_user_sudo_access: true
+
+# Optional: Whether to disable password authentication for this user (default: true)
+automation_user_disable_password_auth: true
+
+# Optional: Shell for the automation user (default: /bin/bash)
+automation_user_shell: "/bin/bash"
+
+# Optional: Home directory for the automation user (default: /var/lib/{username})
+# automation_user_home: null

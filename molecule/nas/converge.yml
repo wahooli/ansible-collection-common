@@ -2,5 +2,7 @@
 - name: Converge
   hosts: all
   gather_facts: true
-- name: Import uninstall playbook
+- name: Import automation_user playbook
+  ansible.builtin.import_playbook: "{{ lookup('env','MOLECULE_PROJECT_DIRECTORY') | default('../..', true) }}/playbooks/automation-user.yml"
+- name: Import configure_nas playbook
   ansible.builtin.import_playbook: "{{ lookup('env','MOLECULE_PROJECT_DIRECTORY') | default('../..', true) }}/playbooks/configure_nas.yml"

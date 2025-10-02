@@ -1,0 +1,7 @@
+---
+- name: Converge
+  hosts: all
+  tasks:
+  - name: "Include usb_deadman role"
+    ansible.builtin.include_role:
+      name: "usb_deadman"

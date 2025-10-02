@@ -1,6 +1,14 @@
 ---
 # tasks file for cilium
+- name: Gather facts if needed
+  ansible.builtin.setup:
+  check_mode: false
+  when:
+  - ansible_check_mode
+  - ansible_facts is undefined
+
 - name: Combine cilium_helm_values_override into cilium_helm_values
+  check_mode: false
   when:
   - cilium_helm_values_override is defined
   ansible.builtin.set_fact:
@@ -20,11 +28,13 @@
   block:
   - name: Get list of cilium github releases
     run_once: true
+    check_mode: false
     ansible.builtin.uri:
       url: https://api.github.com/repos/cilium/cilium/releases/latest
       return_content: true
     register: cilium_releases_json
   - name: Set cilium latest as fact
+    check_mode: false
     ansible.builtin.set_fact:
       cilium_version: "{{ cilium_releases_json.json.tag_name | trim | regex_replace('^v', '') }}"
     when: not cilium_releases_json.failed
@@ -43,6 +53,7 @@
 
 - name: Get current user name # noqa: var-naming[no-role-prefix]
   ansible.builtin.command: whoami
+  check_mode: false
   register: current_user_name
   changed_when: current_user_name.rc != 0
   when: ansible_user is undefined or ansible_user == ""
@@ -61,13 +72,29 @@
         grep -E {{ venv_user | default('root') }}: /etc/passwd | awk -F: '{ print $6 }'
     failed_when: user_home_path.rc != 0
     changed_when: false
+    check_mode: false
     register: user_home_path
 
-  - name: Ensure the virtual environment exists
-    ansible.builtin.pip:
-      name: packaging
-      virtualenv: "{{ user_home_path.stdout }}/.ansible-venv"
-      virtualenv_command: "{{ virtualenv_command }}"
+  - name: Ensure packaging is installed in the virtualenv
+    check_mode: false
+    block:
+    - name: Ensure the virtual environment exists
+      ansible.builtin.pip:
+        name: packaging
+        virtualenv: "{{ user_home_path.stdout }}/.ansible-venv"
+        virtualenv_command: "{{ virtualenv_command }}"
+    rescue:
+    - name: Ensure pip is installed in the virtualenv
+      ansible.builtin.command: "{{ user_home_path.stdout }}/.ansible-venv/bin/python -m ensurepip --upgrade"
+      # args:
+      #   creates: "{{ user_home_path.stdout }}/.ansible-venv/bin/pip"
+      changed_when: false
+      check_mode: false
+    - name: Ensure the virtual environment exists
+      ansible.builtin.pip:
+        name: packaging
+        virtualenv: "{{ user_home_path.stdout }}/.ansible-venv"
+        virtualenv_command: "{{ virtualenv_command }}"
 
   - name: Run commands in venv
     vars:
@@ -76,6 +103,7 @@
       venv_python: "{{ venv_dir }}/bin/python"
     block:
     - name: Install python pre-requisites
+      check_mode: false
       ansible.builtin.pip:
         name: kubernetes
     - name: Install cilium with helm

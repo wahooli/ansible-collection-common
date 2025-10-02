@@ -1,0 +1,270 @@
+---
+- name: Verify systemd-networkd configuration
+  hosts: networkd_hosts
+  become: true
+  tasks:
+  - name: Check if systemd-networkd configuration directory exists
+    ansible.builtin.stat:
+      path: /etc/systemd/network
+    register: config_dir_stat
+
+  - name: Verify configuration directory exists
+    ansible.builtin.assert:
+      that:
+      - config_dir_stat.stat.exists
+      - config_dir_stat.stat.isdir
+      success_msg: "systemd-networkd configuration directory exists"
+      fail_msg: "systemd-networkd configuration directory does not exist"
+
+  - name: List all configuration files
+    ansible.builtin.find:
+      paths: /etc/systemd/network
+      patterns: "*.network,*.link,*.netdev"
+      file_type: file
+    register: config_files
+
+  - name: Verify at least one configuration file exists
+    ansible.builtin.assert:
+      that:
+      - config_files.files | length > 0
+      success_msg: "Found {{ config_files.files | length }} systemd-networkd configuration files"
+      fail_msg: "No systemd-networkd configuration files found"
+
+  - name: Check configuration file permissions
+    ansible.builtin.stat:
+      path: "{{ item.path }}"
+    register: file_stats
+    loop: "{{ config_files.files }}"
+    loop_control:
+      label: "{{ item.path }}"
+
+  - name: Verify configuration file permissions are correct
+    ansible.builtin.assert:
+      quiet: true
+      that:
+      - item.stat.mode | int == 644
+      - item.stat.pw_name == "root"
+      - item.stat.gr_name == "root"
+    loop: "{{ file_stats.results }}"
+    loop_control:
+      label: "{{ item.stat.path }}"
+
+  - name: Verify .network files have valid sections
+    ansible.builtin.shell: |
+      set -o pipefail
+      grep -E '^\[.*\]' {{ item.path }} | head -5
+    register: network_sections
+    loop: "{{ config_files.files | selectattr('path', 'match', '.*\\.network$') | list }}"
+    loop_control:
+      label: "{{ item.path }}"
+    changed_when: false
+    args:
+      executable: /bin/bash
+
+  - name: Verify .link files have valid sections
+    ansible.builtin.shell: |
+      set -o pipefail
+      grep -E '^\[.*\]' {{ item.path }} | head -5
+    register: link_sections
+    loop: "{{ config_files.files | selectattr('path', 'match', '.*\\.link$') | list }}"
+    loop_control:
+      label: "{{ item.path }}"
+    changed_when: false
+    args:
+      executable: /bin/bash
+
+  - name: Verify .netdev files have valid sections
+    ansible.builtin.shell: |
+      set -o pipefail
+      grep -E '^\[.*\]' {{ item.path }} | head -5
+    register: netdev_sections
+    loop: "{{ config_files.files | selectattr('path', 'match', '.*\\.netdev$') | list }}"
+    loop_control:
+      label: "{{ item.path }}"
+    changed_when: false
+    args:
+      executable: /bin/bash
+
+  - name: Check if systemd-networkd service is running
+    ansible.builtin.systemd:
+      name: systemd-networkd
+    register: service_status
+
+  - name: Verify systemd-networkd service is running
+    ansible.builtin.assert:
+      success_msg: "systemd-networkd service is running and enabled"
+      fail_msg: "systemd-networkd service is not running or enabled"
+      that:
+      - service_status.status.ActiveState == "active"
+      - service_status.status.UnitFileState == "enabled"
+
+  - name: Check network interface status
+    ansible.builtin.command: "networkctl status"
+    register: network_status
+    changed_when: false
+    failed_when: network_status.rc != 0
+
+  - name: Verify cleanup mode removed prepare-phase files
+    ansible.builtin.stat:
+      path: /etc/systemd/network/00-default-dhcp.network
+    register: prepare_network_file
+
+  - name: Assert prepare-phase network file was cleaned up
+    ansible.builtin.assert:
+      that:
+        - not prepare_network_file.stat.exists
+      success_msg: "Prepare-phase network file /etc/systemd/network/00-default-dhcp.network was properly cleaned up"
+      fail_msg: "Prepare-phase network file /etc/systemd/network/00-default-dhcp.network still exists and should have been cleaned up"
+
+  - name: Verify cleanup mode removed prepare-phase netdev file
+    ansible.builtin.stat:
+      path: /etc/systemd/network/vlan200.netdev
+    register: prepare_netdev_file
+
+  - name: Assert prepare-phase netdev file was cleaned up
+    ansible.builtin.assert:
+      that:
+        - not prepare_netdev_file.stat.exists
+      success_msg: "Prepare-phase netdev file /etc/systemd/network/vlan200.netdev was properly cleaned up"
+      fail_msg: "Prepare-phase netdev file /etc/systemd/network/vlan200.netdev still exists and should have been cleaned up"
+
+- name: Verify systemd-resolved configuration
+  hosts: resolved_hosts
+  become: true
+  tasks:
+  - name: Check if systemd-resolved main configuration file exists
+    ansible.builtin.stat:
+      path: "{{ systemd_networkd_resolved_conf_file | default('/etc/systemd/resolved.conf') }}"
+    register: resolved_main_conf_stat
+
+  - name: Verify systemd-resolved main configuration file exists
+    ansible.builtin.assert:
+      quiet: true
+      that:
+      - resolved_main_conf_stat.stat.exists
+      - resolved_main_conf_stat.stat.isreg
+      fail_msg: "systemd-resolved main configuration file does not exist"
+      success_msg: "systemd-resolved main configuration file exists"
+
+  - name: Check systemd-resolved main configuration file permissions
+    ansible.builtin.stat:
+      path: "{{ systemd_networkd_resolved_conf_file | default('/etc/systemd/resolved.conf') }}"
+    register: resolved_main_file_stat
+
+  - name: Verify systemd-resolved main configuration file permissions are correct
+    ansible.builtin.assert:
+      quiet: true
+      that:
+      - resolved_main_file_stat.stat.mode | int == 644
+      - resolved_main_file_stat.stat.pw_name == "root"
+      - resolved_main_file_stat.stat.gr_name == "root"
+      fail_msg: "systemd-resolved main configuration file permissions are incorrect"
+      success_msg: "systemd-resolved main configuration file permissions are correct"
+
+  - name: Verify systemd-resolved main configuration file has valid sections
+    ansible.builtin.shell: |
+      set -o pipefail
+      grep -E '^\[.*\]' {{ systemd_networkd_resolved_conf_file | default('/etc/systemd/resolved.conf') }} | head -5
+    register: resolved_main_sections
+    changed_when: false
+    args:
+      executable: /bin/bash
+
+  - name: Check if systemd-resolved configuration directory exists
+    ansible.builtin.stat:
+      path: "{{ systemd_networkd_resolved_confd_dir | default('/etc/systemd/resolved.conf.d') }}"
+    register: resolved_confd_stat
+
+  - name: Verify systemd-resolved configuration directory exists
+    ansible.builtin.assert:
+      quiet: true
+      that:
+      - resolved_confd_stat.stat.exists
+      - resolved_confd_stat.stat.isdir
+      fail_msg: "systemd-resolved configuration directory does not exist"
+      success_msg: "systemd-resolved configuration directory exists"
+
+  - name: List systemd-resolved configuration files
+    ansible.builtin.find:
+      paths: "{{ systemd_networkd_resolved_confd_dir | default('/etc/systemd/resolved.conf.d') }}"
+      patterns: "*.conf"
+    register: resolved_conf_files
+
+  - name: Verify at least one systemd-resolved configuration file exists
+    ansible.builtin.assert:
+      quiet: true
+      that:
+      - resolved_conf_files.files | length > 0
+      fail_msg: "No systemd-resolved configuration files found"
+      success_msg: "Found {{ resolved_conf_files.files | length }} systemd-resolved configuration files"
+
+  - name: Check systemd-resolved configuration file permissions
+    ansible.builtin.stat:
+      path: "{{ item.path }}"
+    register: resolved_file_stats
+    loop: "{{ resolved_conf_files.files }}"
+    loop_control:
+      label: "{{ item.path }}"
+
+  - name: Verify systemd-resolved configuration file permissions are correct
+    ansible.builtin.assert:
+      quiet: true
+      that:
+      - item.stat.mode | int == 644
+      - item.stat.pw_name == "root"
+      - item.stat.gr_name == "root"
+    loop: "{{ resolved_file_stats.results }}"
+    loop_control:
+      label: "{{ item.stat.path }}"
+
+  - name: Verify systemd-resolved configuration files have valid sections
+    ansible.builtin.shell: |
+      set -o pipefail
+      grep -E '^\[.*\]' {{ item.path }} | head -5
+    register: resolved_sections
+    loop: "{{ resolved_conf_files.files }}"
+    loop_control:
+      label: "{{ item.path }}"
+    changed_when: false
+    args:
+      executable: /bin/bash
+
+  - name: Check systemd-resolved service status
+    ansible.builtin.systemd:
+      name: systemd-resolved
+    register: resolved_service_status
+
+  - name: Verify systemd-resolved service is running
+    ansible.builtin.assert:
+      quiet: true
+      that:
+      - resolved_service_status.status is defined
+      - resolved_service_status.status.ActiveState is defined
+      - resolved_service_status.status.UnitFileState is defined
+      - resolved_service_status.status.ActiveState == "active"
+      - resolved_service_status.status.UnitFileState == "enabled"
+      fail_msg: "systemd-resolved service is not running or enabled"
+      success_msg: "systemd-resolved service is running and enabled"
+
+  - name: Check systemd-resolved configuration
+    ansible.builtin.command: "resolvectl status"
+    register: resolved_status
+    changed_when: false
+    failed_when: resolved_status.rc != 0
+
+- name: Verify systemd-resolved is not configured on non-resolved hosts
+  hosts: "!resolved_hosts"
+  become: true
+  tasks:
+  - name: Check if systemd-resolved is enabled
+    ansible.builtin.systemd:
+      name: systemd-resolved
+    register: resolved_service
+
+  - name: Assert systemd-resolved is not enabled and not running
+    ansible.builtin.assert:
+      success_msg: "systemd-resolved is not enabled and not running"
+      fail_msg: "systemd-resolved is enabled and running"
+      that:
+      - resolved_service.status.ActiveState != "active"
+      - resolved_service.status.UnitFileState is not defined or resolved_service.status.UnitFileState != "enabled"

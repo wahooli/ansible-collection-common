@@ -1,0 +1,29 @@
+---
+# SPDX-License-Identifier: MIT-0
+# Archlinux-specific tasks for borg_backup
+
+- name: Update pacman database
+  become: true
+  failed_when: false
+  community.general.pacman:
+    update_cache: true
+  tags:
+  - molecule-idempotence-notest
+
+- name: Gather the package facts
+  become: true
+  ansible.builtin.package_facts:
+    manager: auto
+  when:
+  - ansible_facts.packages is not defined
+
+- name: Install required packages (Archlinux)
+  become: true
+  community.general.pacman:
+    name:
+    - borg
+    - python-pyfuse3
+    - openssh
+    state: "present"
+  when:
+  - "'borg' not in ansible_facts.packages or 'python-pyfuse3' not in ansible_facts.packages or 'openssh' not in ansible_facts.packages"

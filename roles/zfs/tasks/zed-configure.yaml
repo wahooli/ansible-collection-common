@@ -17,7 +17,7 @@
   vars:
     conf_commented: "{{ item.config.state == 'absent' if item.config is mapping else false }}"
     regexp: "{{ '(?i)^(' + item.conf_name + '=.*)' if conf_commented else '^[# ]?' + item.conf_name + '=.*$' }}"
-    conf_value: "{{ item.config.value if item.config is mapping else item.config }}"
+    conf_value: "{{ item.config.value if item.config is mapping else (item.config | string) }}"
     conf_value_quoted: |-
       {{ conf_value if conf_value is regex('^[0-9]+$') else '"' + conf_value + '"' }}
     line: |-

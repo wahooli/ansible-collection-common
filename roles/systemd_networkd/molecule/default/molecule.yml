@@ -1,0 +1,156 @@
+---
+dependency:
+  name: galaxy
+driver:
+  name: docker
+platforms:
+- name: networkd-debian-12
+  image: debian:12
+  pre_build_image: false
+  dockerfile: ../../../../molecule-shared/Dockerfile.debian-systemd.j2
+  groups:
+  - networkd_hosts
+  tmpfs:
+  - /run
+  - /tmp
+  tty: true
+  privileged: true
+
+- name: networkd-ubuntu-22.04
+  image: ubuntu:22.04
+  pre_build_image: false
+  dockerfile: ../../../../molecule-shared/Dockerfile.debian-systemd.j2
+  groups:
+  - resolved_hosts
+  - networkd_hosts
+  tmpfs:
+  - /run
+  - /tmp
+  tty: true
+  privileged: true
+
+- name: networkd-archlinux
+  image: archlinux:base
+  pre_build_image: false
+  groups:
+  - resolved_hosts
+  - networkd_hosts
+  dockerfile: ../../../../molecule-shared/Dockerfile.archlinux-systemd.j2
+  tmpfs:
+  - /run
+  - /tmp
+  tty: true
+  privileged: true
+
+# - name: networkd-redhat
+#   image: quay.io/centos/centos:stream9
+#   # image: redhat/ubi9-init
+#   pre_build_image: false
+#   dockerfile: ../../../../molecule-shared/Dockerfile.rhel-systemd.j2
+#   groups:
+#   - resolved_hosts
+#   tmpfs:
+#   - /run
+#   - /tmp
+#   tty: true
+#   privileged: true
+
+provisioner:
+  name: ansible
+  env:
+    ANSIBLE_ROLES_PATH: ../../..
+  inventory:
+    host_vars:
+      networkd-redhat:
+        systemd_networkd_enabled: false
+        systemd_networkd_resolved_confd:
+          fallback-dns:
+            resolve:
+              FallbackDNS: 1.1.1.1#cloudflare-dns.com 9.9.9.9#dns.quad9.net
+    group_vars:
+      resolved_hosts:
+        systemd_networkd_resolved_conf:
+          Resolve:
+            cache: true
+        systemd_networkd_resolved_confd:
+          enable-multicast-dns:
+            Resolve:
+              MulticastDNS: true
+      all:
+        ansible_user: molecule
+        systemd_networkd_cleanup_orphan_config: true
+        systemd_networkd_netdevs:
+          br0:
+            NetDev:
+              Name: "br0"
+              Kind: "bridge"
+              Description: "Test bridge interface"
+            Bridge:
+              STP: true
+              ForwardDelaySec: 4
+              HelloTimeSec: 2
+              MaxAgeSec: 20
+
+          bond0:
+            NetDev:
+              Name: "bond0"
+              Kind: "bond"
+              Description: "Test bond interface"
+            Bond:
+              Mode: "active-backup"
+              UpDelaySec: 200
+              DownDelaySec: 200
+
+          vlan100:
+            NetDev:
+              Name: "vlan100"
+              Kind: "vlan"
+              Description: "Test VLAN 100 interface"
+            VLAN:
+              Id: 100
+
+        systemd_networkd_networks:
+          99-global:
+            match:
+              Name: "*"
+            network:
+              IPv4Forwarding: false
+              IPv6Forwarding: false
+              IPv6PrivacyExtensions: "kernel"
+              IPv6AcceptRA: true
+            route:
+            - gateway: 1.1.1.1
+              destination: 0.0.0.0/0
+              metric: 100
+              MTUBytes: 1500
+              TCPCongestionControlAlgorithm: bbr
+            - gateway: 1.0.0.1
+              destination: 0.0.0.0/0
+              metric: 100
+              MTUBytes: 1500
+              TCPCongestionControlAlgorithm: bbr
+          10-default:
+            match:
+              Name: "*"
+            network:
+              DHCP: "yes"
+              LinkLocalAddressing: "ipv4"
+              MulticastDNS: "yes"
+          eth0:
+            match:
+              Name: "eth0"
+            network:
+              DHCP: "yes"
+              LinkLocalAddressing: "ipv4"
+              MulticastDNS: true
+
+        systemd_networkd_links:
+          eth0:
+            match:
+              Name: "eth0"
+            link:
+              MTU: 1500
+              Speed: 1000
+              Duplex: "full"
+verifier:
+  name: ansible

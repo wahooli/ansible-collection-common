@@ -1,0 +1,8 @@
+# Ansible managed systemd-boot loader configuration
+
+timeout {{ systemd_boot_timeout | default(5) }}
+editor {{ 'yes' if (systemd_boot_editor | bool) else 'no' }}
+auto-entries {{ 'yes' if (systemd_boot_auto_entries | bool) else 'no' }}
+auto-firmware {{ 'yes' if (systemd_boot_auto_firmware | bool) else 'no' }}
+console-mode {{ systemd_boot_console_mode | default('auto') }}
+default {{ systemd_boot_default_entry | default('@saved') }}

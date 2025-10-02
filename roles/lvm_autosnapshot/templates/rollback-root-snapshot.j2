@@ -1,0 +1,110 @@
+#!/bin/bash
+set -e
+
+# --- Configuration ---
+VG_NAME="{{ lvm_autosnapshot_target_vg }}"
+SNAPSHOT_NAME="{{ lvm_autosnapshot_name }}"
+SNAPSHOT_SUFFIX="{{ lvm_autosnapshot_suffix }}"
+SNAPSHOT_LV_PATH="${VG_NAME}/${SNAPSHOT_NAME}"
+
+# --- Argument Parsing for Automation ---
+AUTOMATED_RUN=false
+AUTO_REBOOT=false
+
+for arg in "$@"; do
+  case $arg in
+    -y|--yes)
+      AUTOMATED_RUN=true
+      shift # remove --yes from the list of arguments
+      ;;
+    -r|--reboot)
+      AUTO_REBOOT=true
+      shift # remove --reboot from the list of arguments
+      ;;
+  esac
+done
+
+if [ "$AUTOMATED_RUN" = true ]; then
+    echo "--> Running in non-interactive mode (--yes flag detected)."
+    if [ "$AUTO_REBOOT" = true ]; then
+        echo "--> Auto-reboot enabled (--reboot flag detected)."
+    fi
+fi
+
+
+# 1. Pre-flight Check
+if ! lvs "${SNAPSHOT_LV_PATH}" &>/dev/null; then
+    echo "ERROR: Snapshot '${SNAPSHOT_NAME}' not found. Nothing to merge." >&2
+    exit 1
+fi
+
+# 2. Main Confirmation Prompt
+if [ "$AUTOMATED_RUN" = true ]; then
+    echo "--> Automatically confirming rollback."
+else
+    echo "#####################################################################"
+    echo "#                             ! WARNING !                           #"
+    echo "#-------------------------------------------------------------------#"
+    echo "# This will PERMANENTLY revert your root filesystem and clean up.   #"
+    echo "#####################################################################"
+    echo
+    read -p "Are you absolutely sure you want to proceed? Type 'yes' to continue: " confirmation
+    if [[ "$confirmation" != "yes" ]]; then
+        echo "Rollback aborted."
+        exit 1
+    fi
+fi
+
+# 3. Schedule the LVM merge
+echo "--> Scheduling snapshot merge for the next reboot..."
+lvconvert --merge "${SNAPSHOT_LV_PATH}"
+
+# 4. Clean up snapshot boot files and entries (Safely, with Confirmation)
+echo "--> Preparing to clean up snapshot boot files and entries..."
+if [ -z "$SNAPSHOT_SUFFIX" ]; then
+    echo "CRITICAL ERROR: SNAPSHOT_SUFFIX variable is empty. Aborting." >&2
+    exit 1
+fi
+{% if lvm_autosnapshot_bootloader == "systemd-boot" %}
+declare -a files_to_delete
+mapfile -t files_to_delete < <(find /boot {{ lvm_autosnapshot_systemd_boot_path.rstrip('/') }} -maxdepth 1 \( -name "*${SNAPSHOT_SUFFIX}.img" -o -name "*${SNAPSHOT_SUFFIX}.conf" -o -name "*${SNAPSHOT_SUFFIX}" \))
+
+{% raw %}
+if [ ${#files_to_delete[@]} -gt 0 ]; then
+    if [ "$AUTOMATED_RUN" = true ]; then
+        echo "--> Automatically confirming boot file deletion."
+        echo "--> Deleting files:"
+        rm -vf "${files_to_delete[@]}"
+    else
+        echo
+        echo "The following snapshot-related boot files will be permanently deleted:"
+        printf "  %s\n" "${files_to_delete[@]}"
+        echo
+        read -p "Proceed with deleting these boot files? [y/N]: " delete_confirmation
+        if [[ "$delete_confirmation" == "y" || "$delete_confirmation" == "Y" ]]; then
+            echo "--> Deleting files..."
+            rm -vf "${files_to_delete[@]}"
+        else
+            echo "--> Deletion of boot files skipped. You may need to remove them manually later."
+        fi
+    fi
+fi
+{% endraw %}
+{% endif %}
+# 5. Final Reboot Logic
+echo
+echo "--> Merge has been scheduled."
+if [ "$AUTOMATED_RUN" = true ]; then
+    if [ "$AUTO_REBOOT" = true ]; then
+        echo "--> Automatically rebooting now to finalize the rollback."
+        reboot
+    else
+        echo "--> Auto-reboot not requested. Please reboot manually to complete the rollback."
+    fi
+else
+    read -p "Reboot now? [Y/n]: " choice
+    case "$choice" in
+      n|N ) echo "Please reboot manually to complete the rollback.";;
+      * ) echo "Rebooting now..."; reboot;;
+    esac
+fi

@@ -1,0 +1,101 @@
+---
+# Verify playbook for MDADM scenario: RAID setup with LVM, encryption, and systemd-boot
+# This scenario tests:
+# - RAID device creation (md0 for ESP, md1 for root)
+# - LUKS2 encryption setup
+# - LVM thin provisioning
+# - XFS filesystem creation
+# - systemd-boot configuration
+
+- name: Verify MDADM Scenario - RAID with LVM and Encryption
+  hosts: all
+  gather_facts: false
+  tasks:
+  - name: Check if basic system files exist
+    ansible.builtin.stat:
+      path: "/mnt/etc/pacman.conf"
+    register: verify_pacman_conf
+
+  - name: Check if initramfs configuration exists
+    ansible.builtin.stat:
+      path: "/mnt/etc/mkinitcpio.conf"
+    register: verify_mkinitcpio_conf
+
+  - name: Check if root filesystem is mounted
+    ansible.builtin.stat:
+      path: "/mnt"
+    register: verify_root_mount
+
+  - name: Check if boot partition is mounted
+    ansible.builtin.stat:
+      path: "/mnt/boot"
+    register: verify_boot_mount
+
+  - name: Check if scratch volume is mounted
+    ansible.builtin.stat:
+      path: "/mnt/opt/k3s_data"
+    register: verify_scratch_mount
+
+  - name: Check if kubelet bind mount source exists
+    ansible.builtin.stat:
+      path: "/mnt/opt/k3s_data/kubelet"
+    register: verify_kubelet_source
+
+  - name: Check if kubelet bind mount target exists
+    ansible.builtin.stat:
+      path: "/mnt/var/lib/kubelet"
+    register: verify_kubelet_target
+
+  - name: Check if rancher bind mount source exists
+    ansible.builtin.stat:
+      path: "/mnt/opt/k3s_data/rancher"
+    register: verify_rancher_source
+
+  - name: Check if rancher bind mount target exists
+    ansible.builtin.stat:
+      path: "/mnt/var/lib/rancher"
+    register: verify_rancher_target
+
+  - name: Verify RAID devices were created
+    ansible.builtin.command: cat /proc/mdstat
+    register: raid_status
+    changed_when: false
+
+  - name: Verify LVM volume group exists
+    ansible.builtin.command: vgs vg0
+    register: lvm_vg_status
+    changed_when: false
+
+  - name: Verify LVM logical volumes exist
+    ansible.builtin.command: lvs vg0
+    register: lvm_lv_status
+    changed_when: false
+
+  - name: Check if systemd-boot entries were created
+    ansible.builtin.stat:
+      path: "/mnt/boot/loader/entries/arch.conf"
+    register: verify_systemd_boot_entry
+
+  - name: Verify encrypted device mapping
+    ansible.builtin.command: lsblk /dev/mapper/cryptroot
+    register: crypt_device_status
+    changed_when: false
+
+  - name: Run assertions for MDADM scenario
+    ansible.builtin.assert:
+      that:
+      - verify_pacman_conf.stat.exists
+      - verify_mkinitcpio_conf.stat.exists
+      - verify_root_mount.stat.exists
+      - verify_boot_mount.stat.exists
+      - verify_scratch_mount.stat.exists
+      - verify_kubelet_source.stat.exists
+      - verify_kubelet_target.stat.exists
+      - verify_rancher_source.stat.exists
+      - verify_rancher_target.stat.exists
+      - verify_systemd_boot_entry.stat.exists
+      - raid_status.rc == 0
+      - lvm_vg_status.rc == 0
+      - lvm_lv_status.rc == 0
+      - crypt_device_status.rc == 0
+      msg: "MDADM scenario verification failed - RAID/LVM/encryption setup incomplete"

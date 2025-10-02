@@ -1,0 +1,6 @@
+{{ ansible_managed | comment }}
+{% for label in usb_deadman_monitor_disk_labels %}
+# When a partition with label {{ label }} is removed, start deadman@{{ label }}.service
+SUBSYSTEM=="block", ACTION=="remove", ENV{ID_FS_LABEL}=="{{ label }}", \
+  TAG+="systemd", RUN+="/usr/bin/systemctl start deadman@%E{ID_FS_LABEL}.service"
+{% endfor %}

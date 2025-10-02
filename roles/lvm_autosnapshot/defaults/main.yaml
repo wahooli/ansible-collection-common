@@ -1,0 +1,12 @@
+---
+# SPDX-License-Identifier: MIT-0
+# defaults file for lvm_autosnapshot
+
+lvm_autosnapshot_name: auto_snapshot
+lvm_autosnapshot_suffix: -snapshot
+lvm_autosnapshot_script_install_path: /usr/local/sbin/
+lvm_autosnapshot_target_vg: vg0
+lvm_autosnapshot_target_lv: lv_root
+lvm_autosnapshot_bootloader: systemd-boot # or grub, but currently not supported
+lvm_autosnapshot_systemd_boot_path: /boot/loader/entries
+lvm_autosnapshot_status_file: /run/motd_snapshot_status

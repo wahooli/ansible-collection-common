@@ -21,6 +21,20 @@
     - /mnt/recursion/
     - /srv/recursion/
 
+  - name: Install dependencies
+    become: true
+    community.general.pacman:
+      name: openssh
+      update_cache: true
+      state: present
+
+  - name: Ensure SSH service is running
+    become: true
+    ansible.builtin.service:
+      name: sshd
+      state: started
+      enabled: true
+
   - name: Check /sys/fs/bpf exists
     become: true
     ansible.builtin.stat:

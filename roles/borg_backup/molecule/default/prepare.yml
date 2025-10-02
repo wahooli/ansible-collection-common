@@ -1,0 +1,20 @@
+---
+- name: Prepare debian-12 and ubuntu-22.04 hosts
+  hosts: borg-debian-12, borg-ubuntu-22.04
+  gather_facts: false
+  tasks:
+  - name: Install dbus-user-session and libpam-systemd packages
+    become: true
+    ansible.builtin.apt:
+      name:
+      - dbus-user-session
+      - libpam-systemd
+      state: present
+      update_cache: true
+
+  - name: Start and enable systemd-logind for Debian 12 and Ubuntu 22.04 hosts
+    become: true
+    ansible.builtin.systemd:
+      name: systemd-logind
+      state: started
+      enabled: true

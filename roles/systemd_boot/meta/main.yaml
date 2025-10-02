@@ -1,0 +1,14 @@
+---
+galaxy_info:
+  author: wahooli
+  description: Configures systemd-boot bootloader for Arch Linux systems
+  company: wahooli
+  license: MIT
+  min_ansible_version: "2.1"
+  galaxy_tags:
+  - "bootloader"
+  - "systemd"
+  - "archlinux"
+  - "automation"
+
+dependencies: []

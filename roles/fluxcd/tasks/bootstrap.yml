@@ -1,5 +1,6 @@
 ---
 - name: Set bootstrap related facts # noqa: var-naming[no-role-prefix]
+  check_mode: false
   ansible.builtin.set_fact:
     keys_directory: "{{ fluxcd_bootstrap_ssh_key_path }}/{{ fluxcd_bootstrap_key_name }}"
     private_key_path: "{{ fluxcd_bootstrap_ssh_key_path }}/{{ fluxcd_bootstrap_key_name }}/id_{{ fluxcd_bootstrap_ssh_key_type }}"
@@ -25,7 +26,8 @@
     state: directory
     mode: '0700'
 
-- name: Chceck if private key exists # noqa: var-naming[no-role-prefix]
+- name: Check if private key exists # noqa: var-naming[no-role-prefix]
+  check_mode: false
   ansible.builtin.stat:
     path: "{{ private_key_path }}"
   register: flux_bootstrap_pk
@@ -61,6 +63,7 @@
     - not flux_bootstrap_pk.stat.exists or fluxcd_bootstrap_key_rotate
     - bootstrap_private_key_content is undefined
     - bootstrap_public_key_content is undefined
+    check_mode: false
     block:
     - name: Create .tmp in user home
       ansible.builtin.file:
@@ -118,11 +121,12 @@
 
 - name: Get current user name # noqa: var-naming[no-role-prefix]
   ansible.builtin.command: whoami
+  check_mode: false
   register: current_user_name
   changed_when: current_user_name.rc != 0
   when: ansible_user is undefined or ansible_user == ""
 
-- name: Run kubernetes commands in venv
+- name: Create venv and install kubernetes pip module
   when: bootstrap_public_key_write.changed or bootstrap_private_key_write.changed or fluxcd_bootstrap_key_rotate
   vars:
     venv_user: "{{ ansible_user | default(current_user_name.stdout) | default(omit) }}"
@@ -136,13 +140,29 @@
         grep -E {{ venv_user | default('root') }}: /etc/passwd | awk -F: '{ print $6 }'
     failed_when: user_home_path.rc != 0
     changed_when: false
+    check_mode: false
     register: user_home_path
 
-  - name: Ensure the virtual environment exists
-    ansible.builtin.pip:
-      name: packaging
-      virtualenv: "{{ user_home_path.stdout }}/.ansible-venv"
-      virtualenv_command: "{{ virtualenv_command }}"
+  - name: Ensure packaging is installed in the virtualenv
+    check_mode: false
+    block:
+    - name: Ensure the virtual environment exists
+      ansible.builtin.pip:
+        name: packaging
+        virtualenv: "{{ user_home_path.stdout }}/.ansible-venv"
+        virtualenv_command: "{{ virtualenv_command }}"
+    rescue:
+    - name: Ensure pip is installed in the virtualenv
+      ansible.builtin.command: "{{ user_home_path.stdout }}/.ansible-venv/bin/python -m ensurepip --upgrade"
+      # args:
+      #   creates: "{{ user_home_path.stdout }}/.ansible-venv/bin/pip"
+      changed_when: false
+      check_mode: false
+    - name: Ensure the virtual environment exists
+      ansible.builtin.pip:
+        name: packaging
+        virtualenv: "{{ user_home_path.stdout }}/.ansible-venv"
+        virtualenv_command: "{{ virtualenv_command }}"
 
   - name: Run commands in venv
     vars:
@@ -153,6 +173,7 @@
     - name: Install python pre-requisites
       ansible.builtin.pip:
         name: kubernetes
+      check_mode: false
     - name: Remove existing SSH keys from cluster
       kubernetes.core.k8s:
         state: absent
@@ -205,6 +226,7 @@
 # end block Add deploy key to GitHub
 
 - name: Resolve absolute path of private key # noqa: var-naming[no-role-prefix]
+  check_mode: false
   when:
   - not fluxcd_bootstrap_install_only
   ansible.builtin.command: "realpath {{ private_key_path }}"

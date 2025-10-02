@@ -7,18 +7,22 @@
       src: /loopback-devicename.txt
     register: loopback_devicename
 
-  - name: Set archlinux_install_drive fact
-    ansible.builtin.set_fact:
-      archlinux_install_drive: "{{ loopback_devicename.content | b64decode }}"
-
-  - name: Set archlinux_install_boot_partition fact
-    ansible.builtin.set_fact:
-      archlinux_install_boot_partition: "{{ loopback_devicename.content | b64decode }}p1"
-
-  - name: Set archlinux_install_root_partition fact
-    ansible.builtin.set_fact:
-      archlinux_install_root_partition: "{{ loopback_devicename.content | b64decode }}p2"
-
   - name: "Include archlinux_install role"
     ansible.builtin.include_role:
       name: "archlinux_install"
+    vars:
+      archlinux_install_disks:
+      - device: "{{ loopback_devicename.content | b64decode }}"
+        wipe: false
+        partitions:
+        - name: ESP
+          # start: 0%
+          end: 512MiB
+          flags:
+          - boot
+          - esp
+          type: primary
+        - name: RootFS
+          start: 512MiB
+          end: '100%'
+          type: primary

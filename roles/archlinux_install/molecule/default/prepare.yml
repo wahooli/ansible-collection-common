@@ -32,10 +32,10 @@
       cmd: losetup -D
     changed_when: true
 
-  - name: Create a 4GB file
+  - name: Create a 6GB file
     community.general.filesize:
       path: /fakedisk.img
-      size: 4G
+      size: 6G
       owner: root
       group: root
       mode: "0644"

@@ -1,0 +1,22 @@
+---
+- name: Create volume group
+  community.general.lvg:
+    vg: "{{ lvm.vg }}"
+    pvs: "{{ lvm.devices }}"
+    force: "{{ lvm.force | default(false) }}"
+
+- name: "Create logical volume in {{ lvm.vg }}"
+  become: true
+  community.general.lvol:
+    vg: "{{ lvm.vg }}"
+    lv: "{{ item.name | default(omit) }}"
+    size: "{{ item.size }}"
+    force: "{{ item.force | default(omit) }}"
+    shrink: "{{ item.shrink | default(omit) }}"
+    resizefs: "{{ item.resizefs | default(omit) }}"
+    thinpool: "{{ item.thinpool | default(omit) }}"
+    opts: "{{ item.opts | default(omit) }}"
+    active: "{{ item.active | default(true) }}"
+  loop: "{{ lvm.lvs }}"
+  when:
+  - lvm.lvs is defined
