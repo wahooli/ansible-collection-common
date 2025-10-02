@@ -44,3 +44,5 @@
       }}
   notify:
   - Restart cockpit
+  tags:
+  - molecule-idempotence-notest
