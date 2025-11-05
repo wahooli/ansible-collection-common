@@ -1,0 +1,12 @@
+[Trigger]
+# Trigger on any package installation, removal, or upgrade.
+Operation = Upgrade
+Operation = Install
+Operation = Remove
+Type = Package
+Target = *
+
+[Action]
+Description = Checking if snapshot cleanup is needed...
+When = PostTransaction
+Exec = /usr/local/sbin/pacman-cleanup-snapshot.sh

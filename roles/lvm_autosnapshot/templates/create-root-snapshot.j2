@@ -75,6 +75,7 @@ for original_entry in ${BOOT_ENTRIES_DIR}/*.conf; do
         fi
         sed -i "s|/${original_filename}|/${new_filename}|g" "$new_entry_path"
     done
+    sync
 done
 {% endif %}
 echo "--> Snapshot preparation complete."

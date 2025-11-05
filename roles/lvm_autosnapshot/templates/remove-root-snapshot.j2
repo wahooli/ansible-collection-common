@@ -66,6 +66,7 @@ if [ ${#files_to_delete[@]} -gt 0 ]; then
     echo "--> Removing boot files..."
     rm -vf "${files_to_delete[@]}"
 fi
+sync
 {% endraw %}
 {% endif %}
 

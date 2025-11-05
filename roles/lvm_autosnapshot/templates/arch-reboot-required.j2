@@ -1,0 +1,69 @@
+#!/bin/bash
+
+# Exit codes:
+# 0 = No reboot required
+# 1 = Reboot required
+
+REBOOT_REQUIRED=0
+
+# Check if running kernel differs from installed kernel
+RUNNING_KERNEL=$(uname -r)
+INSTALLED_KERNEL=$(pacman -Qlq linux 2>/dev/null | awk -F/ '/usr\/lib\/modules\/[0-9]/ {print $5; exit}')
+
+# Also check for custom kernels (linux-liqurix, linux-cachyos, etc.)
+if [ -z "$INSTALLED_KERNEL" ]; then
+    # Try to find any linux-* package that provides the current kernel
+    for kernel_pkg in $(pacman -Qq | grep -E '^linux-'); do
+        INSTALLED_KERNEL=$(pacman -Qlq "$kernel_pkg" 2>/dev/null | awk -F/ '/usr\/lib\/modules\/[0-9]/ {print $5; exit}')
+        if [ -n "$INSTALLED_KERNEL" ]; then
+            break
+        fi
+    done
+fi
+
+if [ -n "$INSTALLED_KERNEL" ] && [ "$RUNNING_KERNEL" != "$INSTALLED_KERNEL" ]; then
+    REBOOT_REQUIRED=1
+    echo "Kernel updated: running $RUNNING_KERNEL, installed $INSTALLED_KERNEL"
+fi
+
+# Instead of parsing pacman.log, check package versions directly
+# This is more reliable and works regardless of when packages were updated
+CRITICAL_PACKAGES=(
+    "systemd"
+    "glibc"
+    "linux-firmware"
+    "amd-ucode"
+    "intel-ucode"
+)
+
+# Add all installed linux-* kernel packages dynamically
+while IFS= read -r kernel_pkg; do
+    CRITICAL_PACKAGES+=("$kernel_pkg")
+done < <(pacman -Qq | grep -E '^linux-')
+
+# Check if any critical package was upgraded in current boot session
+# Compare package install time to system boot time
+BOOT_TIME=$(date -d "$(uptime -s)" +%s)
+
+for pkg in "${CRITICAL_PACKAGES[@]}"; do
+    if pacman -Qi "$pkg" &>/dev/null; then
+        # Get package install date and convert to timestamp
+        INSTALL_DATE=$(pacman -Qi "$pkg" | grep "Install Date" | cut -d: -f2- | xargs)
+        if [ -n "$INSTALL_DATE" ]; then
+            INSTALL_TIME=$(date -d "$INSTALL_DATE" +%s 2>/dev/null)
+            if [ -n "$INSTALL_TIME" ] && [ "$INSTALL_TIME" -gt "$BOOT_TIME" ]; then
+                REBOOT_REQUIRED=1
+                echo "Critical package updated since boot: $pkg"
+            fi
+        fi
+    fi
+done
+
+# Output result
+if [ $REBOOT_REQUIRED -eq 1 ]; then
+    echo "==> REBOOT REQUIRED"
+    exit 1
+else
+    echo "==> No reboot required"
+    exit 0
+fi

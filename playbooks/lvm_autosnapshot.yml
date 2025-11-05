@@ -1,0 +1,47 @@
+---
+# SPDX-License-Identifier: MIT-0
+# Playbook to run lvm_autosnapshot role
+# This playbook sets up LVM snapshotting as pacman hook on Arch Linux systems
+
+- name: Configure LVM Auto-snapshot
+  hosts: lvm_autosnapshot
+  become: true
+  gather_facts: true
+
+  vars:
+    # Override defaults if needed for your environment
+    target_vg: "{{ lvm_autosnapshot_target_vg | default('vg0') }}"
+    target_lv: "{{ lvm_autosnapshot_target_lv | default('lv_root') }}"
+    bootloader: "{{ lvm_autosnapshot_bootloader | default('systemd-boot') }}"
+
+  pre_tasks:
+  - name: Verify system is Arch Linux
+    ansible.builtin.fail:
+      msg: "This role is designed for Arch Linux systems only"
+    when: ansible_facts.os_family != "Archlinux"
+
+  roles:
+  - lvm_autosnapshot
+
+  post_tasks:
+  - name: Display LVM auto-snapshot configuration
+    ansible.builtin.debug:
+      msg: |
+        LVM Auto-snapshot has been configured:
+        - Target VG: {{ target_vg }}
+        - Target LV: {{ target_lv }}
+        - Bootloader: {{ bootloader }}
+        - Scripts installed to: {{ lvm_autosnapshot_script_install_path }}
+        - Pacman hook: /etc/pacman.d/hooks/99-lvm-snapshot.hook
+        - MOTD status script: /etc/profile.d/motd-snapshot-status.sh
+
+  - name: Verify LVM volume group exists
+    ansible.builtin.command: "lvs {{ target_vg }}/{{ target_lv }}"
+    register: lvm_check
+    changed_when: false
+    check_mode: false
+    failed_when: false
+
+  - name: Display LVM status
+    ansible.builtin.debug:
+      msg: "LVM volume {{ target_lv }} status: {{ (lvm_check.rc == 0) | ternary('Found', 'Not found - please verify volume exists') }}"

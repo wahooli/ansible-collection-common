@@ -84,6 +84,24 @@
     group: root
     mode: '0550'
 
+- name: Deploy arch-reboot-required script
+  become: true
+  ansible.builtin.template:
+    src: "templates/arch-reboot-required.j2"
+    dest: "{{ lvm_autosnapshot_script_install_path.rstrip('/') }}/arch-reboot-required"
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: Deploy pacman-cleanup-snapshot.sh script
+  become: true
+  ansible.builtin.template:
+    src: "templates/pacman-cleanup-snapshot.sh.j2"
+    dest: "{{ lvm_autosnapshot_script_install_path.rstrip('/') }}/pacman-cleanup-snapshot.sh"
+    owner: root
+    group: root
+    mode: '0755'
+
 - name: Allow passwordless sudo for check-root-snapshot script
   become: true
   ansible.builtin.blockinfile:
@@ -120,7 +138,16 @@
   become: true
   ansible.builtin.template:
     src: snapshot.hook.j2
-    dest: /etc/pacman.d/hooks/99-lvm-snapshot.hook
+    dest: /etc/pacman.d/hooks/00-lvm-snapshot.hook
+    owner: root
+    group: root
+    mode: '0644'
+
+- name: Deploy Pacman hook to trigger snapshot cleanup
+  become: true
+  ansible.builtin.template:
+    src: snapshot.post-hook.j2
+    dest: /etc/pacman.d/hooks/99-lvm-snapshot-cleanup.hook
     owner: root
     group: root
     mode: '0644'
